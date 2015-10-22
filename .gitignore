@@ -1,0 +1,16 @@
+*.pyc
+*.4ct
+*.4tc
+*.aux
+*.bbl
+*.blg
+*.dvi
+*.html
+*.idv
+*.lg
+documentation.log
+*.out
+*.synctex.gz
+*.tmp
+*.toc
+*.xref

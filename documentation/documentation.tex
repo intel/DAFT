@@ -1,0 +1,1065 @@
+\documentclass[a4paper,11pt]{article}
+\frenchspacing
+\usepackage{a4wide}
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+%\usepackage{url}
+\usepackage{hyperref}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+%Magic to fix underscores and then to turn dashes to actual dashes
+%instead of minus signs inside listing environment.
+\usepackage{listings}
+\makeatletter
+\def\lst@filenamerpl{_\textunderscore}
+\lst@CCPutMacro\lst@ProcessOther {"2D}{\lst@ttfamily{-{}}{-{}}}
+\@empty\z@\@empty
+\makeatother
+\usepackage{enumitem}
+\setlist{itemsep=3pt,topsep=3pt}
+ 
+\newcommand{\note}{\textbf{Note: }}
+\newcommand{\cmd}[1]{\texttt{#1}}
+\newcommand{\bl}{\textbackslash}
+\begin{document}
+
+\definecolor{lightgray}{RGB}{200,200,200}
+
+\lstset{basicstyle=\tiny, breaklines=true,
+columns=fullflexible, numbers=left, numberstyle=\tiny\color{lightgray}, frame=single, rulecolor=\color{lightgray}}
+
+\title{Testing Automation in an Embedded Linux Project}
+\author{
+	Topi Kuutela\\
+}
+\maketitle
+
+\pagebreak
+
+\tableofcontents
+
+\pagebreak
+
+\section{Start here}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\linewidth]{minnowwiring.png}
+	\caption{MinnowBoard MAX wiring diagram}
+\end{figure}
+
+\subsection{Simple setup}
+The absolutely mandatory steps to take for a simplest working system with just MinnowBoard MAX platform are as follows:
+\begin{enumerate}
+	\item Copy the content of Testing automation USB-stick from ta-usb-stick branch in the AFT git repository to a suitable USB-stick.
+
+\note{At the time of writing, the location is temporary and doesn't include pre-made Debian images due to their size.}
+	\item Setup a Testing harness as instructed in section \ref{testingharness}
+	\item Pick a Cleware powercutter and using the instructions on section \ref{clewarecutters}, install the associated software.
+	\item Setup AFT as instructed in section \ref{aft}
+	\item Setup PEM as instructed in section \ref{pem}
+	\item Create an Arduino keyboard emulator using the instructions in \ref{pemarduino}
+	\item Using \cmd{dd} create a bootable Debian USB-stick for MinnowBoard MAX as instructed in section \ref{pc}.
+	\item Following instructions in the first two subsections of section \ref{minnowboard}, set up the testing hardware.
+	\item Configure AFT using the instructions from appendix \ref{app:aft}.
+\end{enumerate}
+
+\subsection{Testing automation USB-stick}
+In this document there are multiple references to a testing automation USB-stick. This stick is intended to contain programs and other tools required for maintaining a complete testing automation system.
+
+\note{At the time of writing, the location is temporary and doesn't include pre-made Debian images due to their size.}
+
+The content can be downloaded from ta-usb-stick branch in the AFT git repository and copied to any suitably large USB-stick.
+
+The content was bundled together during the creation of this document, in December 2015. Therefore the programs may be out of date.
+
+\subsection{SSH-keys}
+In the testing automation system SSH-keys are used extensively for authentication. A default SSH-key is included in the testing automation USB-key in folders \cmd{gigabyte} and \cmd{minnowboard}. Additionally, the SSH-key is added to the \cmd{\/root\/.ssh} folder in each pre-made Debian image. \textbf{It is highly recommended that these SSH-keys are replaced with your own ones!} Leaving the default keys in place may expose your system to attacks.
+
+\subsection{Foreword}
+This document was originally written over November and December 2015 to relay information regarding testing automation setup in an embedded Linux project. The level of detail is intentionally high to allow the next operator to understand all details of the system.
+
+This document covers the configuration and construction instructions only for the testing automation part of the continuous integration system used in the project. The testing automation subsystem is not coupled to the build infrastructure other than by the image transmission.
+
+In the first section the configuration and installation of the testing harness, the testing server, is covered. In the second and third sections the usage of the most important pieces of software are detailed. In section 5 the different kinds of power cutter devices are explained and their associated software is explained. In sections 6-9 the individual testing platforms are described. Finally, in the appendices, the AFT implementation details and privilege reduction options are explained.
+
+\section{Testing harness}
+\label{testingharness}
+The testing server is, in this document, called testing harness. The testing harness is responsible of fetching the images from the source and executing AFT to flash the images on various target devices. The system has been tested using \emph{OpenSUSE 13.2}.
+
+The testing harness acts to the testable devices as a network file system server, and as a DHCP-server. It is highly recommended that the devices are put in an isolated network.
+
+Testable images can be copied from the builders using many means. Both NFS and standard IP transmission using \cmd{wget} have been tested and found reliable. Because the images are most likely copied over Ethernet, and the testable devices are in a separate network, the testing harness must have two network cards.
+
+In the following section the configuration is detailed. The commands are expected to be run using \cmd{root} privileges. A fresh installation of OpenSUSE 13.2 with SSH-server, no desktop environment and working internet connectivity are assumed. Firewall configuration is not provided, it is recommended that the testing harness is only kept in a trusted network.
+
+Configuration of AFT is explained in appendix \ref{app:aft}.
+
+\subsection*{Base system}
+A set of common tools and utilities:
+\begin{lstlisting}
+zypper install git gcc gcc-c++ make automake cmake autoconf man emacs nano screen tree attr dnsmasq gdisk nfs-kernel-server python python-setuptools python-devel python-tk python-idle ipython libusb-1_0-devel usbutils
+\end{lstlisting}
+
+OpenSUSE comes with \cmd{YaST} configuration utility. It can be used to configure most base OS options. Using \cmd{yast} configure:
+\begin{enumerate}
+\item The secondary Ethernet card to have static IP \cmd{192.168.30.1}, and subnet mask \cmd{255.255.255.0}
+\item Create user \cmd{tester} and add it to \cmd{wheel} group
+\end{enumerate}
+The secondary local area network is used for the flashing of PC-devices \ref{pc}. The \cmd{tester}'s  home will be set as shared folder over NFS for the \cmd{192.168.30.0/24} network. The \cmd{tester} is also the recommended user for automated testing.
+
+Enable \cmd{wheel} group as passwordless sudoers. Using \cmd{visudo} add to the end of the \cmd{/etc/sudoers} file:
+\begin{lstlisting}
+%wheel	ALL=(ALL)	NOPASSWD: ALL
+\end{lstlisting}
+
+\subsection*{DFU-util}
+\label{dfuutil}
+
+Flashing Edison requires the installation of \cmd{dfu-util} program. Dfu-util takes care of the DFU-protocol and the flashing of each partition on the target device.
+
+At the time of writing (24.11.2015) the official latest version of DFU-util does not have a working USB-tree support. Fortunately a patch has been made, and the installation is therefore straightforward.
+
+\begin{lstlisting}
+git clone git://git.code.sf.net/p/dfu-util/dfu-util dfu-util-src
+cd dfu-util-src
+wget http://sourceforge.net/p/dfu-util/tickets/6/attachment/0001-Fix-reimplement-USBPATH-support.patch
+git am 0001*
+./autogen
+./configure
+make
+make install
+\end{lstlisting}
+
+\subsection*{Clewarecontrol}
+Clewarecontrol utility is used to control the power cutters made by Cleware GmbH. At the time of writing, the latest clewarecontrol, version 4.1, was broken. Therefore the version 2.8 is recommended.
+
+To install clewarecontrol commandline utility:
+\begin{lstlisting}
+wget https://www.vanheusden.com/clewarecontrol/clewarecontrol-2.8.tgz
+tar -xvf clewarecontrol-2.8.tgz
+cd clewarecontrol-2.8
+make
+make install
+\end{lstlisting}
+
+Usage instructions are given in the section \ref{powercutters}.
+
+\subsection*{Dnsmasq}
+\cmd{Dnsmasq} is used as a DHCP-server for the PC-devices. It also provides a table with MAC-to-IP-address conversion. Dnsmasq is configured to provide IP-addresses to the \cmd{192.168.30.0/24} subnet, to all devices connected (through a switch) to the secondary Ethernet port.
+
+Add the following lines to \cmd{/etc/dnsmasq.conf} file:
+\begin{lstlisting}
+dhcp-range=192.168.30.2,192.168.30.254,10m
+interface=p1p1
+\end{lstlisting}
+\note{replace the \cmd{p1p1} with the network interface the PC-devices are connected to.}
+
+To enable dnsmasq service:
+\begin{lstlisting}
+systemctl start dnsmasq.service
+systemctl enable dnsmasq.service
+\end{lstlisting}
+If at some point the DHCP-exchange has to be debugged, stop the Systemd-service and start dnsmasq manually using:
+\begin{lstlisting}
+systemctl stop dnsmasq.service
+dnsmasq --no-daemon
+\end{lstlisting}
+
+\subsection*{Network File System}
+Network file system (NFS) is used to share the images and other files used in flashing for PC-devices. By convention the whole \cmd{/home/tester} is shared.
+
+To share the folder, add the following line to \cmd{/etc/exports}:
+\begin{lstlisting}
+/home/tester 192.168.0.0/16(crossmnt,ro,root_squash,sync,no_subtree_check)
+\end{lstlisting}
+
+Then enable the Systemd-service:
+\begin{lstlisting}
+systemctl start nfs-server.service
+systemctl enable nfs-server.service
+\end{lstlisting}
+On some platforms, also \cmd{rpcbind.service} has to be activated.
+
+\subsection*{Udev (optional)}
+It is recommended to set udev-rules to create symbolic links from a human-readable file name to ttyUSB-devices used for PEM (section \ref{pem}), serial output recording (appendix \ref{app:aft}) and to the USB-relay powercutters used for Edisons. The USB-to-serial adapters are often unreliable and tend to occasionally reset, which causes a re-initialization by Linux kernel. This also triggers a (re-)creation of the ttyUSB-device created by udev.
+
+The recommended way to set the rules is by adding rules to, for example, \\ \cmd{/etc/udev/rules.d/99-persistent-ttyusb}. A rule can look for example like:
+\begin{lstlisting}
+SUBSYSTEM=="tty", ENV{ID_PATH}=="pci-0000:00:1d.7-usb-0:1.1.3:1.0", SYMLINK+="gigabytearduino3"
+\end{lstlisting}
+The \cmd{SUBSYSTEM} is the udev subsystem which is used by the target device, the \cmd{SYMLINK} is the name of the symbolic link created under \cmd{/dev}, and the \cmd{ID\_PATH} is used to filter the specific device. To retrieve the {ID\_PATH}, plug in the device, find the correct \cmd{ttyUSBX} device using e.g. \cmd{dmesg} and execute:
+\begin{lstlisting}
+udevadm info /dev/ttyUSBX
+\end{lstlisting}
+
+After setting the rules, udev must be refreshed using
+\begin{lstlisting}
+udevadm trigger
+\end{lstlisting}
+
+\note Setting the rules using this method allows unplugging and re-plugging USB-cables to the same port, or rebooting the testing harness without re-configuring AFT. Otherwise the ttyUSB-device may change!
+
+\section{AFT - Automated Flasher Tester}
+\label{aft}
+
+AFT is a Python tool to flash the testable image to various kinds of devices.  AFT tries to guarantee that the device under test is in a state where:
+\begin{itemize}
+\item The device can be rebooted and the image under test starts again.
+\item The device under test can be accessed over SSH without a password.
+\end{itemize}
+
+To achieve the first requirement, AFT flashes the image to the primary boot media of the device under test, and possibly modifies the BIOS settings to use that as the boot media.
+
+The second requirement is achieved by injecting a known public SSH-key to \linebreak\cmd{<root home>/.ssh/authorized\_keys}. This allows the owner of the corresponding private key to connect the device without a password. AFT may also modify the network settings of the testing harness to make sure the device is still accessible after a reboot.
+
+Finally AFT starts the pre-configured tests by executing either its internal test cases or by starting a subprocess. The test cases are assumed not to modify the BIOS settings. For this AFT has an integrated test runner which executes test plans based on configuration.
+
+Because flashing often requires multiple boots during the process, and the only guaranteed way to power off a device is to cut its power, different kinds of external power cutters are used.
+
+The execution syntax for AFT is
+\begin{lstlisting}
+aft <machinetype> <imagefile>
+\end{lstlisting}
+where, at the time of writing, the options for  \cmd{machinetype} are \cmd{gigabyte}, \cmd{galileov2}, \cmd{minnowboardmax} and \cmd{edison}. The imagefile is the image to be tested.
+
+Optionally, AFT can also record the serial console output to file by using \cmd{-\/-record} argument, assuming the serial device has been configured properly. This allows some level of logging even if the device fails to boot.
+
+Details to the configuration of AFT is given in the appendix \ref{app:aft}. In the same appendix there is a a general overview to the classes involved and implementation details.
+
+\subsection{PC-devices}
+\label{pc}
+PC-like devices are devices which have a network interface with a fixed MAC-address and usually have a some sort of BIOS/EFI menu.
+
+PC-like devices are flashed with the aid of a \textit{support image}, a Linux image which can boot the device under test. The support image is used to copy the target image over NFS to the primary boot media, and to add e.g. the SSH-key to it.
+
+The BIOS settings are modified using PEM, an Arduino UNO device with a keyboard emulating firmware. See section \ref{pem} for further information.
+
+The biggest hurdle with PC-devices is usually the creation of a support image. The distribution used on this guide is Debian 8.2 because it supports out of the box a wide range of architectures and is generally known to be compatible with many kinds of devices. In simple cases the support image creation is just a matter of installing the operating system to a USB stick. In worse cases, e.g. with Galileo Gen 2, it requires the creation of custom kernel with board specific \textit{Board Support Package} (BSP).
+
+Support images for all currently supported devices are provided on the testing automation USB-stick.
+
+By using a support image to also modify the target image, AFT can be run without root privileges. \cmd{Mount}-command for modifying images and mount points always requires root privileges, but this is executed only on the support image. Unfortunately gadget-devices require the modification of the image on the testing harness, so this is not viable in the general case.
+
+PC-devices usually use some kind of a power supply which is connected to the mains powerlines. Therefore a natural place for a power cutter is in between the mains and the PSU.
+
+Another option would be to strip the positive line between the PSU and the device, and install a power cutter in between. This is considered a worse solution because it requires more customization of the hardware.
+
+The PC-devices described in this document include Gigabyte \ref{gigabyte}, MinnowBoard MAX \ref{minnowboard} and Galileo Gen 2 \ref{galileo}. 
+
+A support image is provided on the Testing automation USB-stick for each platform in the folder \cmd{debian-images}. These can be copied to another USB-stick using e.g.
+\begin{lstlisting}
+dd if=<USB-root>/debian-images/minnowUSB.image of=/dev/sdX bs=8M
+\end{lstlisting}
+where the \cmd{sdX} refers to the block device you want to copy the image to.
+
+\subsection{Gadget-devices}
+
+Gadget-like devices are devices which are closer to a mobile phone or a traditional embedded MCU or SoC. These are often flashed using the DFU-protocol.
+
+There are several DFU programmer utilities and flashing a device completely may require separate flashing calls to flash each memory media on the device. Depending on the flashing utility, it may be possible to detect errors during flashing. These shouldn't cause a failure in testing but instead just initiate another attempt at flashing.
+
+Depending on the device, switching power on and off can be considerably more difficult with a gadget-device. If the testable device has an internal battery, it most likely requires somewhat complicated custom hardware to power cycle it. With gadget-devices extra care must be taken in the prevention of floating ground issues. If the device is powered over USB, a powered USB-hub is almost certainly required.
+
+The only gadget-device in this document is the Intel Edison \ref{edison}, which uses dfu-util (\ref{dfuutil}) for flashing and a USB-relay as a power cutter.
+
+\section{PEM - Peripheral EMulator}
+\label{pem}
+
+\note{The instructions work only on Arduino UNO!}
+
+Peripheral Emulator is a device created out of an Arduino UNO and USB-to-serial adapter for emulating a keyboard or another peripheral device. To be compatible with the PC 97 standard, and especially BIOS mode, the firmware supports 6-key-rollover.
+
+PEM works by flashing both the Atmega 328U and Atmega 16U2 chips on the Arduino UNO R3 board. 
+
+The Atmega 328U is flashed with a firmware that takes care of the communication between the testing harness and the USB-to-serial adapter. The firmware receives keyboard states from the testing harness over serial data line and responds with an acknowledgement after each successful packet.
+
+The Atmega 16U2 is converted from its original USB-to-serial mode to an actual 6KRO HID-emulator. The 16U2 receives the packets from the 328U, interprets them and sends them over the USB-interface using HID protocol.
+
+PEM can be installed by issuing the following commands:
+\begin{lstlisting}
+git clone https://github.com/01org-AutomatedFlasherTester/pem.git
+cd pem
+sudo python setup.py install
+\end{lstlisting}
+\note{PEM installation files are also included in the Testing automation USB-stick in the \cmd{installationfiles} folder.}
+
+\subsection{Creation of a PEM-Arduino}
+\label{pemarduino}
+The creation of a PEM-Arduino requires 
+\begin{itemize}
+\item An Arduino UNO R3
+\item USB-to-serial adapter
+\item 3 wires to connect the USB-to-serial adapter to Arduino
+\item A jumper or a piece of wire
+\item USB A to USB B cable
+\item USB A to mini/microUSB (depending on the USB-to-serial adapter)
+\end{itemize}
+
+The programs required are the Arduino IDE 1.6: (\url{https://www.arduino.cc/en/Main/Software}) and dfu-programmer 0.62: (\url{https://dfu-programmer.github.io/}).
+
+\begin{enumerate}
+\item Plug the Arduino UNO to your computer using the USB-B to USB-A connector.
+
+\item Start the Arduino IDE. Select the correct port in the \cmd{Tools->Port} menu. Open the \cmd{<PEM git repository>/src/pem\_Arduino/pem\_Arduino.ino}. Flash the sketch in the Arduino. Close the IDE.
+
+\item With the Arduino connected to computer (and powered), connect briefly using a jumper or a piece of wire the two pins closest to the Arduino's USB-B port. This resets the Atmega 16U2. Now you should be able to get (scrambled) output by issuing:
+\begin{lstlisting}
+sudo dfu-programmer atmega16u2 dump
+\end{lstlisting}
+
+\item The firmware for the 16U2 is included in the testing automation USB-stick but it can also be downloaded from \url{http://hunt.net.nz/users/darran/weblog/b3029/Arduino_UNO_Keyboard_HID_version_03.html}. To flash the firmware, in the testing automation USB stick folder \cmd{arduinokb}, issue the following command:
+\begin{lstlisting}
+sudo sh flash.sh
+\end{lstlisting}
+This script first erases the 16U2, then flashes the firmware and then resets the chip.
+
+\item To verify that the system works, see the usage instructions in the following subsection.
+\end{enumerate}
+
+\subsection{Usage instructions}
+PEM has a graphical user interface for recording keyboard sequences. To make the keyboard sequence as reliable as possible, it is good idea to use constant intervals between the key presses. Additionally, most BIOS menus support e.g. PageUp and PageDown keys which move the cursor to the top or the bottom of the list (that is, to a known, fixed location).
+
+When using the peripheral emulator, connect the USB-to-serial to your testing harness or recording computer using the mini/microUSB connector. Connect the USB-to-serial pins to corresponding Arduino pins: \cmd{TX => 10}, \cmd{RX => 11} and \cmd{GND => GND}.
+
+When PEM is started, it doesn't start sending the key presses before the target device can detect them. This is achieved by waiting for the Arduino to boot up. Arduino is powered by the USB-B line, and therefore gets the power when the target device boots. Because the device under test power is controlled using a mains power cutter, in production, the PEM starts sending the key presses only exactly when the device boots.
+
+To start the recording interface, use
+\begin{lstlisting}
+sudo pem --interface serialconnection --record <target_file> --port </dev/ttyUSBX>
+\end{lstlisting}
+\note replace the \cmd{/dev/ttyUSBX} with the \cmd{ttyUSB}-device corresponding to the USB-to-serial adapter, which can be found using e.g. \cmd{dmesg}.
+
+In the recording interface, to start recording a sequence, press the \cmd{Start} button. After that, each key press sent to the PEM UI gets sent to the target device. To stop recording and to save the last recording to the file given in the command line arguments, press the  \cmd{Stop} button.
+
+To clean up the keyboard sequence, a LibreOffice Calc spreadsheet is provided on the testing automation USB-stick at \cmd{<USB-root>/arduinokb/sequence-editor.ods}.
+
+To execute a keyboard sequence, use the following command
+\begin{lstlisting}
+sudo pem --interface serialconnection --playback <playback_file> --port </dev/ttyUSBX>
+\end{lstlisting}
+
+\section{Power cutters}
+\label{powercutters}
+Controlling the power on the target devices is always done using a power cutter in the power line. Power cutters are used because powering off cleanly is not reliable. In some PC-devices, the USB-ports also remain powered unless the power is completely cut off.
+
+\subsection{Cleware powercutters}
+\label{clewarecutters}
+In our setup we have used two kinds of power cutters: for PC-devices, power switches by Cleware GmbH are used. Cleware cutters are controlled over USB using a command line tool \cmd{clewarecontrol}. At the time of writing, the latest version of \cmd{clewarecontrol}, 4.1, is unstable at least on Linux Fedora 22. It is recommended to use the version 2.8.
+
+The cutters can be listed by issuing
+\begin{lstlisting}
+clewarecontrol -l
+\end{lstlisting}
+
+A switch can be turned on and off using the following command
+\begin{lstlisting}
+clewarecontrol -d <device ID> -c 1 -as X [1|0]
+\end{lstlisting}
+where device ID is the ID of the cutter device, \cmd{X} is the index of power socket in the cutter (zero-based), and the last number is 1 for switching the socket on, and 0 for switching it off.
+
+\subsection{USB-relays}
+The Edison is controlled using a USB-relay in the +5V line on the USB-cable. The relay is controlled using a Python script shipped with the AFT. The script sends binary data over serial to switch the relay on and off.
+
+The USB-relays can be ordered from e.g. eBay. In some cases the switches are incorrectly recognized by the testing harness. The serial controller identifies itself as something else but a USB-to-serial adapter. The cause is probably incorrect internal firmware.
+
+This can be fixed by adding a custom USB device ID to the correct USB-to-serial driver. The driver depends on the USB-to-serial chip used in the relay, common ones being \cmd{cp210x} and \cmd{ftdi\_sio}. Adding a new device can be done in a root terminal by using for example
+\begin{lstlisting}
+echo "0b00 3070" > /sys/bus/usb-serial/drivers/cp210x/new_id
+\end{lstlisting}
+The device ID can be found with the help of e.g. \cmd{lsusb}. If the driver is not loaded, it can be loaded manually using \cmd{modprobe}.
+
+\section{Gigabyte GB-BXBT-3825}
+\label{gigabyte}
+
+Gigabyte is an IoT-gateway platform. It has a Gigabit ethernet, two USB 2.0 ports and one USB 3.0 port, HDMI- and VGA-outputs and internal WLAN and Bluetooth cards. It comes with 2 GB of ram and Intel Atom E3825 - the same one as in MinnowBoard MAX. It also has a 500 GB internal hard drive, which is the boot device used for testing.
+
+The BIOS of Gigabyte has basic settings for boot option priorities and overriding the boot priorities. It also has options to restart the device on AC power loss, which has to be set as the booting is executed using a powercutter. Gigabyte supports Secure boot, but also has options for disabling it and to let users add their own keys. To enter the BIOS press delete-key during boot.
+
+\note the BIOS only supports one boot media with legacy boot (MBR), which must be set as the \cmd{Boot Option \#1} in \cmd{Boot => Hard Drive BBS Priorities}.
+
+\note the USB 3.0 port in the front of the device doesn't work as a boot device if used with a USB 3.0 stick.
+
+\note Gigabyte BIOS is notoriously buggy. It sometimes creates invisible options to the boot override menu which replace a valid option but don't work. To fix this, reflash the BIOS.
+
+\note At the time of writing, Gigabyte requires a screen attached to the HDMI port in order to boot in MBR mode. A screen in the VGA port does not work.
+
+Gigabyte supports only 12V DC input and requires a 2.5 A powersupply. The DC-plug has a positive center.
+
+\subsection{CI-integration}
+Gigabyte is a PC-like device, similar to Galileo Gen 2 and MinnowBoard MAX. A Debian support image is created on a USB-stick. It is recommended that the support image is created with a legacy (non-EFI) bootloader. The BIOS settings are controlled with PEM-Arduino. The internal hard drive is used for the target image.
+
+The internal ethernet adapter is used for networking.
+
+The PEM keyboard sequence should select the support image from \cmd{Save \& Exit => Boot Override} menu. The image boot options should (automatically) be the top options in the boot option priorities so the keyboard sequence for testing should be empty.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\linewidth]{gigabytewiring.png}
+	\caption{Gigabyte GB-BXBT-3825 wiring diagram}
+	\label{fig:gigabytewiring}
+\end{figure}
+
+\subsection{Debian on Gigabyte}
+These instructions are for creating a bootable Debian USB-stick for Gigabyte with MBR and persistent storage.
+
+\begin{enumerate}
+\item Make sure the internal hard drive doesn't have a bootloader, or nuke the hard drive: 
+
+\item Update the BIOS
+
+
+\begin{lstlisting}
+dd if=/dev/zero of=/dev/sda bs=8M count=500
+\end{lstlisting}
+
+\item In the BIOS disable Secure boot and set the
+
+\cmd{Chipset => Restore AC Power Loss} to \cmd{Power On}.
+
+\item Dd a 64-bit Debian installation DVD to USB-stick:
+
+
+\begin{lstlisting}
+dd if=debian-8.2.0-amd64-DVD-1.iso of=/dev/sdX bs=8M; sync
+\end{lstlisting}
+
+\item Plug the USB-stick on a USB 2.0 port, boot the device and enter BIOS. \note if the USB-stick is a USB 3.0 stick, it will not boot from the USB 3.0 port!
+
+\item Select the USB-stick as the primary legacy boot option in \cmd{Boot => Hard Drive BBS Priorities}. Select the USB-stick as the boot override option in \cmd{Save \& Exit => Boot Override}.
+
+\item Only plug the target USB-stick after Debian installer menu is visible.
+
+\item Start Debian installation.
+
+\item When prompted for missing firmware files, don't try to install them at this phase (answer 'no').
+
+\item Select hostname, use e.g. Debian-gigabyte.
+
+\item Root password: \cmd{rootme}
+
+\item User name: \cmd{user}, real name: \cmd{user}, password: \cmd{user}.
+
+\item For partitioning, automatical partition for entire disk with all files in one partition works. Remember to select the correct USB-drive.
+
+\item When prompted for software selection, the spacebar enables and disables options. Disable Debian desktop environment and print server, but enable SSH server. Enter to continue.
+
+\item Once the installation is finished, remove the installation media, set the remaining USB-stick as the primary legacy boot option and boot the newly installed Debian.
+
+\item Once booted, log in as \cmd{root}, plug in the test automation USB-stick and execute:
+
+\begin{lstlisting}
+mkdir temp; mount /dev/sdc1 temp; cd temp/gigabyte; ./installgigabyte; cd; umount temp; rm -r temp
+\end{lstlisting}
+
+See the comments on the test automation USB-stick \cmd{gigabyte/installgigabyte} script for details of the post installation configuration.
+
+\item Reboot the device and from the BIOS menu, boot the Debian image.
+
+\item Manually flash the internal hard drive with a current testable image.
+
+\item Reboot the device, adjust the boot priorities so that the primary options are from the testable image.
+\end{enumerate}
+
+\section{MinnowBoard MAX}
+\label{minnowboard}
+
+MinnowBoard MAX is an open development board with a 64-bit Intel Atom E3825 CPU (the same as in Gigabyte) and 2 GB ram. It provides one microSD slot, a SATA2 connector, one of each USB 2.0 and USB 3.0 sockets, gigabit ethernet and a 6-pin serial output. It also has a microHDMI connector for monitors.
+
+MinnowBoard MAX uses EFI for hardware initialization. The BIOS menu can be entered by pressing \cmd{F2} during boot. The boot priorities can be overridden in the \cmd{Boot Manager} menu, and the priorities can be adjusted in \cmd{Boot Maintenance Manager}.
+
+\subsection{CI-integration}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\linewidth]{minnowwiring.png}
+	\caption{MinnowBoard MAX wiring diagram}
+	\label{fig:minnowwiring}
+\end{figure}
+
+MinnowBoard MAX is a PC-like device, similar to Gigabyte and Galileo Gen 2. A Debian support image is created on a USB-stick. For MinnowBoard MAX Debian, an EFI-enabled bootloader is used but it has to be slightly modified for more convenient and stable test automation. The instructions for this are at the end of section \ref{minnowdebian}.
+
+The internal ethernet adapter is used for network connectivity.
+
+After the bootloader modification, the PEM keyboard sequence can be used to select \cmd{EFI USB Device} as the boot device in the \cmd{Boot Manager} menu. The boot partitions of the image under test should be set as the primary boot options in the \cmd{Boot Maintenance Manager} so that an empty keyboard sequence can be used to boot it.
+
+The 6-pin serial output can be used for boot console recording at 115200 bauds.
+
+The microSD-card is used for the target image with MinnowBoard MAX.
+
+\subsection{Flashing the BIOS on MinnowBoard MAX}
+
+MinnowBoard MAX supports both 32- and 64-bit firmwares. The official firmware site is \url{https://firmware.intel.com/projects/minnowboard-max} but the firmware version \cmd{0.83} has been added to the testing automation USB-stick with both 32- and 64-bit flashing utilities. The following instructions explain how to flash the firmware using the testing automation USB-stick.
+
+\begin{enumerate}
+\item Attach the testing automation USB-stick to MinnowBoard MAX along with a keyboard and a monitor.
+
+\item Reboot the device and enter the BIOS menu. Determine the architecture of current BIOS from the third line in the header. For example, \textit{MNW2MAX1.\textbf{X64}.0083.R01.1509181113}.
+
+\item Select \cmd{EFI Internal Shell} as the boot media. (\cmd{Boot Manager => EFI Internal Shell}).
+
+\item Enter the USB-stick file system with the help of \cmd{Mapping Table}. In this example the USB-stick has been mapped to \cmd{FS0}. Note that the keyboard layout is US.
+\begin{lstlisting}
+FS0:
+\end{lstlisting}
+
+\item Change to the \cmd{minnowboardbios} folder:
+\begin{lstlisting}
+cd minnowboardbios
+\end{lstlisting}
+
+\item Based on the BIOS version architecture, execute the correct updater; for X64 system \cmd{MinnowBoard.MAX.FirmwareUpdateX64.efi} and for IA32 systems the IA32 version.
+\begin{lstlisting}
+MinnowBoard.MAX.FirmwareUpdateX64.efi MinnowBoard.MAX.X64.083.R01.bin
+\end{lstlisting}
+
+\item The system will shut down after flashing is complete. You will have to reconfigure the BIOS settings after the update.
+\end{enumerate}
+
+\subsection{Debian on MinnowBoard MAX}
+\label{minnowdebian}
+
+Because MinnowBoard MAX has only two USB-ports, and one of them is required for a keyboard, a microSD-card must be used for installation media. The BIOS doesn't support USB hubs but they can be used after the OS is booted.
+
+\begin{enumerate}
+\item Flash a 64-bit Debian installation image on a microSD-card:
+
+\begin{lstlisting}
+dd if=debian-8.2.0-amd64-DVD-1.iso of=/dev/sdX bs=8M; sync
+\end{lstlisting}
+Select \cmd{X} to match the SD-card device on your machine with the help of e.g. \cmd{lsblk}.
+
+\item Using e.g. \cmd{gparted} remove the default partitioning of the target USB-stick.
+
+\item Insert the SD-card to a MinnowBoard MAX. Do \emph{not} insert the USB stick yet!. Reboot the device and from BIOS menu select the Misc device to boot from the SD-card. A Debian installer menu should appear.
+
+\item Insert the target USB-stick.
+
+\item Start installation, select language (English), locale (Irish) and keyboard layout (Finnish).
+
+\item When prompted for CD-ROM drivers, select \cmd{No}. Then manually select the CD-ROM module and device (\cmd{yes}), select the module needed for access the CD-ROM (\cmd{none}) and device file for accessing the CD-ROM: \cmd{/dev/mmcblk0}.
+
+\item When prompted for missing firmware files, don't try to install them at this point (answer: No).
+
+\item Select hostname, use e.g. Debian-MinnowMAX, and leave the network name empty.
+
+\item Set the root password, use \cmd{rootme}
+
+\item Create a user, use user name: \cmd{user}, real name: \cmd{user} and password \cmd{user}.
+
+\item Adding a network package source is not necessary, it is added by a post-install script.
+
+\item When prompted for software selection, the spacebar enables and disables options. Disable Debian desktop environment and print server, but enable SSH server. Enter to continue.
+
+\item After the installation is finished, eject the microSD-card, select \cmd{debian} as the boot device in the BIOS \cmd{Boot Manager} and login to the Debian.
+
+\item Format the microSD-card and from the testing automation USB-stick, copy the contents of the contents of \cmd{minnowboard} folder to the card.
+
+\item Plug the SD-card in the MinnowBoard MAX, execute the following:
+\begin{lstlisting}
+cd; mkdir temp; mount /dev/mmcblk0p1 templs; cd temp; chmod +x installminnow; ./installminnow; cd; umount /dev/mmcblk0p1; rm -r temp
+\end{lstlisting}
+
+See the comments on the test automation USB-stick \cmd{minnowboard/installminnow} script for details of the post installation configuration.
+
+\item Reboot the device using \cmd{reboot} and from BIOS menu select the EFI USB Device as the boot device.
+
+\item manually flash the microSD-card with a current testable image.
+
+\item Reboot the device and enter BIOS menu.
+
+\item In \cmd{Boot Maintenance Manager} delete the \cmd{debian} boot entry. Then adjust the boot option order so that the previously flashed image is the primary boot device.
+\end{enumerate}
+
+\section{Galileo Gen 2}
+\label{galileo}
+
+Galileo Gen 2 is a Quark development board with 256 MB of ram. It has integrated 100 ethernet connectivity, a microSD slot, a USB 2.0-port and a 6-pin serial connection socket. Underneath the board there is a full-size Mini PCIE card slot. Therefore if a half-size Mini PCIE card (e.g. Intel Wireless N 7260) is used in testing, a half- to full-size adapter has to be used.
+
+Galileo Gen 2 supports input voltage between 7V and 15V. The included power supply is 12V, 1.25A. The DC-plug has a positive center.
+
+\subsection{BIOS}
+The BIOS menu of Galileo Gen 2 is very limited. It only provides an option to select a boot-device by pressing \cmd{F7} during boot time. The relevant options from CI-perspective are the microSD-card, represented as "Misc device" in the boot menu, and the USB-stick, represented with the make and model of the stick in the boot menu. Other options include e.g. EFI-shell and the yocto-image flashed to the internal storage.
+
+The primary boot option is the "first misc or USB-device", which is not specified further. The first boot option depends on the order in which the microSD-card and the USB-stick have been inserted. If the test cases include a test which reboots the device, the testable image has to be put in the primary boot option, and the support image has to be on the secondary boot device.
+
+\subsection{CI-integration}
+
+In CI-system Galileo Gen 2 is a "PC-like" device, and therefore similar to  Gigabyte and MinnowBoard MAX. To integrate Galileo Gen 2 in automated testing, the USB-socket has to be extended using a USB-hub, to connect both a PEM-Arduino and a USB-stick with bootable support image. The microSD-card is used for the target image.
+
+The integrated ethernet adapter is used for network connectivity.
+
+The 6-pin serial output can be used for boot console recording at 115200 bauds.
+
+The PEM keyboard sequence to boot the support image should be the selection of secondary boot device, while the sequence to boot the testable image should be empty.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\linewidth]{galileogen2wiring.png}
+	\caption{Galileo Gen 2 wiring diagram}
+	\label{fig:galileogen2wiring}
+\end{figure}
+
+\subsection{Debian on Galileo Gen 2}
+
+The following instructions are based on the preliminary work by Igor Stoppa in creating a bootable SD-card Debian image with persistent storage for the first generation Galileo. Several modifications and additions had to be made to his instructions but the basic idea has remained the same. The main difficulty is finding a Linux distribution which is bootable with an i586 device, as almost all "32-bit" distributions are using at least i686 architecture. Additionally, the kernel configuration required for Galileo Gen 2 had to be searched experimentally, to get all the features required for AFT-integration. The end result is an image which can be booted from both an SD-card or a USB-stick.
+
+The high-level workflow is as follows:
+\begin{enumerate}
+\label{galileodebianhighlevel}
+\item Prepare a 32-bit Debian Virtualbox virtual machine
+\item Build a custom Linux kernel using BSP provided by Intel
+\item Using debootstrap, prepare the base OS
+\item Add other required programs and configuration to the image.
+\item Manually construct the boot partition using the custom kernel and EFI GRUB from a Galileo Gen2 image provided by Intel.
+\end{enumerate}
+
+The instructions have been tested on 18.11.2015 using a Fedora 22 host machine, 32-bit Debian 8.2 and VirtualBox 5.0.10.
+
+In the following subsections the instructions are described in more detailed manner.
+
+\subsubsection*{Virtualmachine creation}
+\begin{enumerate}
+\item Using VirtualBox, create a new Debian (32 bit) virtualmachine with 2 GB RAM and 50 GB dynamically allocated VDI harddrive. \note You have to enable a NAT network adapter in the VM settings to have an internet connection inside the VM guest. 
+
+It is recommended to enable also bidirectional shared clipboard and drag'n'drop support.
+
+\item Add a 32-bit Debian installation media in the virtual CD-drive of the VM, start the VM and install it following the installer instructions.
+
+\item Remove the installation media from the virtual CD-drive and restart the VM.
+
+\item Once booted, start a terminal and \cmd{su} to root terminal. \note If you are behind a proxy, it is recommended to set the settings at this point in \cmd{.bashrc}.
+
+\item Comment out CD/DVD-entries in 
+\begin{lstlisting}
+vi /etc/apt/sources.list
+\end{lstlisting}
+
+\item Install required packages to the Debian system: 
+\begin{lstlisting}
+apt-get install debootstrap vim build-essential binutils git gawk chrpath kernel-package fakeroot libncurses5-dev gparted dkms
+\end{lstlisting}
+
+When prompted about the version of kernel config, it is recommended to use the package maintainer's.
+
+\item Install VirtualBox guest additions to the guest and the host systems using instructions from \href{https://www.virtualbox.org/manual/ch04.html}{VirtualBox manual}.
+
+\item Create a shared folder between the host and the VM. In these instructions the folder is named \cmd{shared} on both the host, and the guest machine, under the root home.
+
+\item Download and unpack the SDCard tarball from \url{https://downloadcenter.intel.com/download/24355/Intel-Arduino-IDE-1-6-0} . At the time of writing, the file was named \cmd{SDCard.1.0.4.tar.bz2}
+
+\item copy the extracted \cmd{image-full-galileo}-folder to the shared folder. The folder should contain at least \cmd{grub.efi}, and \cmd{boot/grub/grub.conf}.
+\end{enumerate}
+
+\subsubsection*{Kernel construction}
+\begin{enumerate}
+\item Enter the virtualmachine, start a terminal and switch to root shell using \cmd{su}
+
+\item Download Intel Quark Board Support Package (BSP) sources from  \url{https://downloadcenter.intel.com/download/23197/Intel-Quark-BSP} using eg. \cmd{wget} .
+
+\note At the time of writing the latest version (v. 1.20) had a non-existing base commit ID. Therefore an older version (eg. 1.10) must be used.
+
+\item Unpack the BSP using 
+\begin{lstlisting}
+7za e *.7z; tar xvf quark_linux_*.tar.gz -C bsp
+\end{lstlisting}
+
+\item Git clone the latest stable kernel repository 
+
+\cmd {git clone https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git}
+
+\item Checkout the commit SHA found inside \cmd{<bsp>/quark\_linux\_v3.8.7+v1.1.0/upstream.cfg}
+\begin{lstlisting}
+git checkout 531ec28f9f26f78797124b9efcf2138b8974a1e
+\end{lstlisting}
+
+\item Apply the patches required for Galileo Gen2: 
+\begin{lstlisting}
+git am ../bsp/quark_linux_v3.8.7+v1.1.0/*.patch
+\end{lstlisting}
+
+\item Copy the provided kernel config from the stick \cmd{Galileov2/.config} to the kernel repository root.
+
+\item If you wish to customize the kernel configuration, use \cmd{make menuconfig}. For example, adding all the USB-drivers may be desirable.
+
+\item Compile kernel: 
+\begin{lstlisting}
+fakeroot make-kpkg --initrd  kernel_image modules_image}
+\end{lstlisting}  
+The .deb package should appear on one folder \textit{above} your working directory.
+\end{enumerate}
+
+\subsubsection*{Debian base construction}
+\begin{enumerate}
+\item Create the empty image file and start partitioning 
+\begin{lstlisting}
+dd of=galileoimage.img bs=1 count=0 seek=2G; losetup -f galileoimage.img; gparted /dev/loop0
+\end{lstlisting}
+
+\item Using gparted, first add a partition table (msdos is fine) and then add 3 partitions: fat32 100MB, linux-swap 500MB, and ext4 the rest. Finally, add \cmd{boot} and \cmd{esp} flags to the fat32 partition.
+
+\item Mount the partitions 
+\begin{lstlisting}
+mkdir usb_boot; mkdir usb_root; mount /dev/loop0p1 usb_boot; mount /dev/loop0p3 usb_root
+\end{lstlisting}
+
+\item Prepare the base system using debootstrap: 
+\begin{lstlisting}
+debootstrap --arch i386 stable usb_root http://http.debian.net/debian
+\end{lstlisting}
+
+\item Rest of the preparation of the chroot environment: 
+\begin{lstlisting}
+mount --bind /dev usb_root/dev; mount --bind /dev/pts usb_root/dev/pts; cp linux-image*.deb usb_root/root/
+\end{lstlisting}
+\end{enumerate}
+
+\subsubsection*{Image configuration}
+\begin{enumerate}
+\item In root shell home, copy the \cmd{authorized\_keys}-file from the usb-stick to the chroot root home: 
+\begin{lstlisting}
+cp <authorized_keys> usb_root/root/authorized_keys
+\end{lstlisting}
+
+\item Start the chroot environment: 
+\begin{lstlisting}
+chroot usb_root
+\end{lstlisting}
+
+\item Install packages required for maintenance: 
+\begin{lstlisting}
+apt-get install locales ntp openssh-server vim initramfs-tools net-tools bash-completion python python-pip nfs-common nfs-server nano git bmap-tools parted attr gdisk tree
+\end{lstlisting}
+
+\item Add the serial terminal: 
+\begin{lstlisting}
+echo "t0:2345:respawn/sbin/getty -L 115200 ttyS1 vt102" > /etc/inittab
+\end{lstlisting}
+
+\note: The terminal interface (\cmd{ttyS1}) depends on the BSP version. This has been tested for 1.10 but an earlier version may use \cmd{ttyQRK1}.
+
+\item Set the password for root user: \cmd{passwd}
+
+\note: The root password in support images so far has been \cmd{rootme}
+
+\item Set the hostname 
+\begin{lstlisting}
+echo "Debian-Galileov2" > /etc/hostname
+\end{lstlisting}
+
+\item Add the hostname to name resolution in \cmd{etc/hosts}:
+\begin{lstlisting}
+127.0.0.1	localhost Debian-Galileov2
+::1		localhost ip6-localhost ip6-loopback Debian-Galileov2
+\end{lstlisting}
+
+\item Configure network interface(s) \cmd{vim /etc/network/interfaces}:
+\begin{lstlisting}
+auto eth0
+iface eth0 inet dhcp
+\end{lstlisting}
+\note It is a good idea to add multiple network interfaces (\cmd{eth1, eth2, ...}) if you want to use the same stick in multiple devices.
+
+\item Permit root login over ssh: 
+\begin{lstlisting}
+echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+\end{lstlisting}
+
+\item Add ssh-key: 
+\begin{lstlisting}
+mkdir -p /root/.ssh; chmod 700 /root/.ssh; mv /root/authorized_keys /root/.ssh/; chmod 600 /root/.ssh/authorized_keys
+\end{lstlisting}
+
+\item Create NFS and testable image mount point directories: 
+\begin{lstlisting}
+mkdir /mnt/img_data_nfs; mkdir /mnt/super_target_root; mkdir /mnt/target_root
+\end{lstlisting}
+
+\item Add entries to \cmd{/etc/fstab}: \cmd{vim /etc/fstab}:
+\begin{lstlisting}
+/dev/sda3 / ext4 defaults 0 0
+192.168.30.1:/home/tester /mnt/img_data_nfs nfs rsize=8192,wsize=8192,timeo=14,intr,nolock,auto
+\end{lstlisting}
+
+\item Install the kernel package: 
+\begin{lstlisting}
+dpkg -i /root/*.deb
+\end{lstlisting}
+
+\item Fix \url{https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=738575}. The command replaces every \cmd{lock} instruction with a \cmd{nop}. This works because Quark is a single-core processor: 
+\begin{lstlisting}
+for i in `/usr/bin/find /lib -type f -name *pthread*so`; do cp \$\{i\} \$\{i\}.bak; sed -i "s/\bl xf0\bl x0f\bl xb1\bl x8b/\bl x90\bl x0f\bl xb1\bl x8b/g" \$\{i\}; done
+\end{lstlisting}
+
+\item Leave the chroot environment using \cmd{ctrl+d}
+
+\item Copy the EFI files from shared folder: 
+\begin{lstlisting}
+mkdir -p usb_boot/EFI/BOOT; \linebreak cp shared/image-full-galileo/grub.efi usb_boot/EFI/BOOT/bootia32.efi; \linebreak cp -a shared/image-full-galileo/boot usb_boot
+\end{lstlisting}
+
+\item Copy the kernel files to boot partition: 
+\begin{lstlisting}
+cp usb_root/boot/* usb_boot
+\end{lstlisting}
+
+\item Modify the \cmd{usb\_boot/boot/grub/grub.conf}, make the following entry and remove the others:
+\begin{lstlisting}
+title Debian
+    root (hd0,0)
+    kernel /vmlinuz-3.8.7+ root=/dev/sda3 3 console=ttyS1,115200n8 earlycon=uart8250,mmio32,$EARLY_CON_ADDR_REPLACE,115200n8 vmalloc=3844M reboot=efi,warm apic=debug rw LABEL=boot debugshell=5
+    initrd /initrd.img-3.8.7+
+\end{lstlisting}
+\note You may have to modify the \cmd{vmlinuz-3.8.7+} and \cmd{initrd.img-3.8.7} to correspond your kernel and initrd files.
+
+\note If you want to boot the image from a SD-card, modify the \cmd{root=/dev/sda3} option to point to the SD-card: \cmd{root=/dev/mmcblk0p3}.
+
+\item Unmount everything and copy the image to the shared folder. 
+\begin{lstlisting}
+umount /dev/loop0p1; umount /dev/loop0p3; cp galileoimage.img shared
+\end{lstlisting}
+
+\item Poweroff the VM.
+
+\item Inside the host system, dd the \cmd{galileoimage.img} to a USB-stick: 
+\begin{lstlisting}
+sudo dd if=shared/galileoimage.img of=/dev/sdX bs=8M
+\end{lstlisting}
+
+\note modify the X to correspond your USB-stick device which can be found using eg. \cmd{lsblk}.
+\end{enumerate}
+
+\section{Intel Edison}
+\label{edison}
+
+Intel Edison is a development platform intended for wearable devices. It is a SoC with two Intel Atom cores and one Intel Quark core, GB of internal RAM and integrated Bluetooth and Wi-Fi. The Atoms are normal x64 cores while the Quark is roughly an i586 processor.
+
+Edison can be mounted on an Arduino development kit which provides Arduino UNO compatible pin layout. The development board also has a USB-serial interface, a mechanical switch to select between a micro-USB device controller  and a normal USB socket, a DC plug and a microSD socket.
+
+Edison uses a hacked U-Boot for hardware initialization. 
+
+From flashing perspective, Edison is closer to a mobile phone or similar "gadget" device than a complete PC. The OS image is written using DFU.
+
+\subsection{USB-interfaces}
+
+When an Edison is plugged to a computer, it is first detected as an Intel Merrifield device (\cmd{8086:e005}), which is used to recover the DFU-utility in the firmware. After a few seconds the device disconnects and reconnects as DFU-device, Intel USB download gadget (\cmd{8087:0a99}).  At this stage the OS can be flashed. If DFU-communication is not initialized in a couple of seconds, the device disconnects again and finally boots normally. 
+
+After the boot process, the device is detected with multiple interfaces with ID \cmd{8087:0a9e}. It can be used as a USB-storage, USB-serial device (at \cmd{/dev/ttyACM\textit{X}}) and as a USB-network interface.
+
+The USB-network interface is used for network connectivity. This interface has to be configured on both the image under test and the testing harness. Network configuration is handled by AFT \ref{aft}.
+
+The USB-network interface of the Edison gets a random MAC-address every time the image is flashed. This also causes the network interface on the testing harness being recreated and renamed.
+
+If there are multiple Edisons attached to the testing harness, the only way to differentiate between them is the USB-tree or USB-paths. Using the paths, each physical USB-port can be differentiated from each other.
+
+\subsection{CI-integration}
+
+Integrating Edisons to the testing automation requires a way to power off and on the device programmatically.
+
+The best solution would be to find USB-hubs that supports Linux kernel's USB power options at \cmd{/sys/bus/usb/devices/usb1/power/} on per-port accuracy. Unfortunately this kind of USB-hubs are extremely difficult to find.
+
+An implemented alternative is to use a power cutter on USB-cable's +5V line. Because the device is powered by USB, the power cutter also shuts down the device. This requires exposing the +5V cable, stripping it, and attaching the newly open ends to a USB-controlled relay, as instructed in figure \ref{fig:usbpower}.
+
+The USB-serial interface can be used for boot console recording at 115200 bauds.
+\begin{figure}
+	\centering
+	\begin{minipage}[c][0.5\textheight][t]{0.49\textwidth}
+	\centering
+	\includegraphics[width=\linewidth]{edisonwire1.jpg}
+	
+	1. Expose the wire shielding by cutting a 5 cm slice through the jacket, about 7 cm from the USB-A plug.
+	\end{minipage}
+	\begin{minipage}[c][0.5\textheight][t]{0.49\textwidth}
+	\centering
+	\includegraphics[width=\linewidth]{edisonwire2.jpg}
+	
+	2. Strip the shielding carefully.	
+	Expose the red wire (+5V) and cut it in half.
+	\end{minipage}
+	\begin{minipage}[c][0.5\textheight][t]{0.49\textwidth}
+	\centering
+	\includegraphics[width=\linewidth]{edisonwire3.jpg}
+	
+	3. Strip the wire, solder small beads of tin on the tips.
+	Cover the cut with electrical tape.
+	\end{minipage}
+	\begin{minipage}[c][0.5\textheight][t]{0.49\textwidth}
+	\centering
+	\includegraphics[height=0.35\textheight]{edisonwire4.jpg}
+	
+	4. Final setup.
+	\end{minipage}
+	\caption{USB-power cutter cable.}
+	\label{fig:usbpower}
+\end{figure}
+
+\newpage
+\appendix
+\section{AFT implementation details}
+\label{app:aft}
+
+In this appendix, configuration options are detailed. Also, a high level description of most important AFT implementation decisions are explained. 
+
+\subsection{Configuration}
+
+All AFT configuration is done with configuration files stored in \cmd{/etc/aft}.
+
+Configuration files for the testable devices are stored in the subfolder \cmd{devices}. The configuration of a single physical device is combined out of these files.
+
+In the \cmd{test\_plan} folder is the configuration for each AFT test-plan.
+
+\subsubsection*{devices/platform.cfg}
+The \cmd{platform.cfg} is the highest level configuration file. It is intended to store settings which are shared between all high-level device-types, ie. PC-devices or gadget-devices.
+
+This is also the place where settings for automatic construction of the device topology can be stored. For example the \cmd{leases\_file\_name} refers to the location of the leases file used by \cmd{dnsmasq}. This file can be used to detect devices attached to the local network in which the PC-devices are kept in.
+
+\subsubsection*{devices/catalog.cfg}
+The \cmd{catalog.cfg} is the configuration file describing each device type. These are the options shared by all devices of the same type.
+
+Each section in \cmd{catalog.cfg} must include at least the \cmd{platform}, \cmd{cutter\_type} and \cmd{test\_plan} options.
+
+The \cmd{platform} option is used to load the correct high-level device configuration from the \cmd{platform.cfg} file. 
+
+The \cmd{cutter\_type} is used to determine the type of cutter used for the devices. At the time of writing the options are \cmd{clewarecutter} and \cmd{usbrelay}.
+
+The \cmd{test\_plan} option is the name of the name of the test plan configuration file under \cmd{test\_plan} folder.
+
+For \emph{PC-devices}, the additional options are as follows:
+\begin{itemize}
+\item \cmd{target\_device}: The block device the image is flashed to.
+
+\item \cmd{root\_partition}: The partition to which the root of the image ends up after flashing the image. \note this option is only used if there is no disk layout configuration file in the AFT invocation folder.
+
+\item \cmd{disk\_layout\_file}: The partition layout file name. Expected to be found in the working directory of AFT invocation.
+
+\item \cmd{service\_mode}: A pattern which can be used to verify that the device is in service mode, that is, ready to be flashed. Compared against \cmd{/proc/version}.
+
+\item \cmd{test\_mode}: Same as above but for the testing mode, that is, what is seen after the testable image has booted.
+
+\item \cmd{service\_mode\_keystrokes}: The keyboard sequence which switches the BIOS options to service mode.
+
+\item \cmd{test\_mode\_keystrokes}: Same as above but for testing mode.
+\end{itemize}
+
+For \emph{Edison} devices there are no extra device specific options.
+
+For \emph{serial recording}, the add option:
+\begin{itemize}
+	\item \cmd{serial\_bauds}: The baudrate of the serial connection.
+\end{itemize}
+
+\subsubsection*{devices/topology.cfg}
+
+The \cmd{topology.cfg} file contains individual physical device specific information. The options you have to specify here depend on the device type and the power cutter used with it.
+
+The mandatory options for all devices are the \cmd{model} and \cmd{id}. The information required to construct a cutter instance specific to the device is also almost certainly required.
+
+The \cmd{model} is the device model. This is used to determine which device type from \cmd{catalog.cfg} is associated with the physical device.
+
+The \cmd{id} is a unique identifier which is used as the name of the lock file associated with the device, when the device is in use. For PC-devices this should be the MAC-address. For Edisons this can be anything that is unique.
+
+The options related to \emph{Clewarecutters} are as follows:
+\begin{itemize}
+\item \cmd{cutter}: The ID of the cutter. This is taped on each cutter but can be also found using the \cmd{clewarecontrol} tool
+\item \cmd{channel}: The power socket of the cutter specified with \cmd{cutter}.
+\end{itemize}
+
+For \emph{usbrelays} the only required option is \cmd{cutter}. This specifies the ttyUSB device associated with the cutter.
+
+For \emph{PC-devices} the mandatory options are as follows:
+\begin{itemize}
+\item \cmd{pem\_interface}: the interface used with PEM. The only option at the time of writing is serialconnection.
+\item \cmd{pem\_port}: The ttyUSB device for the USB-to-serial adapter connected to the PEM-Arduino.
+\end{itemize}
+
+For \emph{Edisons} the mandatory options are as follows:
+\begin{itemize}
+\item \cmd{edison\_usb\_port}: The USB-bus and -port to which the USB-cable to Edison is attached. \note Not the usbrelay but the cable.
+
+\item \cmd{network\_subnet}: A *.*.*.*/30 subnet dedicated for this specific Edison device.
+\end{itemize}
+
+For \emph{serial recording} the mandatory additional options are:
+
+\begin{itemize}
+	\item \cmd{serial\_port}: The ttyUSB device attached to the serial port of the target device.
+\end{itemize}
+
+\subsubsection*{aft.cfg}
+The \cmd{aft.cfg} is the global configuration file used to specify settings that affect the behaviour of AFT itself.
+
+The \cmd{lock\_file} option is the directory into which lock files can be created by users in \emph{lock} group. For example on OpenSUSE this is \cmd{/var/lock}, while on Fedora it is \cmd{/var/lock/lockdev}.
+
+The \cmd{serial\_log\_name} is the filename to which serial output is recorded under the AFT working directory.
+
+The \cmd{aft\_log\_name} is the filename to which internal AFT log messages are stored.
+
+The \cmd{nfs\_folder} is the folder which is exported using NFS, and visible to the devices under test.
+
+\subsubsection*{test\_plan}
+The \cmd{test\_plan} folder contains configuration for each test plan. In a configuration file each section define one AFT test case with the parameter \cmd{test\_case} and the settings for that test. The \cmd{test\_case} is associated with the correct test class by the \emph{testcasefactory}.
+
+\subsection{Classes and files}
+
+AFT is aimed to be as easy to deploy as reasonably possible. Because it is also intended to be flexible and suitable for other projects, the code is also kept as simple and short as possible.
+
+\subsubsection*{setup.py}
+The installation module. This file is responsible of deploying all AFT-related items, creating entry points and deploying example configuration files if they don't exist already.
+
+\subsubsection*{device.py}
+\emph{Device} is an abstract base class to define an interface for all device types. It requires the implementation of \cmd{write\_image} and \cmd{get\_ip} methods. The \cmd{write\_image} should execute all the steps required for flashing the image. The \cmd{get\_ip} should return an IP-address that is guaranteed to work for SSH-connection on the device instance.
+
+In addition, the \cmd{test} method should set the device and host to be ready to execute the testing, and then \cmd{return test\_case.run(self)}. This is the visited method in a visitor pattern.
+
+The \cmd{record\_serial} method is in the \emph{device} class because the serial port used for recording is device-specific.
+
+\subsubsection*{cutter.py}
+\emph{Cutter} is an abstract base class to define an interface for all power cutters. It requires the implementation of \cmd{connect} and \cmd{disconnect} methods, to power on and off a power cutter.
+
+\subsubsection*{devicefactory.py and testcasefactory.py}
+Factory modules to construct devices and testcases. These are the only locations where there should be string-to-Python-class conversion.
+
+This is preferred over a perhaps more elegant \cmd{setuptools entrypoint} method for the addition of modules to AFT to keep the codebase simpler. The entrypoint methodology requires somewhat complicated installation method in the extension modules.
+
+\subsubsection*{testcase.py}
+\emph{TestCase} is an abstract base class to define an interface for all AFT test cases. These can for example call an external testrunner with options or run a simple test case themself.
+
+\subsubsection*{config.py}
+A module used for parsing global configuration file \cmd{/etc/aft/aft.cfg}. The values are set as module attributes so that they can be referred using \emph{aft.config.OPTION} syntax. Also sets sensible default values.
+
+\subsubsection*{main.py}
+The entry point to AFT. The high-level execution sequence is
+\begin{enumerate}
+\item Construct all devices of the requested type
+\item Reserve a device for this specific execution
+\item Prepare the AFT test runner
+\item Flash the image
+\item Execute the test runner and run the tests
+\end{enumerate}
+
+\subsubsection*{tools}
+General tools and subprocesses for AFT. This provides for example a safe subprocess execution call with timeout for both the testing harness and device under test.
+
+\subsubsection*{default\_config}
+Default example settings for the configuration files. Installed if they don't exist under \cmd{/etc/aft}.
+
+\subsubsection*{devices}
+The device modules and their associated topology-generation modules.
+
+\subsubsection*{cutters}
+Power cutter modules.
+
+\section{AFT without root privileges}
+\label{app:noroot}
+
+If none of the testable devices require actions which require root privileges, e.g. \cmd{mount} on the testing harness, AFT can be run without root privileges. In other words, if only PC-devices are used in the testing system, AFT can be run with lowered privileges.
+
+The privileges that are mandatory for AFT are access to serial devices and the ability to lock files. The corresponding user groups on OpenSUSE are \cmd{dialout} and \cmd{lock}. These are easiest to set using \cmd{yast} on the testing harness and setting the user used for testing to these groups.
+
+Additionally \cmd{clewarecontrol} always requires root privileges. By setting the \cmd{setuid} bit on the executable makes the program always run on its \emph{owner user}. Because the programs under \cmd{/usr/bin} are owned by root, this provides the necessary privileges for those executions. The setuid bit can be set by issuing as a root user:
+\begin{lstlisting}
+chmod 4755 /usr/bin/clewarecontrol
+\end{lstlisting}
+
+\end{document}
