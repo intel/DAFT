@@ -1,5 +1,7 @@
+# coding=utf-8
 # Copyright (c) 2013-2015 Intel, Inc.
 # Author Topi Kuutela <topi.kuutela@intel.com>
+# Author Erkka Kääriä <erkka.kaaria@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -22,16 +24,21 @@ class QATestCase(BasicTestCase):
     """
     QA testcase executor.
     """
-    _DEVICE_PARAMETERS = {"Gigabyte".lower(): " --machine intel-corei7-64 " + 
+    _DEVICE_PARAMETERS = {"Gigabyte".lower(): " --machine intel-corei7-64 " +
                                               "--test-manifest iottest/testplan/iottest.manifest",
-                          "GalileoV2".lower(): " --machine intel-quark " + 
+                          "GalileoV2".lower(): " --machine intel-quark " +
                                                "--test-manifest " +
                                                "iottest/testplan/galileo.iottest.manifest",
-                          "Edison".lower(): " --machine edison " + 
+                          "Edison".lower(): " --machine edison " +
                                             "--test-manifest iottest/testplan/iottest.manifest",
-                          "MinnowboardMAX".lower(): " --machine intel-corei7-64 " + 
+                          "MinnowboardMAX".lower(): " --machine intel-corei7-64 " +
                                                     "--test-manifest " +
-                                                    "iottest/testplan/minnowmax.iottest.manifest"}
+                                                    "iottest/testplan/minnowmax.iottest.manifest",
+                          "BeagleBoneBlack".lower(): " --machine beaglebone " +
+                                                     "--test-manifest " +
+                                                     "iottest/testplan/iottest.manifest"
+
+                          }
 
     def run(self, device):
         ip_address = device.get_ip()

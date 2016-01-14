@@ -1,5 +1,7 @@
+# coding=utf-8
 # Copyright (c) 2013-2015 Intel, Inc.
 # Author Topi Kuutela <topi.kuutela@intel.com>
+# Author Erkka Kääriä <erkka.kaaria@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -14,12 +16,14 @@
 Factory module for creation of AFT device instances and their cutter objects
 """
 
+import aft.devices.beagleboneblackdevice
 import aft.devices.edisondevice
 import aft.devices.pcdevice
 import aft.cutters.clewarecutter
 import aft.cutters.usbrelay
 
 _DEVICE_CLASSES = {
+    "beagleboneblack" : aft.devices.beagleboneblackdevice.BeagleBoneBlackDevice,
     "edison" : aft.devices.edisondevice.EdisonDevice,
     "pc" : aft.devices.pcdevice.PCDevice
 }
