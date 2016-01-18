@@ -32,6 +32,7 @@ columns=fullflexible, numbers=left, numberstyle=\tiny\color{lightgray}, frame=si
 \title{Testing Automation in an Embedded Linux Project}
 \author{
 	Topi Kuutela\\
+	Erkka Kääriä
 }
 \maketitle
 
@@ -78,11 +79,11 @@ The content was bundled together during the creation of this document, in Decemb
 In the testing automation system SSH-keys are used extensively for authentication. A default SSH-key is included in the testing automation USB-key in folders \cmd{gigabyte} and \cmd{minnowboard}. Additionally, the SSH-key is added to the \cmd{\/root\/.ssh} folder in each pre-made Debian image. \textbf{It is highly recommended that these SSH-keys are replaced with your own ones!} Leaving the default keys in place may expose your system to attacks.
 
 \subsection{Foreword}
-This document was originally written over November and December 2015 to relay information regarding testing automation setup in an embedded Linux project. The level of detail is intentionally high to allow the next operator to understand all details of the system.
+This document was originally written by Topi Kuutela over November and December 2015 to relay information regarding testing automation setup in an embedded Linux project. The document was then expanded by Erkka Kääriä to include Beaglebone Black integration. The level of detail is intentionally high to allow the next operator to understand all details of the system. 
 
 This document covers the configuration and construction instructions only for the testing automation part of the continuous integration system used in the project. The testing automation subsystem is not coupled to the build infrastructure other than by the image transmission.
 
-In the first section the configuration and installation of the testing harness, the testing server, is covered. In the second and third sections the usage of the most important pieces of software are detailed. In section 5 the different kinds of power cutter devices are explained and their associated software is explained. In sections 6-9 the individual testing platforms are described. Finally, in the appendices, the AFT implementation details and privilege reduction options are explained.
+In the first section the configuration and installation of the testing harness, the testing server, is covered. In the second and third sections the usage of the most important pieces of software are detailed. In section 5 the different kinds of power cutter devices are explained and their associated software is explained. In sections 6-10 the individual testing platforms are described. Finally, in the appendices, the AFT implementation details and privilege reduction options are explained.
 
 \section{Testing harness}
 \label{testingharness}
@@ -99,7 +100,7 @@ Configuration of AFT is explained in appendix \ref{app:aft}.
 \subsection*{Base system}
 A set of common tools and utilities:
 \begin{lstlisting}
-zypper install git gcc gcc-c++ make automake cmake autoconf man emacs nano screen tree attr dnsmasq gdisk nfs-kernel-server python python-setuptools python-devel python-tk python-idle ipython libusb-1_0-devel usbutils
+zypper install git gcc gcc-c++ make automake cmake autoconf man emacs nano screen tree attr dnsmasq gdisk nfs-kernel-server python python-setuptools python-devel python-tk python-idle ipython libusb-1_0-devel usbutils tftp yast2-tftp-server
 \end{lstlisting}
 
 OpenSUSE comes with \cmd{YaST} configuration utility. It can be used to configure most base OS options. Using \cmd{yast} configure:
@@ -107,7 +108,7 @@ OpenSUSE comes with \cmd{YaST} configuration utility. It can be used to configur
 \item The secondary Ethernet card to have static IP \cmd{192.168.30.1}, and subnet mask \cmd{255.255.255.0}
 \item Create user \cmd{tester} and add it to \cmd{wheel} group
 \end{enumerate}
-The secondary local area network is used for the flashing of PC-devices \ref{pc}. The \cmd{tester}'s  home will be set as shared folder over NFS for the \cmd{192.168.30.0/24} network. The \cmd{tester} is also the recommended user for automated testing.
+The secondary local area network is used for the flashing of PC-devices  \ref{pc} and Beaglebones \ref{bbb}. The \cmd{tester}'s  home will be set as shared folder over NFS for the \cmd{192.168.30.0/24} network. The \cmd{tester} is also the recommended user for automated testing.
 
 Enable \cmd{wheel} group as passwordless sudoers. Using \cmd{visudo} add to the end of the \cmd{/etc/sudoers} file:
 \begin{lstlisting}
@@ -119,18 +120,20 @@ Enable \cmd{wheel} group as passwordless sudoers. Using \cmd{visudo} add to the 
 
 Flashing Edison requires the installation of \cmd{dfu-util} program. Dfu-util takes care of the DFU-protocol and the flashing of each partition on the target device.
 
-At the time of writing (24.11.2015) the official latest version of DFU-util does not have a working USB-tree support. Fortunately a patch has been made, and the installation is therefore straightforward.
+In order to support multiple Edisons, dfu-util requires USB-tree support. Fortunately this support was recently (at the time of writing, 17.2.2016) merged to the codebase. When installing dfu-util, make sure that the installed version contains this patch. 
+
+Dfu-util can also be built from the source, using the following steps.
 
 \begin{lstlisting}
 git clone git://git.code.sf.net/p/dfu-util/dfu-util dfu-util-src
 cd dfu-util-src
-wget http://sourceforge.net/p/dfu-util/tickets/6/attachment/0001-Fix-reimplement-USBPATH-support.patch
-git am 0001*
 ./autogen
 ./configure
 make
 make install
 \end{lstlisting}
+
+The USB-tree patch is available at \cmd{http://sourceforge.net/p/dfu-util/tickets/6/attachment/0001-Fix-reimplement-USBPATH-support.patch} if it is required.
 
 \subsection*{Clewarecontrol}
 Clewarecontrol utility is used to control the power cutters made by Cleware GmbH. At the time of writing, the latest clewarecontrol, version 4.1, was broken. Therefore the version 2.8 is recommended.
@@ -182,6 +185,22 @@ systemctl enable nfs-server.service
 \end{lstlisting}
 On some platforms, also \cmd{rpcbind.service} has to be activated.
 
+\subsection*{TFTP-server}
+
+Beaglebone Black uses its support image over NFS. However, it downloads the initial kernel image and device tree binaries using TFTP protocol.
+
+TFTP server can be configured easily with YAST.
+
+\begin{lstlisting}
+Start YAST
+Open Network Services menu
+Select TFTP server
+Enable the server
+Set Boot Image Directory as /home/tester/
+\end{lstlisting}
+
+\note The above assumes that the tests are run under tester-user, and that the default AFT \ref{aft} settings for Beaglebone are used. Adjust the Boot Image Directory if needed.
+
 \subsection*{Udev (optional)}
 It is recommended to set udev-rules to create symbolic links from a human-readable file name to ttyUSB-devices used for PEM (section \ref{pem}), serial output recording (appendix \ref{app:aft}) and to the USB-relay powercutters used for Edisons. The USB-to-serial adapters are often unreliable and tend to occasionally reset, which causes a re-initialization by Linux kernel. This also triggers a (re-)creation of the ttyUSB-device created by udev.
 
@@ -222,7 +241,7 @@ The execution syntax for AFT is
 \begin{lstlisting}
 aft <machinetype> <imagefile>
 \end{lstlisting}
-where, at the time of writing, the options for  \cmd{machinetype} are \cmd{gigabyte}, \cmd{galileov2}, \cmd{minnowboardmax} and \cmd{edison}. The imagefile is the image to be tested.
+where, at the time of writing, the options for  \cmd{machinetype} are \cmd{gigabyte}, \cmd{galileov2}, \cmd{minnowboardmax}, \cmd{edison} and \cmd{beagleboneblack}. The imagefile is the image to be tested, with the exception of Beaglebone Black, where the argument is (mis)used to provide path to the directory with all the files that are required for flashing. It is recommended to use the current working directory for this, which allows using \cmd{`pwd`} as the parameter.
 
 Optionally, AFT can also record the serial console output to file by using \cmd{-\/-record} argument, assuming the serial device has been configured properly. This allows some level of logging even if the device fails to boot.
 
@@ -263,6 +282,11 @@ There are several DFU programmer utilities and flashing a device completely may 
 Depending on the device, switching power on and off can be considerably more difficult with a gadget-device. If the testable device has an internal battery, it most likely requires somewhat complicated custom hardware to power cycle it. With gadget-devices extra care must be taken in the prevention of floating ground issues. If the device is powered over USB, a powered USB-hub is almost certainly required.
 
 The only gadget-device in this document is the Intel Edison \ref{edison}, which uses dfu-util (\ref{dfuutil}) for flashing and a USB-relay as a power cutter.
+
+\subsection{Beaglebone Black}
+\label{bbb}
+
+For the purposes of the document, Beaglebone Black is a hybrid gadget/PC device. It is an ARM device, it does not have a BIOS and it uses u-boot as its bootloader. However like PC devices, it requires support image to bypass its unfortunate flashing protocol which requires manual steps from the operator. 
 
 \section{PEM - Peripheral EMulator}
 \label{pem}
@@ -461,6 +485,44 @@ See the comments on the test automation USB-stick \cmd{gigabyte/installgigabyte}
 
 \item Reboot the device, adjust the boot priorities so that the primary options are from the testable image.
 \end{enumerate}
+
+\subsection{Flashing the BIOS on Gigabyte}
+Out of the box, Gigabyte comes with a 32-bit BIOS. This means that the EFI-stub also has to be 32-bit (which, still, can load a 64-bit OS). This can be fixed by updating the BIOS to a 64-bit version, which is supplied by Intel.
+
+The testing automation USB-stick contains all the files required to update the BIOS to version \cmd{F2a x64} in the folder gigabytebios. The official instructions are available at \url{https://wiki.ith.intel.com/display/TME/ODM+Gateway+BIOS+Files}.
+
+The following instructions assume that you have copied the latest version to the USB-stick.
+
+\begin{enumerate}
+
+\item Plug the USB-stick to the Gigabyte. Reboot the device, enter BIOS and set the first boot device to UEFI: Built-in EFI Shell.
+
+\item In EFI Shell, first select the correct device from the Device mapping table. The most likely candidate for the USB-key is \cmd{fs0}:
+\begin{lstlisting}
+fs0:
+\end{lstlisting}
+\note the keyboard uses the US-layout.
+
+\item go to the \cmd{gigabytebios} folder:
+
+\begin{lstlisting}
+cd gigabytebios
+\end{lstlisting}
+
+\item Execute the flashing. If the \textit{current} BIOS is 32-bit use \cmd{fpt}, or if the current BIOS is 64-bit use \cmd{fpt64}.
+
+\begin{lstlisting}
+fpt64 -f BAYADx64.F2a
+\end{lstlisting}
+
+\item After the flashing is completed, reboot the device by issuing:
+\begin{lstlisting}
+reset
+\end{lstlisting}
+\note flashing the BIOS resets the BIOS settings. Remember to disable secure boot and set the device to power on after AC power loss.
+
+\end{enumerate}
+
 
 \section{MinnowBoard MAX}
 \label{minnowboard}
@@ -881,7 +943,7 @@ The USB-serial interface can be used for boot console recording at 115200 bauds.
 	\centering
 	\includegraphics[width=\linewidth]{edisonwire3.jpg}
 	
-	3. Strip the wire, solder small beads of tin on the tips.
+	3. Strip the wire, solder small beads of tin on the tips and    flatten the beads with pliers or similar tool.
 	Cover the cut with electrical tape.
 	\end{minipage}
 	\begin{minipage}[c][0.5\textheight][t]{0.49\textwidth}
@@ -893,6 +955,269 @@ The USB-serial interface can be used for boot console recording at 115200 bauds.
 	\caption{USB-power cutter cable.}
 	\label{fig:usbpower}
 \end{figure}
+
+\newpage
+\section{Beaglebone Black}
+Beaglebone Black is an open-source hardware development board with a 32-bit 1GHz Cortex-A8 ARM CPU and 512 MB ram. The board also has two 200MHz 32-bit microcontrollers, which can be used to offload tasks from the main CPU. Depending on revision, it has either 2 gigabytes (rev B) or 4 gigabytes (rev C) of internal storage. It has microSD slot, A-type and mini USB ports, microHDMI connector for video and audio, 100 megabit ethernet and a 6-pin serial output. It can be powered through either mini-usb port or 5.5mm 5V jack.
+
+Beaglebone is a gadget-like device that uses U-boot for initialization. It however requires a support image for flashing due to the official flashing procedure requiring manual steps.
+
+\subsection{CI-integration}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\linewidth]{beaglebonewiring.png}
+	\caption{Beaglebone Black wiring diagram}
+	\label{fig:minnowwiring}
+\end{figure}
+
+Beaglebone Black is effectively a hybrid PC-like/gadget device for the purposes of this documentation. It lacks bios, and its default flashing protocol is closer to a gadget flashing protocol like what Edison uses, rather than what the PC-like devices use. However, as the default flashing protocol requires manual steps (user has to press a button during boot, after which the device copies image present on SD card into internal storage), it requires a support image for automatic flashing.
+
+The support image is stored on the testing harness, and accessed over nfs. This reduces failure points, as USB sticks have been known to fail due to frequent power cuts. This also makes support image updates easier, as the root filesystem can be updated over SSH on the testing harness. Fundamentally however there is nothing preventing the use of USB based support image, so AFT can be modified to support this if necessary.
+
+The internal ethernet adapter is used for network connectivity. Both the support image and tests are accessed through network.
+
+Unlike other devices with serial outputs, a serial cable must be connected to the device's 6-pin serial output. The commands to boot over nfs are sent through serial cable, so it must be present for flashing to work. Device output is additionally recorded over serial output for easier debugging. Recommended rate is 115200 bauds.
+
+The microSD-card is used for the target image. While internal storage could be used, this allows easier device rescue in case of a image with a bad bootloader. Reflashing SD-card with a valid bootloader is easier than flashing the internal storage with a valid bootloader. There is also the minor benefit that replacing faulty SD-card is easier than modifying AFT to support SD-card after eMMC failure.
+
+A power cutter such as Cleware cutter is used to cut the device power when needed.
+
+\subsection{Preparing Beaglebone Black}
+
+By default, BeagleBone Black boots from the internal eMMC storage. Booting from SD card requires user to press a button on the board during the boot. If the eMMC bootloader is removed however, BeagleBone will check the SD card for a bootloader. This allows the device to boot from the SD card, where the testable image will be stored.
+
+As the Beaglebone doesn't seem to expose its boot partition to host computer when connected, we need to connect to the device with either serial cable or over ssh, and overwrite the boot files.
+
+\begin{enumerate}
+
+\item Connect the Beaglebone Black to a computer with a micro-USB cable. 
+
+\item Once BeagleBone Black has booted, a new network interface should show up under \cmd{ifconfig}.
+
+\item SSH into the device, using the network interface ip address plus one (e.g. if the interface ip is 192.168.7.1, device ip is 192.168.7.2) and user 'debian'. Password should be 'temppwd'.
+
+\note The default user/password might have changed after writing this. If this is the case, either find out the user and password, or connect to the device using serial cable and reboot the device. It should show the default user/password above login prompt. At this point, you can continue using the serial connection rather than SSH connection.
+
+\item Destroy the partition by executing 
+
+\begin{lstlisting}
+dd if=/dev/zero of=/dev/mmcblk0 bs=4M count=10
+sync
+\end{lstlisting}
+
+This writes 40 megabytes worth of zeros into the eMMC, which should be more than enough to destroy the boot partition.
+
+\note If you have SD card connected, the eMMC should be \cmd{/dev/mmcblk1} instead of \cmd{/dev/mmcblk0}. It's best not to connect SD card at this point to avoid confusion
+
+\item Copy bootloader files into the SD card boot partition, or flash the SD card with an functioning image. The test automation USB stick should have the necessary bootloader files, but any valid bootloader should do. See \ref{part_sd} on how to partition the SD card correctly.
+
+\end{enumerate}
+
+\note In case a bad image ends up being flashed into the SD card, Beaglebone Black will fail to boot as no working bootloader is present. To fix this, flash the SD card with a working image.
+
+\subsection{Partitioning SD-card}
+\label{part_sd}
+AFT assumes that the SD-card is partitioned properly. When adding a new device, or replacing old SD-card, the SD-card must have at least two partitions: 64 megabyte boot partition and at least 4 gigabyte root partition.
+
+These following steps use fdisk, but any partitioning software will do.
+
+\begin{enumerate}
+
+\item Verify that the card is unmounted
+
+\item Run fdisk on the SD-card
+
+\begin{lstlisting}
+sudo fdisk /dev/sdX
+\end{lstlisting} 
+
+where \cmd{/dev/sdX} is the device file for your SD-card. This can be found by using e.g. lsblk.
+
+\item Use the following commands to partition the card:
+
+\begin{lstlisting}
+o  -- creates new dos partition table
+n  -- add new partition
+enter  -- use default (primary partition)
+enter  -- use default (first partition)
+enter  -- use default (default starting position)
++64M -- set partition size as 64 megabytes
+a -- set first partition as bootable
+n -- add new partition
+enter -- use default (primary partition)
+enter -- use default (second partition)
+enter -- use default (defautl starting position
+enter -- use default (any remaining space is added to the partition)
+t -- change partition type
+1 -- first partition 
+6 -- Fat16 partition
+t -- change partition t
+2 -- second partition 
+83 -- Linux partition
+\end{lstlisting}
+
+After these steps, the SD-card should be partitioned correctly. You can verify this by pressing \cmd{p} to print the partition table. It should look something like this:
+
+\begin{tabular}{c c c c c c c c}
+Device & Boot & Start & End & Sectors & Size & Id & Type \\
+/dev/sdb1  & * & 2048 & 133119 & 131072 & 64M & 6 & FAT16 \\
+/dev/sdb2  &   & 133120 & 15130623 & 14997504 & 7,2G & 83 & Linux \\
+\end{tabular}
+
+If the partition table looks correct, you can write the results by entering \cmd{w}. You may need to run \cmd{partprobe} so that the kernel sees the new partitions.
+
+\item After the disk has been partitioned, file systems must be created on the card. While AFT recreates file systems on flashing, the SD card must have a valid bootloader present on the boot partition or the initial boot fails. (Strictly speaking, ext4 filesystem is not needed, so if you are feeling lazy, feel free to skip that. You should feel bad for being lazy though)
+
+\begin{lstlisting}
+sudo mkfs.fat /dev/sdX1
+sudo mkfs.ext4 /dev/sdX2
+\end{lstlisting}
+
+Where \cmd{/dev/sdX} once again is the SD-card device file
+\end{enumerate}
+
+\subsection{Debian for Beaglebone Black}
+\label{bbbdebian}
+
+Unlike other devices, Beaglebone Black uses its support image over nfs. This is due to an effort to minimize single point of failures, as USB-sticks have been known to fail due to frequent power cuts. 
+
+The following steps can be run on either personal computer or the testing harness, as long as the resulting root filesystem directory is copied to testing harness with appropriate ownership. The steps however assume that the commands are run on the testing harness as root. Adjust paths and add sudos where necessary.
+
+
+\begin{enumerate}
+\item Download Debian 8.2 "Jessie" image from \url{http://www.beagleboard.org}.
+
+\note Newer images should work as well, but some of the following steps might be inaccurate.
+
+\item Extract the root filesystem from the image file
+\begin{lstlisting}
+mkdir temp
+mount -o loop,offset=101711872 bone-debian-8.2-tester-2gb-armhf-2015-11-12-2gb.img temp/
+cp -R temp/* /home/tester/support_fs/beaglebone/
+umount temp
+rmdir temp
+\end{lstlisting}
+
+The offset can be calculated by opening the image file with fdisk, printing the partition table and then multiplying the starting position by sector size
+
+\begin{lstlisting}
+
+fdisk bone-debian-8.2-tester-2gb-armhf-2015-11-12-2gb.img 
+Enter 'p' to print the partition table
+Read sector size and root system start position
+Multiply these values with each other
+
+\end{lstlisting}
+
+Example output (image names have been edited as they were too long):
+
+
+\cmd{Command (m for help): p} \\
+\cmd{Disk name-too-long.img: 1,7 GiB,  1782579200 bytes, 3481600 sectors} \\
+\cmd{Units: sectors of 1 * 512 = 512 bytes} \\
+\cmd{Sector size (logical/physical): 512 bytes / 512 bytes} \\
+\cmd{I/O size (minimum/optimal): 512 bytes / 512 bytes} \\
+\cmd{Disklabel type: dos} \\
+\cmd{Disk identifier: 0x00000000} \\
+
+
+\cmd{\begin{tabular}{c c c c c c c c}
+Device & Boot & Start & End & Sectors & Size & Id & Type \\
+name-too-long.img1 & * & 2048 & 198655  & 196608 & 96M & e & W95 FAT \\
+name-too-long.img2 &   & 198656 & 3481599 & 3282944 &  1,6G & 83 & Linux \\
+\end{tabular}
+}
+
+Here the sector size is 512 bytes, and the root filesystem starts at sector 198656. Now we can calculate the offset: 512*198656 = 101711872 
+
+\item Remove the connman service
+
+Connman service resets the ip during boot process, which causes the boot to fail as connection to nfs server is lost.
+
+
+\begin{lstlisting}
+rm /home/tester/support_fs/beaglebone/etc/systemd/system/multi-user.target.wants/connman.service
+\end{lstlisting}
+
+\note It may also be necessary to remove connman symlinks from \cmd{etc/rd?.d} folders, where ? is a number.
+
+
+\item Add ssh key to the image
+
+\begin{lstlisting}
+mkdir /home/tester/support_fs/beaglebone/root/.ssh
+cp id_rsa_testing_harness.pub /home/tester/support_fs/beaglebone/root/.ssh/authorized_keys
+chmod 700 /home/tester/support_fs/beaglebone/root/.ssh
+chmod 600 /home/tester/support_fs/beaglebone/root/.ssh/authorized_keys
+\end{lstlisting}
+
+
+\item Change ownership to nobody
+
+As the nfs uses root squash, root access is mapped to user 'nobody'.
+
+\begin{lstlisting}
+chown -R nobody:nobody /home/tester/support_fs/beaglebone
+\end{lstlisting}
+
+
+
+\item Add the following to testing harness \cmd{/etc/exports}
+
+\begin{lstlisting}
+/home/tester/support_fs 192.168.30.0/24(crossmnt,rw,sync,root_squash,no_subtree_check) 
+\end{lstlisting}
+
+\note \cmd{/etc/exports} is whitespace sensitive. Only add space between the direcory path and ip address.
+
+\item Make sure that the settings are updated by running the following command.
+
+\begin{lstlisting}
+exportfs -vr
+\end{lstlisting}
+
+\item Boot\ref{bbbboot} the support image once
+
+\item Remove the new export from \cmd{/etc/exports} and run the update command
+
+\end{enumerate}
+
+
+The change in \cmd{/etc/exports} changes the nfs from read-only to read/write. This allows the support os to write any configuration files and do whatever changes it needs during the first boot. Without this step, at least the ssh service will fail to start. After one succesful run, the export can be removed so that the file system is read-only. This is recommended for security reasons.
+
+\subsection{Booting into the service mode}
+\label{bbbboot}
+
+\begin{enumerate}
+\item Open screen
+
+\begin{lstlisting}
+screen /dev/ttyUSBX 115200, -ixon,-ixoff
+\end{lstlisting}
+where \cmd{/dev/ttyUSBX} is the device file for the serial port.
+
+\item Power on the device
+
+\item Immediately after powering on the device, press any key on screen to interrupt the regular boot to enter u-boot console
+
+\item Enter the following commands to boot the device over nfs
+
+\begin{lstlisting}
+setenv autoload no
+dhcp
+setenv bootargs console=ttyO0,115200n8 root=/dev/nfs nfsroot=${serverip}:/home/tester/support_fs/beaglebone,vers=3 rw ip=${ipaddr}
+tftp 0x81000000 support_fs/beaglebone/boot/vmlinuz-4.1.12-ti-r29
+tftp 0x80000000 support_fs/beaglebone/boot/dtbs/4.1.12-ti-r29/am335x-boneblack.dtb
+bootz 0x81000000 - 0x80000000
+\end{lstlisting}
+
+\note You may need to modify the paths above if you use different installation location or support image
+
+\note 0x81000000 and 0x80000000 are the memory locations where the kernel and device tree binaries are downloaded. It is important that these do not overlap (e.g. 0x80000000 + device tree binary size must be smaller than 0x81000000). The memory addresses themselves are somewhat arbitrary, but they have been tested to work.
+
+\end{enumerate}
+
 
 \newpage
 \appendix
