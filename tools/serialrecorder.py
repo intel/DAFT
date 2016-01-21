@@ -18,7 +18,7 @@ import serial
 import argparse
 import signal
 import time
-import re
+import aft.tools.ansiparser as ansiparser
 
 TERMINATE_FLAG = False
 # pylint: disable=unused-argument
@@ -51,6 +51,9 @@ def main():
     print "Starting recording from " + str(args.port) + " to " + str(args.output) + "."
     record(serial_stream, output_file)
 
+    print "Parsing output"
+    ansiparser.parse_file(args.output)
+
     serial_stream.close()
     output_file.close()
 
@@ -76,9 +79,6 @@ def record(serial_stream, output):
         text_batch = read_buffer[0:last_newline + 1]
         read_buffer = read_buffer[last_newline + 1:-1]
 
-        # Remove terminal control codes
-        text_batch = re.sub(r'\x1b\[([0-9,A-Z]{1,2}(;[0-9]{1,2})?(;[0-9]{3})?)?[m|K]?',
-                            '', text_batch)
 
         time_now = time.time()
         timed_batch = text_batch.replace("\n", "\n[" + str(time_now) + "] ")
@@ -87,8 +87,6 @@ def record(serial_stream, output):
         if TERMINATE_FLAG:
             # Write out the remaining buffer.
             if read_buffer:
-                read_buffer = re.sub(r'\x1b\[([0-9,A-Z]{1,2}(;[0-9]{1,2})?(;[0-9]{3})?)?[m|K]?',
-                                     '', text_batch)
                 output.write(read_buffer)
             output.flush()
             return
