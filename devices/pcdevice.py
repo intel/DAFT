@@ -19,11 +19,13 @@ import time
 import logging
 import json
 import subprocess32
+from multiprocessing import Process, Queue
 
 import aft.config as config
 from aft.device import Device
 import aft.errors as errors
 import aft.tools.ssh as ssh
+import aft.tools.misc as misc
 
 from pem.main import main as pem_main
 
@@ -36,6 +38,7 @@ class PCDevice(Device):
     """
     Class representing a PC-like device.
     """
+    _RETRY_ATTEMPTS = 8
     _BOOT_TIMEOUT = 240
     _POLLING_INTERVAL = 10
     _POWER_CYCLE_DELAY = 10
@@ -45,9 +48,14 @@ class PCDevice(Device):
     _ROOT_PARTITION_MOUNT_POINT = "/mnt/target_root/"
     _SUPER_ROOT_MOUNT_POINT = "/mnt/super_target_root/"
 
+
     def __init__(self, parameters, channel):
         super(PCDevice, self).__init__(device_descriptor=parameters,
                                        channel=channel)
+
+
+        self.retry_attempts = 8
+
         self._leases_file_name = parameters["leases_file_name"]
         self._root_partition = self.get_root_partition_path(parameters)
         self._service_mode_name = parameters["service_mode"]
@@ -63,6 +71,9 @@ class PCDevice(Device):
             "sequence": parameters["service_mode_keystrokes"]}
         self._target_device = \
             parameters["target_device"]
+
+
+        self._config_check_keystrokes = parameters["config_check_keystrokes"]
 
         self.dev_ip = None
         self._uses_hddimg = None
@@ -148,10 +159,10 @@ class PCDevice(Device):
         Tries to put the device into the specified mode.
         """
         # Sometimes booting to a mode fails.
-        attempts = 8
+
         logging.info("Trying to enter " +
-                     mode["name"] + " mode up to " + str(attempts) + " times.")
-        for _ in range(attempts):
+                     mode["name"] + " mode up to " + str(self._RETRY_ATTEMPTS) + " times.")
+        for _ in range(self._RETRY_ATTEMPTS):
             self._power_cycle()
 
             logging.info(
@@ -219,7 +230,7 @@ class PCDevice(Device):
         ssh.remote_execute(self.dev_ip, ["bmaptool", "copy", "--nobmap",
                                          nfs_file_name, self._target_device],
                            timeout = self._SSH_IMAGE_WRITING_TIMEOUT)
-        # Flashing the same file as already on the disk causes non-blocking removal and 
+        # Flashing the same file as already on the disk causes non-blocking removal and
         # re-creation of /dev/disk/by-partuuid/ files. This sequence either delays enough
         # or actually settles it.
         logging.info("Partprobing.")
@@ -312,5 +323,128 @@ class PCDevice(Device):
         """
         ssh.push(self.get_ip(), source=source,
                  destination=destination, user=user)
+
+    def check_poweron(self):
+        """
+        Checks that PEM can be connected into. The device powers PEM, so this
+        is a good sign that the device is powered on
+        """
+
+        self._power_cycle()
+
+        attempts = 2
+        attempt_timeout = 60
+
+        func = lambda: pem_main(["pem", "--interface", self.pem_interface,
+                          "--port", self.pem_port,
+                          "--playback", self._config_check_keystrokes])
+
+
+        for i in range(attempts):
+            logging.info("Attempt " + str(i + 1) + " of " + str(attempts) +
+                " to connect to PEM to verify the device is on")
+
+            process = Process(target=func)
+            # ensure python process is closed in case main process dies but
+            # the subprocess is still waiting for timout
+            process.daemon = True
+
+            process.start()
+            process.join(attempt_timeout)
+
+            if process.is_alive():
+                process.terminate()
+            else:
+                return
+
+
+        raise errors.AFTConfigurationError(
+            "Could not connect to PEM - check power and pem settings and " +
+            "connections")
+
+
+    def check_connection(self):
+        """
+        Boots into service mode, and checks if ssh connection can be established
+        """
+
+        # set the retry count and boot timeout to lower values
+        # as otherwise on failing device this stage can take
+        # up to 2*retry_count*boot timeout seconds (with values 8 and 240
+        # that would be 3840 seconds or 64 minutes!)
+
+        # retry count should be > 1 so that the occasional failed boot won't
+        # fail the test
+        self._RETRY_ATTEMPTS = 2
+
+        # Galileo in particular can be slow to boot, sometimes taking
+        # 80+ seconds to become responsive. Boot timeout must be large enough,
+        # with good safety marginal
+        self._BOOT_TIMEOUT = 140
+
+
+        # run in a process, as pem itself has no timeout and if there is a
+        # connection or configuration issue, it will get stuck.
+
+        # Queue is used to pass any exceptions from the subprocess back to main
+        # process
+
+        exception_queue = Queue()
+
+
+        def invoker(exception_queue):
+            try:
+                self._enter_mode(self._service_mode)
+            except KeyboardInterrupt:
+                pass
+            except Exception, error:
+                exception_queue.put(error)
+
+        process = Process(target=invoker, args=(exception_queue,))
+
+        # ensure python process is closed in case main process dies but
+        # the subprocess is still waiting for timout
+        process.daemon = True
+
+        process.start()
+        process.join(1.5*self._RETRY_ATTEMPTS*self._BOOT_TIMEOUT)
+
+        if process.is_alive():
+            process.terminate()
+            raise errors.AFTDeviceError(
+                "Timeout - PEM likely failed to connect")
+
+        if not exception_queue.empty():
+            raise exception_queue.get()
+
+        logging.info("Succesfully booted device into service mode")
+
+
+    def check_poweroff(self):
+        super(PCDevice, self).check_poweroff()
+
+
+        func = lambda: pem_main(["pem", "--interface", self.pem_interface,
+                                  "--port", self.pem_port,
+                                  "--playback", self._config_check_keystrokes])
+
+
+        process = Process(target=func)
+        # ensure python process is closed in case main process dies but
+        # the subprocess is still waiting for timout
+        process.daemon = True
+
+        process.start()
+        process.join(20)
+
+        if process.is_alive():
+            process.terminate()
+        else:
+            raise errors.AFTConfigurationError(
+                "Device seems to have failed to shut down - " +
+                "PEM is still accessible")
+
+
+
 
 # pylint: enable=too-many-instance-attributes

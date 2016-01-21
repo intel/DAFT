@@ -16,7 +16,7 @@ Class representing a DUT which can be flashed from the testing harness and
 can get an IP-address.
 """
 
-from __future__ import print_function
+
 from time import sleep
 import serial
 import subprocess32
@@ -53,6 +53,11 @@ class BeagleBoneBlackDevice(Device):
     AFT-device for Beaglebone Black
     """
     _WORKING_DIRECTORY = "/working_dir"
+    _POWER_CYCLE_DELAY = 5
+    _BOOT_TIMEOUT = 240
+    _POLLING_INTERVAL = 10
+    _RETRY_ATTEMPTS = 8
+
 
     def __init__(self, parameters, channel):
 
@@ -60,8 +65,14 @@ class BeagleBoneBlackDevice(Device):
             device_descriptor=parameters,
             channel=channel)
 
+
+
         self.dev_ip = None
-        self.power_cycle_delay = 5
+
+
+        # make sure every device has their own working directory to prevent any
+        # problems with race conditions or similar issues
+        self.working_directory = "/working_dir" + str(self.parameters["id"])
 
         self.nfs_path = os.path.join(
             config.NFS_FOLDER,
@@ -104,9 +115,6 @@ class BeagleBoneBlackDevice(Device):
         Create directories and copy image files to the support fs directory
         """
 
-
-
-
         # need to remove the first '/' from paths, as these paths are
         # in form that will be used over ssh with the support fs
         logging.info("Creating directories and copying image files")
@@ -145,6 +153,9 @@ class BeagleBoneBlackDevice(Device):
             os.path.join(self.nfs_path, self.ssh_file[1:]))
 
     def test(self, test_case):
+        """
+        Enters test modes and runs QA tests
+        """
         self._enter_test_mode()
         test_case.run(self)
 
@@ -153,11 +164,12 @@ class BeagleBoneBlackDevice(Device):
         """
         Enter service mode by booting support image over nfs
         """
-        logging.info("Entering service mode")
 
-        attempts = 8
 
-        for _ in range(attempts):
+        logging.info("Trying to enter service mode up to " +
+            str(self._RETRY_ATTEMPTS) + " times.")
+
+        for _ in range(self._RETRY_ATTEMPTS):
 
             self._power_cycle()
 
@@ -208,6 +220,8 @@ class BeagleBoneBlackDevice(Device):
                 return
             else:
                 logging.warning("Failed to enter service mode")
+
+        raise errors.AFTDeviceError("Could not set the device in service mode")
 
 
     def _enter_test_mode(self):
@@ -343,7 +357,7 @@ class BeagleBoneBlackDevice(Device):
 
     def _add_ssh_key(self):
         """
-        Inject the ssh-key to DUT's authorized_keys
+        Inject the ssh-key to DUT's authorized_keys,
         """
         logging.info("Injecting ssh-key.")
 
@@ -482,13 +496,11 @@ class BeagleBoneBlackDevice(Device):
         """
         Wait until the testing harness detects the Beaglebone after boot
         """
-        boot_timeout = 240
-        polling_interval = 10
 
-        for _ in range(boot_timeout / polling_interval):
+        for _ in range(self._BOOT_TIMEOUT / self._POLLING_INTERVAL):
             responsive_ip = self.get_ip()
             if not responsive_ip:
-                sleep(polling_interval)
+                sleep(self._POLLING_INTERVAL)
                 continue
             logging.info("Got a response from " + responsive_ip)
             return responsive_ip
@@ -500,6 +512,31 @@ class BeagleBoneBlackDevice(Device):
         """
         logging.info("Rebooting the device.")
         self.detach()
-        sleep(self.power_cycle_delay)
+        sleep(self._POWER_CYCLE_DELAY)
         self.attach()
+
+    def check_poweron(self):
+        # currently no feasible way to check power status except network
+        # connectivity
+        logging.info("Power on check skipped")
+        raise errors.AFTNotImplementedError("Skipped - Covered by connection test")
+
+    def check_connection(self):
+        """
+        Boots into service mode, and checks if ssh connection can be established
+        """
+
+        # set the retry count and boot timeout to lower values
+        # as otherwise on failing device this stage would take
+        # retry_count*boot timeout seconds (with values 8 and 240
+        # that would be 1920 seconds or 32 minutes)
+
+        # retry count should be > 1 as sometimes the device fails to
+        # acquire ip.
+        self._RETRY_ATTEMPTS = 3
+        self._BOOT_TIMEOUT = 60
+
+        self._enter_service_mode()
+        logging.info("Succesfully booted device into service mode")
+
 

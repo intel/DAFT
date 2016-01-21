@@ -1,3 +1,4 @@
+# coding=utf-8
 # Copyright (c) 2013-2015 Intel, Inc.
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
@@ -455,4 +456,42 @@ class EdisonDevice(Device):
 
         raise errors.AFTDeviceError("Could not find a network interface from USB-path " +
                                     self._usb_path + " in 120 seconds.")
+
+
+
+    def check_poweron(self):
+        self._reboot_device()
+        self._wait_for_device()
+
+    def check_connection(self):
+
+        attempts = 3
+
+        for _ in range(attempts):
+            self._reboot_device()
+            try:
+                self.open_interface()
+            except AFTDeviceError, error:
+                pass
+            else:
+                return
+
+
+        raise errors.AFTConfigurationError("Failed to open connection")
+
+        # ssh connection test would probably be inappropriate, as we would be
+        # testing whether we can connect to the testable image. This might
+        # be missing or broken.
+
+    def check_poweroff(self):
+        self.detach()
+
+        try:
+            self._wait_for_device()
+        except errors.AFTDeviceError, error:
+            pass
+        else:
+            raise errors.AFTConfigurationError(
+                "The device seems to be on")
+
 # pylint: enable=too-many-instance-attributes

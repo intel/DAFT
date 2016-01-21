@@ -37,3 +37,9 @@ class AFTDeviceError(Exception):
     An error caused by device under test
     """
     pass
+
+class AFTNotImplementedError(Exception):
+    """
+    Feature not implemented
+    """
+    pass
