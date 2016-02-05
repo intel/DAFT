@@ -52,7 +52,7 @@ class BeagleBoneBlackDevice(Device):
     """
     AFT-device for Beaglebone Black
     """
-    _WORKING_DIRECTORY = "/working_dir"
+    _WORKING_DIRECTORY_PREFIX = "/working_dir_"
     _POWER_CYCLE_DELAY = 5
     _BOOT_TIMEOUT = 240
     _POLLING_INTERVAL = 10
@@ -72,34 +72,35 @@ class BeagleBoneBlackDevice(Device):
 
         # make sure every device has their own working directory to prevent any
         # problems with race conditions or similar issues
-        self.working_directory = "/working_dir" + str(self.parameters["id"])
+        self.working_directory = self._WORKING_DIRECTORY_PREFIX + \
+                                 str(self.parameters["id"])
 
         self.nfs_path = os.path.join(
             config.NFS_FOLDER,
             self.parameters["support_fs"])
 
         self.mlo_file = os.path.join(
-            self._WORKING_DIRECTORY,
+            self.working_directory,
             "MLO")
 
         self.u_boot_file = os.path.join(
-            self._WORKING_DIRECTORY,
+            self.working_directory,
             "u-boot.img")
 
         self.root_tarball = os.path.join(
-            self._WORKING_DIRECTORY,
+            self.working_directory,
             "rootfs.tar.bz2")
 
         self.dtb_file = os.path.join(
-            self._WORKING_DIRECTORY,
+            self.working_directory,
             "am335x-boneblack.dtb")
 
         self.ssh_file = os.path.join(
-            self._WORKING_DIRECTORY,
+            self.working_directory,
             "authorized_keys")
 
         self.mount_dir = os.path.join(
-            self._WORKING_DIRECTORY,
+            self.working_directory,
             "mount_dir")
 
 
@@ -121,7 +122,7 @@ class BeagleBoneBlackDevice(Device):
 
         self._make_directory(os.path.join(
             self.nfs_path,
-            self._WORKING_DIRECTORY[1:]))
+            self.working_directory[1:]))
 
         self._make_directory(
             os.path.join(
