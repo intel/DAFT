@@ -172,7 +172,7 @@ class PCDevice(Device):
         self._flash_image(nfs_file_name=file_on_nfs)
         self._install_tester_public_key()
 
-    def test(self, test_case):
+    def _run_tests(self, test_case):
         """
         Boot to test-mode and execute testplan.
 

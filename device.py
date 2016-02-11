@@ -72,10 +72,46 @@ class Device(object):
 
     def test(self, test_case):
         """
-        Runs the tests associated with the specified image.
-        Visitor pattern.
+        Run the tests associated with the specified image and grab logs from the
+        device afterwards.
+
+        Uses visitor pattern so subclasses need to invoke test_case.run()
+
+        Args:
+            test_case (aft.TestCase): The test case object
+
+        Returns:
+            The return value of the test_case run()-method
+            (implementation class specific)
+
         """
-        return test_case.run(self)
+        test_result = self._run_tests(test_case)
+        self._retrieve_device_logs()
+        return test_result
+
+    @abc.abstractmethod
+    def _run_tests(self, test_case):
+        """
+        Run device-specific steps and invoke test_case.run()
+
+        Args:
+            test_case (aft.TestCase): The test case object
+
+        Returns:
+            The return value of the test_case run()-method
+            (implementation class specific)
+        """
+
+
+    def _retrieve_device_logs(self):
+        """
+        Retrieve various logs from the device to help withpost mortem analysis
+        in case soemthin
+
+        Returns: None
+        """
+        pass
+
 
     def check_poweron(self):
         """

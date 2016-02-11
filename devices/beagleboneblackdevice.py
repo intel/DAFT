@@ -188,18 +188,19 @@ class BeagleBoneBlackDevice(Device):
             "mount_dir")
 
 
-    def test(self, test_case):
+    def _run_tests(self, test_case):
         """
-        Enter test modes and runs QA tests
+        Enter test modes and runs QA tests using visitor pattern
 
         Args:
             test_case (aft.TestCase): The test case object
 
         Returns:
-            None
+            The return value of the test_case run()-method
+            (implementation class specific)
         """
         self._enter_test_mode()
-        test_case.run(self)
+        return test_case.run(self)
 
     def write_image(self, image_directory):
         """
@@ -214,6 +215,7 @@ class BeagleBoneBlackDevice(Device):
         Returns:
             None
         """
+
         self._prepare_support_fs(image_directory)
         self._enter_service_mode()
         self._flash_image()

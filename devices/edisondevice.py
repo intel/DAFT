@@ -537,7 +537,7 @@ class EdisonDevice(Device):
             "Could not find the device in DFU-mode in " + str(timeout) +
             " seconds.")
 
-    def test(self, test_case):
+    def _run_tests(self, test_case):
         """
         Open the network interface and run the test
 
@@ -557,8 +557,7 @@ class EdisonDevice(Device):
                                       self._usb_path, self._host_ip + "/30"])
         atexit.register(misc.subprocess_killer, enabler)
         self._wait_until_ssh_visible()
-        tester_result = test_case.run(self)
-        return tester_result
+        return test_case.run(self)
 
     def execute(self, command, timeout, user="root", verbose=False):
         pass
