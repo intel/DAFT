@@ -369,6 +369,8 @@ class EdisonDevice(Device):
         """
         Execute the sequence of DFU-calls to flash the image.
 
+        This is based on flashall.sh script
+
         Returns:
             True
 
@@ -378,13 +380,11 @@ class EdisonDevice(Device):
         self._power_cycle()
         logging.info("Flashing IFWI.")
         for i in range(0, 7):
-            # Flashing seems to always fail, so ignore errors. Compliant with
-            # Intel's flashall.sh script.
             stri = str(i)
             self._dfu_call("ifwi0" + stri, self.IFWI_DFU_FILE +
-                           "-0" + stri + "-dfu.bin", ignore_errors = True)
+                           "-0" + stri + "-dfu.bin", ignore_errors=True)
             self._dfu_call("ifwib0" + stri, self.IFWI_DFU_FILE +
-                           "-0" + stri + "-dfu.bin", ignore_errors = True)
+                           "-0" + stri + "-dfu.bin", ignore_errors=True)
 
         logging.info("Flashing u-boot")
         self._dfu_call("u-boot0", "u-boot-edison.bin")
@@ -436,11 +436,14 @@ class EdisonDevice(Device):
             timeout (integer):
                 The timeout value for a single flashing attempt
             ignore_errors (boolean):
-                Controls whether errors will be ignored or not. This is a
-                workaround for some failures, which are also present in the
-                original Edison flashing script. These failures are ignored,
-                as this program aims to be compatible with the original script.
-                Should go without saying that use this argument with caution.
+                Ignores error codes from dfu-util. This is a workaround
+                for flashing IFWI. Original flashall script checks if the usb
+                device is present before attempting to flash by checking that
+                vendor and device USB ids are present. This however does not
+                work here, as we may have multipe Edisons with identical
+                vendor and device ids. Instead, we just try to flash the
+                partition, and ignore the errors that occur when the device
+                isn't present.
 
         Returns:
             None
@@ -449,6 +452,7 @@ class EdisonDevice(Device):
             aft.errors.AFTDeviceError if flashing has not succeeded after the
             number of attempts specified by the method argument
         """
+
         attempt = 0
         while attempt < attempts:
             flashing_log_file = open(self._FLASHER_OUTPUT_LOG, "a")
@@ -470,19 +474,19 @@ class EdisonDevice(Device):
                     continue
                 else:
                     flashing_log_file.close()
-                    if ignore_errors:
+                    if ignore_errors or execution.returncode == 0:
                         return
 
-                    # dfu-util always return 0. Check flash.log for missing
-                    # "Done!" to detect errors.
-                    log_file = open(self._FLASHER_OUTPUT_LOG, "r")
-                    data = log_file.read()
-                    log_file.close()
+                    # There was a warning here that dfu-util always returns 0
+                    # and as such we should grep ~5 last lines in flash log for
+                    # 'Done!' instead. However, my brief experimentation with
+                    # dfu-util seems to indicate that dfu-util infact does
+                    # return nonzero value on failure, and as such I removed
+                    # this log check in favor of return value check. I'm leaving
+                    # this comment here in case this turns out to be a bad idea
+                    # and some future maintainer can revert this decision
 
-                    if "Done!" in data.split("\n")[-3:-1:1]:
-                        return
-                    else:
-                        break
+                    break
 
             try:
                 execution.kill()
