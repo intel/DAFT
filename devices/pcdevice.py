@@ -530,20 +530,13 @@ class PCDevice(Device):
 
         """
 
-        # set the retry count and boot timeout to lower values
-        # as otherwise on failing device this stage can take
-        # up to 2*retry_count*boot timeout seconds (with values 8 and 240
-        # that would be 3840 seconds or 64 minutes!)
+        # set the retry count to lower value, as otherwise on failing device
+        # this stage can take up to 2*retry_count*boot timeout seconds
+        # (with values 8 and 240 that would be 3840 seconds or 64 minutes!)
 
         # retry count should be > 1 so that the occasional failed boot won't
         # fail the test
-        self._RETRY_ATTEMPTS = 2
-
-        # Galileo in particular can be slow to boot, sometimes taking
-        # 80+ seconds to become responsive. Boot timeout must be large enough,
-        # with good safety margin
-        self._BOOT_TIMEOUT = 140
-
+        self._RETRY_ATTEMPTS = 3
 
         # run in a process, as pem itself has no timeout and if there is a
         # connection or configuration issue, it will get stuck.
