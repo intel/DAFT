@@ -74,6 +74,9 @@ def check_all_parallel(args, configs):
             Success/Failure). Second parameter contains the result string.
     """
 
+    if args.verbose:
+        print "Running parallel configuration check on all devices"
+
     threads = []
 
     return_values = Queue()
@@ -140,6 +143,8 @@ def check_all_serial(args, configs):
             signifying whether tests were run succesfully or not (True/False ->
             Success/Failure). Second parameter contains the result string.
     """
+    if args.verbose:
+        print "Running serial configuration check on all devices"
 
     success = True
     result = ""
@@ -257,8 +262,15 @@ def _run_tests(args, device):
         explanation.
     """
     if args.record:
+        if args.verbose:
+            print "Serial recording enabled on " + args.device
+
         device.parameters["serial_log_name"] = args.device + "_serial.log"
         device.record_serial()
+    else:
+        if args.verbose:
+            print "Serial recording disabled on " + args.device
+
 
     poweron_status = (True, "Ok")
     connection_status = (True, "Ok")
@@ -266,6 +278,8 @@ def _run_tests(args, device):
     serial_status = (True, "Ok")
 
     try:
+        if args.verbose:
+            print "Running power on test on " + args.device
         device.check_poweron()
     except KeyboardInterrupt:
         raise
@@ -275,6 +289,8 @@ def _run_tests(args, device):
         poweron_status = (False, str(error))
 
     try:
+        if args.verbose:
+            print "Running connection test on " + args.device
         device.check_connection()
     except KeyboardInterrupt:
         raise
@@ -284,6 +300,8 @@ def _run_tests(args, device):
         connection_status = (False, str(error))
 
     try:
+        if args.verbose:
+            print "Running power off test on " + args.device
         device.check_poweroff()
     except KeyboardInterrupt:
         raise
