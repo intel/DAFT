@@ -443,8 +443,17 @@ class BeagleBoneBlackDevice(Device):
         """
         logging.info("Starting boot partition operations")
 
-        self._mount_partition_and_erase_files_over_ssh(
+        logging.info("Creating DOS filesystem on " +
             self.parameters["boot_partition"])
+
+        ssh.remote_execute(
+            self.dev_ip,
+            [
+                "mkfs.fat",
+                self.parameters["boot_partition"]])
+
+
+        self._mount(self.parameters["boot_partition"])
 
         logging.info("Writing new boot partition")
         self._write_boot_partition_files()
@@ -475,8 +484,17 @@ class BeagleBoneBlackDevice(Device):
         """
         logging.info("Starting root partition operations")
 
-        self._mount_partition_and_erase_files_over_ssh(
+        logging.info("Creating ext4 filesystem on " +
             self.parameters["root_partition"])
+
+        ssh.remote_execute(
+            self.dev_ip,
+            [
+                "mkfs.ext4",
+                self.parameters["root_partition"]])
+
+
+        self._mount(self.parameters["root_partition"])
 
         logging.info("Writing new root partition")
         self._write_root_partition_files()
@@ -675,26 +693,6 @@ class BeagleBoneBlackDevice(Device):
         except subprocess32.CalledProcessError, err:
             common.log_subprocess32_error_and_abort(err)
 
-
-    def _delete_directory_contents_over_ssh(self):
-        """
-        Erase directory contents over ssh
-
-        Returns:
-            None
-        """
-        logging.info(
-            "Deleting old contents of " +
-            self.mount_dir)
-
-        try:
-            command = os.path.join(self.mount_dir, "*")
-            # this can be slow when deleting large number of files, so timeout
-            # is set to be fairly long
-            ssh.remote_execute(self.dev_ip, ["rm", "-rf", command], timeout=300)
-        except subprocess32.CalledProcessError, err:
-            common.log_subprocess32_error_and_abort(err)
-
     def _mount(self, device_file):
         """
         Mounts a directory over ssh into self.mount_dir
@@ -712,21 +710,6 @@ class BeagleBoneBlackDevice(Device):
                 ["mount", device_file, self.mount_dir])
         except subprocess32.CalledProcessError as err:
             common.log_subprocess32_error_and_abort(err)
-
-    def _mount_partition_and_erase_files_over_ssh(self, device_file):
-        """
-        Mounts a device file and erases any files over ssh
-
-        Args:
-            device_file (str): The device file that will be mounted and whose
-            contents will be erased.
-
-        Returns:
-            None
-        """
-
-        self._mount(device_file)
-        self._delete_directory_contents_over_ssh()
 
 
     def _unmount_over_ssh(self):
