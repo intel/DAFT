@@ -30,6 +30,7 @@ class Token(object):
     """Class that stores the constants for code tokens"""
     CLEAR_SCREEN = 1
     MOVE_CURSOR = 2
+    RESET_COLOR = 3
 
 
 def parse_file(input_file_name):
@@ -91,6 +92,10 @@ def do_parse(input_file, output_file):
 
     escape_char_code = 27
 
+
+    # use for heuristic write & clear screen
+    control_codes_after_top_left_move = False;
+
     while True:
         char = input_file.read(1)
         if not char:
@@ -103,7 +108,7 @@ def do_parse(input_file, output_file):
             ret = parse_token(input_file)
             if ret != None:
                 if ret[0] == Token.CLEAR_SCREEN:
-
+                    control_codes_after_top_left_move = True
                     write_and_clear_buffer(
                         output_file,
                         screen_buffer,
@@ -114,6 +119,12 @@ def do_parse(input_file, output_file):
                     row = 0
                     last_row_with_characters = 0
                 elif ret[0] == Token.MOVE_CURSOR:
+
+                    if ret[1] == 0 and ret[2] == 0:
+                        control_codes_after_top_left_move = False
+                    else:
+                        control_codes_after_top_left_move = True
+
                     # we just ignore the move token if it is out of
                     # bounds
                     if ret[1] < height and ret[2] < width:
@@ -122,6 +133,22 @@ def do_parse(input_file, output_file):
                         last_row_with_characters += max(
                             last_row_with_characters,
                             row)
+                elif ret[0] == Token.RESET_COLOR:
+                    # We enter the world of messy heuristic here. Sometimes
+                    # parser ended up writing bios screens and whatnot on top
+                    # of real, relevant log messages. These scenarios were
+                    # typically preceded by MOVE<1, 1>, followed by
+                    # log messages, followed by reset color code. So we use
+                    # this as heuristic to print & clear screen, just in case
+
+                    if not control_codes_after_top_left_move:
+                        control_codes_after_top_left_move = True
+                        write_and_clear_buffer(
+                        output_file,
+                        screen_buffer,
+                        min(height, last_row_with_characters+1),
+                        width)
+
         else:
             screen_buffer[row][column] = char
             column += 1
@@ -191,8 +218,14 @@ def parse_token(input_file):
             # clear screen
             if char == 'J':
                 return parse_clear_screen(code)
-            # color code - ignore as we want ascii output
+            # color code
+            # we ignore this, with the exception <ESC>[0m which is color reset
+            # code. Reset color code is to clear screen under certain
+            # circumstances
             elif char == 'm':
+                if code == "0":
+                    return [Token.RESET_COLOR]
+
                 return None
             # move cursor to <Row, Column>
             elif char == 'H' or char == 'f' or char == '[':
