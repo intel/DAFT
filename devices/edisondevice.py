@@ -537,9 +537,11 @@ class EdisonDevice(Device):
                 return
             else:
                 continue
-        raise errors.AFTDeviceError(
-            "Could not find the device in DFU-mode in " + str(timeout) +
-            " seconds.")
+
+        err_str = "Could not find the device in DFU-mode in " + str(timeout) + \
+            " seconds."
+        logging.critical(err_str)
+        raise errors.AFTDeviceError(err_str)
 
     def _run_tests(self, test_case):
         """
@@ -684,11 +686,29 @@ class EdisonDevice(Device):
             None
 
         Raises:
-            Nothing directly, but _wait_for_device() will raise AFTDeviceError
-            on failure
+            aft.errors.AFTDeviceError on failure to connect to the device after
+            running out of retries
+
+            aft.errors.AFTConfigurationError if for some reason all retries fail
+            and no other exception is raised
         """
-        self._power_cycle()
-        self._wait_for_device()
+        attempts = 3
+        exception = None
+        for _ in range(attempts):
+            try:
+                self._power_cycle()
+                self._wait_for_device()
+            except errors.AFTDeviceError, error:
+                exception = error
+                pass
+            else:
+                return
+
+        if exception:
+            raise exception
+
+
+        raise errors.AFTConfigurationError("Failed to power on the device")
 
     def check_connection(self):
         """
