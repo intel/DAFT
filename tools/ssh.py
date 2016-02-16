@@ -41,7 +41,7 @@ def test_ssh_connectivity(remote_ip, timeout = 10):
         remote_execute(remote_ip, ["echo", "$?"], connect_timeout = timeout)
         return True
     except subprocess32.CalledProcessError as err:
-        logging.warning("Could not establish ssh-connection to " + remote_ip + 
+        logging.warning("Could not establish ssh-connection to " + remote_ip +
                         ". SSH return code: " + str(err.returncode) + ".")
         return False
 
@@ -49,8 +49,47 @@ def push(remote_ip, source, destination, timeout = 60, ignore_return_codes = Non
     """
     Transmit a file from local 'source' to remote 'destination' over SCP
     """
-    scp_args = ["scp", source, 
+    scp_args = ["scp", source,
                 user + "@" + str(remote_ip) + ":" + destination]
+    return tools.local_execute(scp_args, timeout, ignore_return_codes)
+
+def pull(
+    remote_ip,
+    source,
+    destination,
+    timeout = 60,
+    ignore_return_codes = None,
+    user = "root"):
+    """
+    Transmit a file from remote 'source' to local 'destination' over SCP
+
+    Args:
+        remote_ip (str): Remote device IP
+        source (str): path to file on the remote filesystem
+        destination (str): path to the file on local filesystem
+        timeout (integer): Timeout in seconds for the operation
+        ignore_return_codes (list(integer)):
+            List of scp return codes that will be ignored
+        user (str): User that will be used with scp
+
+
+    Returns:
+        Scp output on success
+
+    Raises:
+        subprocess32.TimeoutExpired:
+            If timeout expired
+        subprocess32.CalledProcessError:
+            If process returns non-zero, non-ignored return code
+    """
+    scp_args = [
+        "scp",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "StrictHostKeyChecking=no",
+        user + "@" + str(remote_ip) + ":" + source,
+        destination]
     return tools.local_execute(scp_args, timeout, ignore_return_codes)
 
 def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
@@ -60,7 +99,7 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
     Returns combines stdout and stderr if there are no errors. On error raises
     subprocess32 errors.
     """
-    ssh_args = ["ssh", 
+    ssh_args = ["ssh",
                 "-i", "".join([os.path.expanduser("~"), "/.ssh/id_rsa_testing_harness"]),
                 "-o", "UserKnownHostsFile=/dev/null",
                 "-o", "StrictHostKeyChecking=no",
