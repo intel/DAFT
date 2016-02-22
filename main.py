@@ -1,4 +1,4 @@
-# coding=utf8
+# coding=utf-8
 # Copyright (c) 2013-2016 Intel, Inc.
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>

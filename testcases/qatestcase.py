@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2013-2015 Intel, Inc.
+# Copyright (c) 2013-2016 Intel, Inc.
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
 #

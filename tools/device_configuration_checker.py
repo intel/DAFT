@@ -1,5 +1,5 @@
-# coding=utf8
-# Copyright (c) 2013-2016 Intel, Inc.
+# coding=utf-8
+# Copyright (c) 2016 Intel, Inc.
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
