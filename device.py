@@ -1,6 +1,7 @@
-# Copyright (c) 2013-2015 Intel, Inc.
+# Copyright (c) 2013-2016 Intel, Inc.
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
+# Author Erkka Kääriä <erkka.kaaria@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -31,6 +32,8 @@ class Device(object):
     Abstract class representing a DUT.
     """
     __metaclass__ = abc.ABCMeta
+
+    _POWER_CYCLE_DELAY = 10
 
     def __init__(self, device_descriptor, channel):
         self.name = device_descriptor["name"]
@@ -145,11 +148,15 @@ class Device(object):
         """
         Return IP-address of the active device as a String.
         """
-#    @abc.abstractmethod
-#    def pull(self, remote_file, local_file, user="root"):
-#        """
-#        Fetches a file from the device (remote) to the local filesystem.
-#        """
+    def _power_cycle(self):
+        """
+        Reboot the device.
+        """
+        logging.info("Rebooting the device.")
+        self.detach()
+        sleep(self._POWER_CYCLE_DELAY)
+        self.attach()
+
 
     def __eq__(self, comp):
         return self.dev_id == comp.dev_id

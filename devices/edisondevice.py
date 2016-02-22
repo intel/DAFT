@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2013-2015 Intel, Inc.
+# Copyright (c) 2013-2016 Intel, Inc.
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
 #
@@ -30,42 +30,87 @@ from aft.device import Device
 import aft.errors as errors
 import aft.tools.misc as misc
 import aft.tools.ssh as ssh
+import aft.devices.common as common
 
-def _make_directory(directory):
-    """
-    Make directory safely
-    """
-    try:
-        os.makedirs(directory)
-    except OSError:
-        if not os.path.isdir(directory):
-            raise
+
 
 
 def _get_nth_parent_dir(path, parent):
     """
     Return 'parnet'h parent directory of 'path'
+
+    Args:
+        path (str): The original path
+        parent (integer): The nth parent directory that will be returned
+
+    Returns:
+        str: The path to the nth parent directory
+
     """
     if parent == 0:
         return path
     return _get_nth_parent_dir(os.path.dirname(path), parent - 1)
 
 
-def _log_subprocess32_error(err):
-    """
-    Log subprocess32 error cleanly
-    """
-    logging.critical(str(err.cmd) + "failed with error code: " +
-                     str(err.returncode) + " and output: " + str(err.output))
-    logging.critical("Aborting")
-    sys.exit(1)
-
 # pylint: disable=too-many-instance-attributes
-
 
 class EdisonDevice(Device):
     """
     AFT-device for Edison
+
+    Attributes:
+        _LOCAL_MOUNT_DIR (str):
+            The directory where the testing harness will mount the Edison root
+            file system.
+
+        _EDISON_DEV_ID (str): Edison USB device id (vendor-id:device-id)
+
+        _DUT_USB_SERVICE_FILE (str): USB networking service file
+
+        _DUT_USB_SERVICE_LOCATION (str):
+            The directory where the USB networking service file will be copied
+            on the Edison image
+
+        _DUT_USB_SERVICE_CONFIG_FILE (str):
+            USB networking service configuration file
+
+        _DUT_USB_SERVICE_CONFIG_DIR (str):
+            The directory where the USB networking service configuration file
+            will be copied on the Edison image
+
+        _DUT_CONNMAN_SERVICE_FILE (str):
+            The path to connman service file on the Edison image
+
+        _MODULE_DATA_PATH (str):
+            Path to the directory where the data files are stored
+            (The usb networking service file, authorized_keys file etc)
+
+        _FLASHER_OUTPUT_LOG (str): The log file name for the dfu-util flasher
+
+        _HARNESS_AUTHORIZED_KEYS_FILE (str):
+            The authorized key file name, which is stored on the testing
+            harness data file directory.
+
+        IFWI_DFU_FILE (str): Edison IFWI file, used by dfu-util
+
+        _NIC_FILESYSTEM_LOCATION (str):
+            Location for the network interface controller directories on the
+            testing harness
+
+
+        _configuration (dictionary): The device configurations
+
+        _usb_path (str): Device usb path
+
+        _gateway_ip (str): Gateway ip Address
+        _host_ip (str): Host ip Address
+        _dut_ip (str): Device IP address.
+        _broadcast_ip (str): Broadcast ip address
+
+        _root_extension: The image file extension
+
+
+
     """
 
     _LOCAL_MOUNT_DIR = "edison_root_mount"
@@ -77,8 +122,18 @@ class EdisonDevice(Device):
     _DUT_CONNMAN_SERVICE_FILE = "lib/systemd/system/connman.service"
     _MODULE_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data')
     _FLASHER_OUTPUT_LOG = "flash.log"
+    _HARNESS_AUTHORIZED_KEYS_FILE = "authorized_keys"
+    IFWI_DFU_FILE = "edison_ifwi-dbg"
+    _NIC_FILESYSTEM_LOCATION = "/sys/class/net"
 
     def __init__(self, parameters, channel):
+        """
+        Constructor
+
+        Args:
+            parameters (dictionary): Device configuration parameters
+            channel (aft.Cutter): The power cutter object
+        """
         super(EdisonDevice, self).__init__(device_descriptor=parameters,
                                            channel=channel)
         self._configuration = parameters
@@ -95,6 +150,22 @@ class EdisonDevice(Device):
         self._root_extension = "ext4"
 
     def write_image(self, file_name):
+        """
+        Writes the new image into the Edison
+
+        Args:
+            file_name (str):
+                The file name of the image that will be flashed on the device
+        Returns:
+            True
+
+        Raises:
+            aft.errors.AFTDeviceError on various failures
+            aft.errors.AFTConnectionError if the ssh connection could not be
+                formed
+
+        """
+
         file_no_extension = os.path.splitext(file_name)[0]
         self._mount_local(file_no_extension)
         self._add_usb_networking()
@@ -112,21 +183,34 @@ class EdisonDevice(Device):
     def _mount_local(self, file_name):
         """
         Mount a image-file to a class-defined folder.
+
+        Aborts if the mount command fails.
+
+        Args:
+            file_name (str):
+                The file name of the image that will be flashed on the device
+
+        Returns:
+            None
         """
-        logging.info("Mounting the root partition for ssh-key and USB-networking " +
-                     "service injection.")
+        logging.info(
+            "Mounting the root partition for ssh-key and USB-networking " +
+            "service injection.")
         try:
-            _make_directory(self._LOCAL_MOUNT_DIR)
+            common.make_directory(self._LOCAL_MOUNT_DIR)
             root_file_system_file = file_name + "." + self._root_extension
             subprocess32.check_call(
                 ["mount", root_file_system_file, self._LOCAL_MOUNT_DIR])
         except subprocess32.CalledProcessError as err:
             logging.debug("Failed to mount. Is AFT run as root?")
-            _log_subprocess32_error(err)
+            common.log_subprocess32_error_and_abort(err)
 
     def _add_usb_networking(self):
         """
         Inject USB-networking service files
+
+        Returns:
+            None
         """
         logging.info("Injecting USB-networking service.")
         source_file = os.path.join(self._MODULE_DATA_PATH,
@@ -153,10 +237,12 @@ class EdisonDevice(Device):
                                     self._DUT_USB_SERVICE_FILE))
         except OSError as err:
             if err.errno == 17:
-                logging.critical("The image file was not replaced. USB-networking service " +
-                                 "already exists.")
-                print "The image file was not replaced! The symlink for usb-networking " + \
-                    "service already exists."
+                logging.critical(
+                    "The image file was not replaced. USB-networking service " +
+                     "already exists.")
+                print ("The image file was not replaced! The symlink for "
+                    "usb-networking service already exists.")
+
                 # print "Aborting."
                 # sys.exit(1)
             else:
@@ -166,7 +252,7 @@ class EdisonDevice(Device):
         config_directory = os.path.join(os.curdir,
                                         self._LOCAL_MOUNT_DIR,
                                         self._DUT_USB_SERVICE_CONFIG_DIR)
-        _make_directory(config_directory)
+        common.make_directory(config_directory)
         config_file = os.path.join(config_directory,
                                    self._DUT_USB_SERVICE_CONFIG_FILE)
 
@@ -199,11 +285,13 @@ class EdisonDevice(Device):
         shutil.copy(output_file, original_connman)
         os.remove(output_file)
 
-    _HARNESS_AUTHORIZED_KEYS_FILE = "authorized_keys"
 
     def _add_ssh_key(self):
         """
         Inject the ssh-key to DUT's authorized_keys
+
+        Returns:
+            None
         """
         logging.info("Injecting ssh-key.")
         source_file = os.path.join(self._MODULE_DATA_PATH,
@@ -214,7 +302,7 @@ class EdisonDevice(Device):
         authorized_keys_file = os.path.join(os.curdir,
                                             ssh_directory,
                                             "authorized_keys")
-        _make_directory(ssh_directory)
+        common.make_directory(ssh_directory)
         shutil.copy(source_file, authorized_keys_file)
         os.chown(ssh_directory, 0, 0)
         os.chown(authorized_keys_file, 0, 0)
@@ -225,26 +313,30 @@ class EdisonDevice(Device):
     def _unmount_local(self):
         """
         Unmount the previously mounted image from class-defined folder
+
+        Aborts if the unmount command fails
+
+        Returns:
+            None
         """
         logging.info("Flushing and unmounting the root filesystem.")
         try:
             subprocess32.check_call(["sync"])
-            subprocess32.check_call(["umount", os.path.join(os.curdir,
-                                                            self._LOCAL_MOUNT_DIR)])
-        except subprocess32.CalledProcessError as err:
-            _log_subprocess32_error(err)
+            subprocess32.check_call([
+                "umount",
+                os.path.join(os.curdir,self._LOCAL_MOUNT_DIR)])
 
-    def _reboot_device(self):
-        """
-        Reboot the DUT
-        """
-        self.channel.disconnect()
-        time.sleep(1)
-        self.channel.connect()
+        except subprocess32.CalledProcessError as err:
+            common.log_subprocess32_error_and_abort(err)
 
     def _recovery_flash(self):
         """
         Execute the flashing of device-side DFU-tools
+
+        Aborts if the flashing fails
+
+        Returns:
+            None
         """
         logging.info("Recovery flashing.")
         try:
@@ -257,98 +349,33 @@ class EdisonDevice(Device):
                                 "--fwdnx", "edison_dnx_fwr.bin",
                                 "--fwimage", "edison_ifwi-dbg-00.bin",
                                 "--osdnx", "edison_dnx_osr.bin"]
-            self._reboot_device()
+            self._power_cycle()
             while subprocess32.call(xfstk_parameters) and attempts < 10:
                 logging.info(
-                    "Rebooting and trying recovery flashing again. " + str(attempts))
-                self._reboot_device()
+                    "Rebooting and trying recovery flashing again. "
+                    + str(attempts))
+                self._power_cycle()
                 time.sleep(random.randint(10, 30))
                 attempts += 1
 
         except subprocess32.CalledProcessError as err:
-            _log_subprocess32_error(err)
+            common.log_subprocess32_error_and_abort(err)
         except OSError as err:
             logging.critical("Failed recovery flashing, errno = " +
                              str(err.errno) + ". Is the xFSTK tool installed?")
             sys.exit(1)
 
-    def _wait_for_device(self, timeout=15):
-        """
-        Wait until the testing harness detects the Edison after boot
-        """
-        start = time.time()
-        while time.time() - start < timeout:
-            output = subprocess32.check_output(
-                ["dfu-util", "-l", "-d", self._EDISON_DEV_ID])
-            output_lines = output.split("\n")
-            fitting_lines = [
-                line for line in output_lines if 'path="' + self._usb_path + '"' in line]
-            if fitting_lines:
-                return
-            else:
-                continue
-        raise errors.AFTDeviceError("Could not find the device in DFU-mode in " +
-                                    str(timeout) + " seconds.")
-# pylint: disable=dangerous-default-value
-
-    def _dfu_call(self, alt, source, extras=[], attempts=4, timeout=600, ignore_errors=False):
-        """
-        Call DFU-util successively with arguments until it succeeds
-        """
-        attempt = 0
-        while attempt < attempts:
-            flashing_log_file = open(self._FLASHER_OUTPUT_LOG, "a")
-            self._wait_for_device()
-            execution = subprocess32.Popen(["dfu-util", "-v", "--path", self._usb_path,
-                                            "--alt", alt, "-D", source] + extras,
-                                           stdout=flashing_log_file,
-                                           stderr=flashing_log_file)
-            start = time.time()
-            while time.time() - start < timeout:
-                status = execution.poll()
-                if status == None:
-                    continue
-                else:
-                    flashing_log_file.close()
-                    if ignore_errors:
-                        return
-
-                    # dfu-util always return 0. Check flash.log for missing "Done!"
-                    # to detect errors.
-                    log_file = open(self._FLASHER_OUTPUT_LOG, "r")
-                    data = log_file.read()
-                    log_file.close()
-
-                    if "Done!" in data.split("\n")[-3:-1:1]:
-                        return
-                    else:
-                        break
-
-            try:
-                execution.kill()
-            except OSError as err:
-                if err.errno == 3: # 3 = errno.ESRCH = no such process
-                    pass
-                else:
-                    raise
-            attempt += 1
-
-            logging.warning("Flashing failed on alt " + alt + " for file " + source +
-                            " on USB-path " + self._usb_path +
-                            ". Rebooting and attempting again for " +
-                            str(attempt) + "/" + str(attempts) + " time.")
-            self._reboot_device()
-        flashing_log_file.close()
-        raise errors.AFTDeviceError("Flashing failed 4 times. Raising error (aborting).")
-# pylint: enable=dangerous-default-value
-
-    IFWI_DFU_FILE = "edison_ifwi-dbg"
-
     def _flash_image(self):
         """
         Execute the sequence of DFU-calls to flash the image.
+
+        Returns:
+            True
+
+        Raises:
+            errors.aft.AFTDeviceError if flashing fails
         """
-        self._reboot_device()
+        self._power_cycle()
         logging.info("Flashing IFWI.")
         for i in range(0, 7):
             # Flashing seems to always fail, so ignore errors. Compliant with
@@ -379,7 +406,149 @@ class EdisonDevice(Device):
         logging.info("Flashing complete.")
         return True
 
+
+
+
+
+# pylint: disable=dangerous-default-value
+
+    def _dfu_call(
+        self,
+        alt,
+        source,
+        extras=[],
+        attempts=4,
+        timeout=600,
+        ignore_errors=False):
+        """
+        Call DFU-util successively with arguments until it succeeds
+
+        Args:
+            alt (str):
+                The --alt-argument for the dfu-util program. See relevant man
+                page for more information on dfu-util and its arguments.
+            source (str):
+                The source file, which will be flashed
+            extras (list(str)):
+                Extra arguments for the dfu-util program
+            attempts (interer):
+                How many times flashing will be attempted
+            timeout (integer):
+                The timeout value for a single flashing attempt
+            ignore_errors (boolean):
+                Controls whether errors will be ignored or not. This is a
+                workaround for some failures, which are also present in the
+                original Edison flashing script. These failures are ignored,
+                as this program aims to be compatible with the original script.
+                Should go without saying that use this argument with caution.
+
+        Returns:
+            None
+
+        Raises:
+            aft.errors.AFTDeviceError if flashing has not succeeded after the
+            number of attempts specified by the method argument
+        """
+        attempt = 0
+        while attempt < attempts:
+            flashing_log_file = open(self._FLASHER_OUTPUT_LOG, "a")
+            self._wait_for_device()
+            execution = subprocess32.Popen(
+                [
+                   "dfu-util", "-v", "--path",
+                    self._usb_path,
+                    "--alt", alt, "-D",
+                    source
+                ] + extras,
+                stdout=flashing_log_file,
+                stderr=flashing_log_file)
+
+            start = time.time()
+            while time.time() - start < timeout:
+                status = execution.poll()
+                if status == None:
+                    continue
+                else:
+                    flashing_log_file.close()
+                    if ignore_errors:
+                        return
+
+                    # dfu-util always return 0. Check flash.log for missing
+                    # "Done!" to detect errors.
+                    log_file = open(self._FLASHER_OUTPUT_LOG, "r")
+                    data = log_file.read()
+                    log_file.close()
+
+                    if "Done!" in data.split("\n")[-3:-1:1]:
+                        return
+                    else:
+                        break
+
+            try:
+                execution.kill()
+            except OSError as err:
+                if err.errno == 3: # 3 = errno.ESRCH = no such process
+                    pass
+                else:
+                    raise
+            attempt += 1
+
+            logging.warning(
+                "Flashing failed on alt " + alt + " for file " + source +
+                " on USB-path " + self._usb_path +
+                ". Rebooting and attempting again for " +
+                str(attempt) + "/" + str(attempts) + " time.")
+
+            self._power_cycle()
+        flashing_log_file.close()
+        raise errors.AFTDeviceError(
+            "Flashing failed " + str(attempts) +
+            " times. Raising error (aborting).")
+# pylint: enable=dangerous-default-value
+
+    def _wait_for_device(self, timeout=15):
+        """
+        Wait until the testing harness detects the Edison after boot
+
+        Args:
+            timeout (integer): Timeout for the detection process
+
+        Returns:
+            None
+
+        Raises:
+            aft.errors.AFTDeviceError on timeout
+        """
+        start = time.time()
+        while time.time() - start < timeout:
+            output = subprocess32.check_output(
+                ["dfu-util", "-l", "-d", self._EDISON_DEV_ID])
+            output_lines = output.split("\n")
+
+            fitting_lines = [
+                line for line in output_lines
+                if 'path="' + self._usb_path + '"' in line]
+
+            if fitting_lines:
+                return
+            else:
+                continue
+        raise errors.AFTDeviceError(
+            "Could not find the device in DFU-mode in " + str(timeout) +
+            " seconds.")
+
     def test(self, test_case):
+        """
+        Open the network interface and run the test
+
+        Args:
+            test_case (aft.TestCase): The test case object
+
+        Returns:
+            The return value of the test_case run()-method
+            (implementation class specific)
+
+        """
         self.open_interface()
         enabler = subprocess32.Popen(["python",
                                       os.path.join(os.path.dirname(__file__),
@@ -400,6 +569,9 @@ class EdisonDevice(Device):
     def open_interface(self):
         """
         Open the host's network interface for testing
+
+        Returns:
+            None
         """
         interface = self._get_usb_nic()
         ip_subnet = self._host_ip + "/30"
@@ -410,32 +582,66 @@ class EdisonDevice(Device):
     def _wait_until_ssh_visible(self, timeout=180):
         """
         Wait until the DUT answers to ssh
+
+        Args:
+            timeout (integer): The timeout value in seconds
+        Returns:
+            None
+
+        Raises:
+            aft.errors.AFTConnectionError on timeout
+
         """
         start = time.time()
         while time.time() - start < timeout:
-            if ssh.test_ssh_connectivity(self._dut_ip):
+            if ssh.test_ssh_connectivity(self.get_ip()):
                 return
-        logging.critical("Failed to establish ssh-connection in " +
-                         str(timeout) + " seconds after enabling the network interface.")
-        raise errors.AFTConnectionError("Failed to establish ssh-connection in " +
-                                        str(timeout) + " seconds after enabling " +
-                                        "the network interface.")
+        logging.critical(
+            "Failed to establish ssh-connection in " + str(timeout) +
+            " seconds after enabling the network interface.")
+
+        raise errors.AFTConnectionError(
+            "Failed to establish ssh-connection in " + str(timeout) +
+            " seconds after enabling the network interface.")
 
     def get_ip(self):
+        """
+        Return device ip address
+
+        Returns:
+            (str): Device ip address
+        """
         return self._dut_ip
 
 
     def get_host_ip(self):
-        return self._host_ip
+        """
+        Return host ip address
 
-    _NIC_FILESYSTEM_LOCATION = "/sys/class/net"
+        Returns:
+            (str): Host ip address
+        """
+
+        return self._host_ip
 
     def _get_usb_nic(self, timeout=120):
         """
-        Search and return for the network interface attached to the DUT's USB-path
+        Search and return for the network interface attached to the DUT's
+        USB-path
+
+        Args:
+            timeout (integer): The timeout value in seconds
+
+        Returns:
+            (str): The usb network interface
+
+        Raises:
+            aft.errors.AFTDeviceError if USB network interface was not found
         """
         logging.info(
-            "Searching for the host network interface from usb path " + self._usb_path)
+            "Searching for the host network interface from usb path " +
+            self._usb_path)
+
         start = time.time()
         while time.time() - start < timeout:
 
@@ -451,29 +657,54 @@ class EdisonDevice(Device):
                         return interface
                 except IOError as err:
                     print "IOError: " + str(err.errno) + " " + err.message
-                    print "Error likely caused by jittering network interface. Ignoring."
-                    logging.warning("An IOError occured when testing network interfaces. " +
-                                    " IOERROR: " + str(err.errno) + " " + err.message)
+                    print (
+                        "Error likely caused by jittering network interface."
+                        " Ignoring.")
+                    logging.warning(
+                        "An IOError occured when testing network interfaces. " +
+                        " IOERROR: " + str(err.errno) + " " + err.message)
             time.sleep(1)
 
-        raise errors.AFTDeviceError("Could not find a network interface from USB-path " +
-                                    self._usb_path + " in 120 seconds.")
+        raise errors.AFTDeviceError(
+            "Could not find a network interface from USB-path " +
+            self._usb_path + " in 120 seconds.")
 
 
 
     def check_poweron(self):
-        self._reboot_device()
+        """
+        Checks if device powers on sucessfully by checking if it enters DFU mode
+        correctly
+
+
+        Returns:
+            None
+
+        Raises:
+            Nothing directly, but _wait_for_device() will raise AFTDeviceError
+            on failure
+        """
+        self._power_cycle()
         self._wait_for_device()
 
     def check_connection(self):
+        """
+        Checks the connectivity by checking if an interface could be opened
+
+        Returns:
+            None
+
+        Raises:
+            aft.errors.AFTConfigurationError if interface could not be opened
+        """
 
         attempts = 3
 
         for _ in range(attempts):
-            self._reboot_device()
+            self._power_cycle()
             try:
                 self.open_interface()
-            except AFTDeviceError, error:
+            except errors.AFTDeviceError, error:
                 pass
             else:
                 return
@@ -486,6 +717,18 @@ class EdisonDevice(Device):
         # be missing or broken.
 
     def check_poweroff(self):
+        """
+        Checks that device was powered down by checking that attempt to enter
+        into DFU mode fails.
+
+
+        Returns:
+            None
+
+        Raises:
+            aft.errors.AFTConfigurationError if the device succesfully entered
+            DFU mode
+        """
         self.detach()
 
         try:
