@@ -45,6 +45,8 @@ import json
 import StringIO
 from ConfigParser import SafeConfigParser
 
+import aft.devices.common as common
+
 from aft.cutters.clewarecutter import ClewareCutter
 from aft.cutters.usbrelay import Usbrelay
 from pem.main import main as pem_main
@@ -53,12 +55,27 @@ from aft.devices.edisondevice import EdisonDevice
 
 class TopologyBuilder(object):
 
-    """The topology builder class"""
+    """
+    The topology builder class
+
+    Attributes:
+        _verbose (boolean): Controls the verbose mode
+        _dryrun (boolean): Controls if the settings are actually saved
+        _network_configs (List(Dictionary)): Available network configurations
+        _pem_ports (List(str)): List of available PEM device ports.
+        _serial_ports (List(str)): List of available serial device ports.
+        _devices (List(Dictionary)): List of devices that have been configured
+        _config (Dictionary): Configuration parameters for topology builder
+
+    """
 
     def __init__(self, args):
         """
+        Constructor
+
         Args:
-            args (configuration object): Program command line arguments
+            args (argparse namespace with configurations):
+                Program command line arguments
         """
         self._verbose = args.verbose
         self._dryrun = args.configure == "dryrun"
@@ -71,13 +88,14 @@ class TopologyBuilder(object):
 
     def build_topology(self):
         """
-        Builds device topology file by shutting down devices one by one and
-        checking which serial ports, network interfaces etc. have stopped
-        responding
+        Builds device topology file by first turning all power cutters on and
+        then shutting down devices one by one and checking which serial ports,
+        network interfaces etc. have stopped responding
 
         Returns:
             None
         """
+
         logging.info("Starting topology building")
         if self._dryrun:
             print "*** Dry run - no configurations will be stored ***"
@@ -172,9 +190,7 @@ class TopologyBuilder(object):
             print ""
 
         for cutter in cutters:
-            self._devices.append(
-                self._get_device_configuration(
-                    cutter))
+            self._devices.append(self._get_device_configuration(cutter))
 
         configuration = self._create_configuration()
 
@@ -374,21 +390,15 @@ class TopologyBuilder(object):
                 "device_ip_address"
             )
         """
-        leases = []
 
-        with open("/var/lib/misc/dnsmasq.leases") as lease_file:
-            leases = lease_file.readlines()
+        lease_file = "/var/lib/misc/dnsmasq.leases"
 
-        # dnsmasq.leases contains rows with "<mac> <ip> <hostname> <domain>"
-        mac_ips = [
-            (values[1], values[2])
-            for values in (line.split() for line in leases)]
-
-        return mac_ips
+        leases = common.get_mac_leases_from_dnsmasq(lease_file)
+        return [(lease["mac"], lease["ip"]) for lease in leases]
 
     def _find_active_pem_ports_from(self, wait_duration, device_files):
         """
-        Finds and returns list of active USB PEM ports
+        Find and returns list of active USB PEM ports
 
         This spawns a process that actually does the work.
 
@@ -416,7 +426,7 @@ class TopologyBuilder(object):
 
     def _find_active_serial_ports_from(self, wait_duration, device_files):
         """
-        Finds and returns list of active USB serial ports.
+        Find and returns list of active USB serial ports.
 
         This spawns a process that actually does the work.
 
@@ -821,7 +831,7 @@ class TopologyBuilder(object):
 
     def _set_device_pem_port(self, device, pem_results):
         """
-        Checks if any PEM port has stopped responding, and if so, associates it
+        Check if any PEM port has stopped responding, and if so, associate it
         with the device.
 
         Args:
@@ -858,7 +868,7 @@ class TopologyBuilder(object):
 
     def _create_configuration(self):
         """
-        Creates and returns ConfigParser object containing the device
+        Create and return ConfigParser object containing the device
         configurations
 
         Return:
