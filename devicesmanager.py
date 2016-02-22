@@ -35,8 +35,14 @@ class DevicesManager(object):
     # args = parsed command line arguments
     def __init__(self, args):
         """
+        Constructor
+
         Based on command-line arguments and configuration files, construct
         configurations
+
+        Args:
+            args (argparse namespace argument object):
+                Command line arguments, as parsed by argparse
         """
 
         self._args = args
@@ -114,13 +120,13 @@ class DevicesManager(object):
 
     def reserve(self, timeout = 3600):
         """
-        Reserve and lock a device return it
+        Reserve and lock a device and return it
         """
 
         devices = []
 
         for device_config in self.device_configs:
-            if device_config["model"] == self._args.machine:
+            if device_config["model"].lower() == self._args.machine.lower():
                 cutter = devicefactory.build_cutter(device_config["settings"])
                 device = devicefactory.build_device(device_config["settings"], cutter)
                 devices.append(device)
@@ -130,14 +136,14 @@ class DevicesManager(object):
 
 
     def reserve_specific(self, machine_name, timeout = 3600):
-        """Reserves and locks a specific device"""
+        """Reserve and lock a specific device"""
 
         # Basically very similar to a reserve-method
         # we just populate they devices array with a single device
 
         devices = []
         for device_config in self.device_configs:
-            if device_config["name"] == machine_name:
+            if device_config["name"].lower() == machine_name.lower():
                 cutter = devicefactory.build_cutter(device_config["settings"])
                 device = devicefactory.build_device(device_config["settings"], cutter)
                 devices.append(device)
