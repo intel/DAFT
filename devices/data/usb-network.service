@@ -9,7 +9,6 @@ RemainAfterExit=yes
 EnvironmentFile=/etc/conf.d/usb-network
 ExecStart=/sbin/ip link set dev ${Interface} up
 ExecStart=/sbin/ip address add ${Address}/${MaskSize} broadcast ${Broadcast} dev ${Interface}
-ExecStart=/sbin/ip route add default via ${Gateway} dev ${Interface}
 ExecStop=/sbin/ip addr flush dev ${Interface}
 ExecStop=/sbin/ip link set dev ${Interface} down
 
