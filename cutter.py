@@ -35,3 +35,8 @@ class Cutter(object):
         """
         Method disconnecting a channel
         """
+    @abc.abstractmethod
+    def get_cutter_config(self):
+        """
+        Returns cutter settings as a dictionary.
+        """

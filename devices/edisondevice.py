@@ -238,10 +238,8 @@ class EdisonDevice(Device):
         """
         Reboot the DUT
         """
-        # .call(["cutter_on_off", self._cutter_dev_path, "0"])
         self.channel.disconnect()
         time.sleep(1)
-        # .call(["cutter_on_off", self._cutter_dev_path, "1"])
         self.channel.connect()
 
     def _recovery_flash(self):
@@ -425,6 +423,10 @@ class EdisonDevice(Device):
 
     def get_ip(self):
         return self._dut_ip
+
+
+    def get_host_ip(self):
+        return self._host_ip
 
     _NIC_FILESYSTEM_LOCATION = "/sys/class/net"
 

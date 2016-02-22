@@ -42,3 +42,17 @@ class Usbrelay(Cutter):
                                  self._cutter_dev_path, "0"],
                                 stdout=open(os.devnull, "w"),
                                 stderr=open(os.devnull, "w"))
+
+    def get_cutter_config(self):
+        """
+        Returns the cutter configurations
+
+        Returns:
+            Cutter configuration as a dictionary with the following format:
+            {
+                "type": "usbrelay",
+                "cutter": "/dev/ttyUSBx"
+            }
+
+        """
+        return { "type": "usbrelay", "cutter": self._cutter_dev_path }

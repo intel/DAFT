@@ -1,0 +1,39 @@
+{
+    "pem_finder_keystrokes": "/home/tester/kbsequences/empty",
+    "pc_devices":
+    [
+        {
+            "model": "MinnowboardMAX",
+            "mac_prefixes": ["00:13"]
+        },
+        {
+            "model": "GalileoV2",
+            "mac_prefixes": ["98:4f"]
+        },
+        {
+            "model": "BeagleBoneBlack",
+            "mac_prefixes":
+            [
+                "54:4a:16",
+                "ec:24:b8",
+                "68:c9:0b"
+            ]
+        },
+        {
+            "model": "Gigabyte",
+            "mac_prefixes": ["fc:aa"]
+        }
+    ],
+    "edison": {
+        "model": "Edison",
+        "subnet_prefix": "192.168.31.",
+        "ip_start": "136",
+        "power_cutters": ["/dev/ttyUSB7"]
+    }
+}
+
+
+
+usb 2-1.4.1: FTDI USB Serial Device converter now attached to ttyUSB21
+usb 2-1.2.1: FTDI USB Serial Device converter now attached to ttyUSB22
+usb 2-1.1.4.2: FTDI USB Serial Device converter now attached to ttyUSB23

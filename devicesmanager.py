@@ -56,7 +56,7 @@ class DevicesManager(object):
         Find and merge the device configurations into single data structure.
 
         Returns:
-            Array of hashes, where hashes have the following format:
+            Array of dictionaries, where dictionaries have the following format:
             {
                 "name": "device_name",
                 "model": "device_model",

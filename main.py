@@ -21,7 +21,8 @@ import sys
 import logging
 import argparse
 import aft.config as config
-import aft.tools.device_configuration_checker as checker
+import aft.tools.device_configuration_checker as device_config
+from aft.tools.topology_builder import TopologyBuilder
 from aft.devicesmanager import DevicesManager
 from aft.tester import Tester
 
@@ -45,8 +46,13 @@ def main(argv=None):
 
     args = parse_args()
 
+    if args.configure:
+        builder = TopologyBuilder(args)
+        builder.build_topology()
+        return 0
+
     if args.check:
-        results = checker.check(args)
+        results = device_config.check(args)
         logging.info(results[1])
         print results[1]
 
@@ -55,7 +61,7 @@ def main(argv=None):
         else:
             return 1
     elif args.checkall:
-        results = checker.check_all(args)
+        results = device_config.check_all(args)
         logging.info(results[1])
         print results[1]
 
@@ -164,6 +170,22 @@ def parse_args():
         action="store",
         choices = ["fast", "accurate"],
         help="Check configurations for all devices. Defaults to fast")
+
+    parser.add_argument(
+        "--configure",
+        type=str,
+        nargs="?",
+        const="dryrun",
+        action="store",
+        choices = ["dryrun", "save"],
+        help=("Find and configure devices. Dryrun merely prints the configs, "
+            "save actually saves them. Defaults to dryrun"))
+
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Prints additional information on various operations")
+
     return parser.parse_args()
 
 if __name__ == "__main__":
