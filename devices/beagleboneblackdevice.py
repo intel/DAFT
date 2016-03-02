@@ -237,11 +237,17 @@ class BeagleBoneBlackDevice(Device):
             None
         """
 
-        # Note: need to remove the first '/' from file paths, as these paths are
-        # in absolute form, relative to the support fs rootfs (e.g. /foo/bar
-        # rather than /path/to/nfs/rootfs/on/testing/harness/foo/bar). The need
-        # to remove the '/' is due to os.path.join behaviour, where it will
-        # discard the current path string when encourtering an absolute path
+
+
+        # Note: need to remove the first '/' from file paths when building
+        # absolute paths on the testing harness, as these paths are
+        # absolute path intended for the support image operations (e.g. /usr/foo
+        # rather than usr/foo, when we want to build
+        # /path/to/nfs/path/to/rootfs/usr/foo)
+        #
+        # The need to remove the '/' is due to os.path.join behaviour, where it
+        # will discard the current path string when encourtering an absolute
+        # path
 
         logging.info("Creating directories and copying image files")
 
