@@ -91,7 +91,7 @@ class PCDevice(Device):
         self.retry_attempts = 8
 
         self._leases_file_name = parameters["leases_file_name"]
-        self._root_partition = self.get_root_partition_path(parameters)
+        self.default_root_patition = parameters["root_partition"]
         self._service_mode_name = parameters["service_mode"]
         self._test_mode_name = parameters["test_mode"]
 
@@ -113,34 +113,7 @@ class PCDevice(Device):
         self._uses_hddimg = None
 
 # pylint: disable=no-self-use
-    def get_root_partition_path(self, parameters):
-        """
-        Select either the 'root_partition' config value to be the root_partition
-        or if the disk layout file exists, use the rootfs from it.
 
-        Args:
-            parameters (Dictionary): Device configuration parameters
-
-        Returns:
-            (str): path to the disk pseudo file
-        """
-        if not os.path.isfile(parameters["disk_layout_file"]):
-            logging.info("Disk layout file " + parameters["disk_layout_file"] +
-                         " doesn't exist. Using root_partition from config.")
-            return parameters["root_partition"]
-
-        layout_file = open(parameters["disk_layout_file"], "r")
-        disk_layout = json.load(layout_file)
-        # Convert Unicode -> ASCII
-        rootfs_partition = next(
-            partition for partition in disk_layout.values() \
-            if isinstance(partition, dict) and \
-            partition["name"] == "rootfs")
-        return os.path.join(
-            "/dev",
-            "disk",
-            "by-partuuid",
-            rootfs_partition["uuid"])
 
 # pylint: enable=no-self-use
 
@@ -170,7 +143,7 @@ class PCDevice(Device):
             self._IMG_NFS_MOUNT_POINT)
 
         self._flash_image(nfs_file_name=file_on_nfs)
-        self._install_tester_public_key()
+        self._install_tester_public_key(file_name)
 
     def _run_tests(self, test_case):
         """
@@ -301,16 +274,61 @@ class PCDevice(Device):
         ssh.remote_execute(self.dev_ip, ["udevadm", "settle"])
         ssh.remote_execute(self.dev_ip, ["udevadm", "control", "-S"])
 
-    def _mount_single_layer(self):
+    def _mount_single_layer(self, image_file_name):
         """
         Mount a hdddirect partition
 
         Returns:
             None
         """
+
+
+
         logging.info("Mount one layer.")
-        ssh.remote_execute(self.dev_ip, ["mount", self._root_partition,
-                                         self._ROOT_PARTITION_MOUNT_POINT])
+        ssh.remote_execute(
+            self.dev_ip,
+            [
+                "mount",
+                self.get_root_partition_path(image_file_name),
+                self._ROOT_PARTITION_MOUNT_POINT])
+
+
+    def get_root_partition_path(self, image_file_name):
+        """
+        Select either the default config value to be the root_partition
+        or if the disk layout file exists, use the rootfs from it.
+
+        Args:
+            image_file_name (str): The name of the image file. Disk layout file
+            name is based on this
+
+        Returns:
+            (str): path to the disk pseudo file
+        """
+
+        layout_file_name = self.get_layout_file_name(image_file_name)
+
+        if not os.path.isfile(layout_file_name):
+            logging.info("Disk layout file " + layout_file_name  +
+                         " doesn't exist. Using root_partition from config.")
+            return self.default_root_patition
+
+        layout_file = open(layout_file_name, "r")
+        disk_layout = json.load(layout_file)
+        # Convert Unicode -> ASCII
+        rootfs_partition = next(
+            partition for partition in disk_layout.values() \
+            if isinstance(partition, dict) and \
+            partition["name"] == "rootfs")
+        return os.path.join(
+            "/dev",
+            "disk",
+            "by-partuuid",
+            rootfs_partition["uuid"])
+
+
+    def get_layout_file_name(self, image_file_name):
+        return image_file_name.split(".")[0] + "-disk-layout.json"
 
     def _mount_two_layers(self):
         """
@@ -329,7 +347,7 @@ class PCDevice(Device):
                                          "rootfs",
                                          self._ROOT_PARTITION_MOUNT_POINT])
 
-    def _install_tester_public_key(self):
+    def _install_tester_public_key(self, image_file_name):
         """
         Copy ssh public key to root user on the target device.
 
@@ -338,7 +356,7 @@ class PCDevice(Device):
         """
         # update info about the partition table
         if not self._uses_hddimg:
-            self._mount_single_layer()
+            self._mount_single_layer(image_file_name)
         else:
             self._mount_two_layers()
 
