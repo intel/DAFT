@@ -110,35 +110,8 @@ class Device(object):
 
         Returns: None
         """
-
-
-
-        # In general, it would be better to shut down the device, then mount the
-        # rootfs and grab the logs, as the testable image could be broken
-        # enough that SSH connection does not work. However, currently logs
-        # are not stored permanently and are lost on shutdown, so we have to use
-        # SSH.
-
-        # For the future maintainer and/or reader: Re-evaluate the situation and
-        # consider changing the fetch logic (mounting rootfs likely requires
-        # device specific methods)
-
-        try:
-            ip = self.get_ip()
-            ssh.remote_execute(ip, ["journalctl", ">", "~/journalctl.log"])
-            ssh.remote_execute(ip, ["dmesg", ">", "~/dmesg.log"])
-            ssh.pull(ip, "~/journalctl.log", "journalctl.log")
-            ssh.pull(ip, "~/dmesg.log", "dmesg.log")
-
-        except subprocess32.CalledProcessError, error:
-            logging.critical("Failed to fetch logs (subprocess error): " +
-                str(error))
-        except subprocess32.TimeoutExpired, error:
-            logging.critical("Failed to fetch logs (timeout): " + str(error))
-        except errors.AFTDeviceError, error:
-            logging.critical("Failed to fetch logs (device error): " +
-                str(error))
-
+        # TODO: Implement. Currently logs are not stored anywhere and are lost
+        # on poweroff, so this needs to be fixed first.
 
         pass
 
