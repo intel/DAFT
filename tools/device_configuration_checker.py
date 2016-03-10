@@ -14,16 +14,21 @@
 """
 Module for device configuration check functionality.
 """
-
 import os
 import logging
 import copy
 from Queue import Queue
 from threading import Thread
+from multiprocessing import Process
+from multiprocessing import Queue as multiprocessing_queue
 
+import aft.config as config
 import aft.errors as errors
 import aft.devices.common as common
+from aft.tester import Tester
 from aft.devicesmanager import DevicesManager
+
+import pprint
 
 def check_all(args):
     """
@@ -233,20 +238,29 @@ def check(args):
         print "Running configuration check on " + args.device
 
     logging.info("Running configuration check on " + args.device)
+
     manager = DevicesManager(args)
     device = manager.reserve_specific(args.device)
 
     if args.verbose:
         print "Device " + args.device + " acquired, running checks"
 
-    test_results = _run_tests(args, device)
+    sanity_results = _run_sanity_tests(args, device)
 
+    image_test_results= (True, "Image Test result: Not run")
+    # only run image test if sanity test passed
+    if sanity_results[0] == True:
+        image_test_results = _run_tests_on_know_good_image(args, device)
 
     if args.verbose:
         print "Releasing device " + args.device
 
     manager.release(device)
-    results =  _handle_test_results(args, device, test_results)
+
+    results = (
+        sanity_results[0] and image_test_results[0],
+        sanity_results[1] + "\n" + image_test_results[1]
+        )
 
     if not results[0]:
         common.blacklist_device(
@@ -262,9 +276,9 @@ def check(args):
 
     return results
 
-def _run_tests(args, device):
+def _run_sanity_tests(args, device):
     """
-    Runs the device configuration tests and returns the result
+    Run basic sanity tests on the device and return the result
 
     Args:
         args (configuration object): Program command line arguments
@@ -324,15 +338,14 @@ def _run_tests(args, device):
     except Exception, error:
         poweroff_status = (False, str(error))
 
-    return {
+    return _format_sanity_test_result(args, device, {
         "poweron_status": poweron_status,
         "connection_status": connection_status,
         "poweroff_status": poweroff_status,
         "serial_status": serial_status
-    }
+    })
 
-
-def _handle_test_results(args, device, test_results):
+def _format_sanity_test_result(args, device, test_results):
     """
 
     Args:
@@ -393,3 +406,90 @@ def _handle_test_results(args, device, test_results):
               poweroff_status[0] and serial_status[0]
 
     return (success, result)
+
+
+def _run_tests_on_know_good_image(args, device):
+
+    if args.verbose:
+        print "Flashing and testing a known good image"
+
+    logging.info("Flashing and testing a known good image")
+
+    image_directory_path = os.path.join(
+        config.KNOWN_GOOD_IMAGE_FOLDER,
+        device.model.lower())
+
+
+    image = None
+    if device.model.lower() == "beagleboneblack":
+        image = image_directory_path
+    elif device.model.lower() == "edison":
+        image = os.path.join(
+            image_directory_path,
+            "ostro-image-edison.ext4")
+    else:
+        image = os.path.join(
+            image_directory_path,
+            "good-image.dsk")
+
+    if args.verbose:
+        print "Image file: " + str(image)
+        print "Flashing " + str(device.name)
+
+    logging.info("Image file: " + str(image))
+
+    try:
+
+        results_queue = multiprocessing_queue()
+
+        def worker(results):
+
+            os.chdir(os.path.join(image_directory_path, "iottest"))
+            # nuke test logs
+            for f in os.listdir("."):
+                if "ssh_target_log" in f:
+                    os.remove(f)
+
+            os.chdir(image_directory_path)
+            # Remove all log and xml files from previous run to prevent clutter
+            for f in os.listdir("."):
+                if f.endswith(".log") or f.endswith(".xml"):
+                    os.remove(f)
+
+
+            device.write_image(image)
+
+            tester = Tester(device)
+            tester.execute()
+            results.put((tester.get_results(), tester.get_results_str()))
+
+        # Run this in a separate process, so that we can change its working
+        # directory, without changing the working directory for the rest of
+        # the program
+        process = Process(
+            target=worker,
+            args=(results_queue,))
+
+        process.start()
+        process.join()
+
+        if results_queue.empty():
+            raise errors.AFTDeviceError("No results from test run")
+
+        results = results_queue.get()
+        result = reduce(lambda x, y: x and y, results[0])
+
+        result_str = "Image test result: "
+
+
+        if result:
+            result_str += "Ok"
+        else:
+            result_str += " Failure(s): \n\n" + results[1]
+
+        return (result, result_str)
+
+    except Exception, error:
+        return (False, "Image Test result: " + str(error))
+
+

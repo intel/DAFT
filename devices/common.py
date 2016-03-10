@@ -24,8 +24,8 @@ import os
 import subprocess32
 import time
 import sys
-import aft.config as config
 
+import aft.config as config
 import aft.tools.ssh as ssh
 
 

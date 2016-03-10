@@ -21,6 +21,7 @@ SERIAL_LOG_NAME = "serial.log"
 AFT_LOG_NAME = "aft.log"
 NFS_FOLDER = "/home/tester/"
 DEVICE_BLACKLIST="/etc/aft/blacklist"
+KNOWN_GOOD_IMAGE_FOLDER = "/home/tester/good_test_images"
 
 import sys
 import ConfigParser

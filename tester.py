@@ -53,7 +53,7 @@ class Tester(object):
             self.test_cases.append(test_case)
 
         logging.info("Built test plan with " + str(len(self.test_cases)) + " test cases.")
-        
+
 
     def execute(self):
         """
@@ -110,3 +110,12 @@ class Tester(object):
         with open(results_filename, "w") as results_file:
             results_file.write(xunit_results)
         logging.info("Results saved to " + str(results_filename) + ".")
+
+    def get_results(self):
+        return self._results
+
+    def get_results_str(self):
+        arr = []
+        for test_case in self.test_cases:
+            arr.append(test_case.xunit_section)
+        return "".join(arr)

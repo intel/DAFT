@@ -33,11 +33,13 @@ class QATestCase(BasicTestCase):
                                             "--test-manifest iottest/testplan/iottest.manifest",
                           "MinnowboardMAX".lower(): " --machine intel-corei7-64 " +
                                                     "--test-manifest " +
-                                                    "iottest/testplan/minnowmax.iottest.manifest",
-                          # Borrows minnowmax test plan, as that one has WIFI tests disabled
+                                                    "iottest/testplan/beaglebone.iottest.manifest",
                           "BeagleBoneBlack".lower(): " --machine beaglebone " +
                                                      "--test-manifest " +
-                                                     "iottest/testplan/minnowmax.iottest.manifest"
+                                                     "iottest/testplan/minnowmax.iottest.manifest",
+                          "MinnowboardTurbot".lower(): " --machine intel-corei7-64 " +
+                                                       "--test manifest " +
+                                                       "iottest/testplan/minnowmax.iottest.manifest"
 
                           }
 
