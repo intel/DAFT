@@ -28,7 +28,8 @@ Currently has several assumptions on devices and file locations:
 
 -Every device must have an operating system present that:
     * For PC-like devices, negotiates IP through DHCP
-    * Responds to ping
+    * Has SSH server running
+    * Has the testing harness ssh key added to authorized keys
     * After booting, the operating system is in a state where any keystrokes
       sent over serial port (for devices that have serial port attached) can be
       immediately read back over serial port
@@ -46,6 +47,7 @@ import StringIO
 from ConfigParser import SafeConfigParser
 
 import aft.devices.common as common
+import aft.tools.ssh as ssh
 
 from aft.cutters.clewarecutter import ClewareCutter
 from aft.cutters.usbrelay import Usbrelay
@@ -106,33 +108,11 @@ class TopologyBuilder(object):
             print "Aquiring cutters"
 
         cutters = self._get_cutters()
-
-        if self._verbose:
-            print "Acquired cutters:"
-
-            for c in cutters:
-                pprint.pprint(c.get_cutter_config())
-
-            print ""
-
-        if self._verbose:
-            print "Disconnecting all cutters"
-
-        for cutter in cutters:
-            cutter.disconnect()
-
-        sleep(5)
-        # stops old edison messages from interfering with ip aquiring later on
-        self._clear_dmesg()
-
-        if self._verbose:
-            print "Connecting all cutters"
-
-        for cutter in cutters:
-            cutter.connect()
+        self._power_cycle_cutters(cutters)
 
 
         device_files = os.listdir("/dev/")
+
 
         wait_duration = 80
         pem_results = self._find_active_pem_ports_from(
@@ -145,15 +125,7 @@ class TopologyBuilder(object):
 
         sleep(120)
 
-        if self._verbose:
-            print "Acquiring device networking configurations"
         self._network_configs = self._get_network_configs()
-
-        if self._verbose:
-            print ""
-            print "Acquired device network configurations:"
-            pprint.pprint(self._network_configs)
-            print ""
 
         self._pem_ports = pem_results.get()
 
@@ -234,12 +206,39 @@ class TopologyBuilder(object):
                 cutter = ClewareCutter(param)
                 cutters.append(cutter)
 
-
         for port in self._config["edison"]["power_cutters"]:
             config = {"cutter": port}
             cutters.append(Usbrelay(config))
 
+        if self._verbose:
+            print "Acquired cutters:"
+
+            for c in cutters:
+                pprint.pprint(c.get_cutter_config())
+            print ""
+
+
+
+
         return cutters
+
+
+    def _power_cycle_cutters(self, cutters):
+        if self._verbose:
+            print "Disconnecting all cutters"
+
+        for cutter in cutters:
+            cutter.disconnect()
+
+        sleep(5)
+        # stops old edison messages from interfering with ip aquiring later on
+        self._clear_dmesg()
+
+        if self._verbose:
+            print "Connecting all cutters"
+
+        for cutter in cutters:
+            cutter.connect()
 
     def _clear_dmesg(self):
         """
@@ -274,6 +273,9 @@ class TopologyBuilder(object):
             }
 
         """
+        if self._verbose:
+            print "Acquiring device networking configurations"
+
         ip = []
         edison_ip = [
             {
@@ -288,6 +290,13 @@ class TopologyBuilder(object):
         ip.extend([
             {"type": "PC", "mac": pair[0], "ip": pair[1]}
             for pair in self._get_pc_like_configs()])
+
+        if self._verbose:
+            print ""
+            print "Acquired device network configurations:"
+            pprint.pprint(ip)
+            print ""
+
 
         return ip
 
@@ -349,11 +358,12 @@ class TopologyBuilder(object):
 
             # we do something slightly different here when compared to the
             # PC-like devices: we return the ip address to the usb network
-            # interface on the host. When we ping this address, we ping the
-            # testing harness itself, not the edison. However, this interface
-            #  disappears when the edison powers down, so we can still associate
-            #  edison configuration data. This also  sidesteps the issue where
-            # sometimes pinging edison itself fails
+            # interface on the host. We then ping this address instead when
+            # detecting if network is still up. This interface disappears when
+            # the edison powers down, so we can associate edison configuration
+            # data. This also means that edison does not actually need a valid
+            # operating system present
+
             queue.put((usb_port, dev.get_host_ip(), args["network_subnet"]))
 
         # Makes assumptions regarding dmesg message format. Might be fragile
@@ -715,7 +725,10 @@ class TopologyBuilder(object):
             print ""
 
         for net_config in self._network_configs:
-            response = self._ping_address(net_config["ip"])
+            response = self._check_connectivity(
+                net_config["ip"],
+                net_config["type"])
+
             if response == 0:
                 if self._verbose:
                     print net_config["ip"] + " still responds"
@@ -731,17 +744,42 @@ class TopologyBuilder(object):
                 self._network_configs.remove(net_config)
                 return
 
-    def _ping_address(self, ip):
+    def _check_connectivity(self, ip, device_type):
         """
-        Pings given ip 10 times, and returns the status code
-        Args:
-            ip (string): Target ip that will be pinged.
+        Check ssh connectivity to ip address. Edison is an exception, we
+        ping it instead.
 
+        Connectivity check on non-Edison devices rely on the device operating
+        systems, and currently we cannot safely assume that the firewall does
+        not filter ping requests. SSH on the other hand should be working.
+
+        Edison uses the host computer usb interface, to check connectivity,and
+        the host system probably does not have its own public key in the
+        authorized_keys list, so SSHing into the edison ip is bound
+        to fail. On the other hand, we can configure the host to respond to
+        pings, so we use pinging here instead.
+
+        Args:
+            ip (string): Target ip
+            type (string): Device type
         Returns:
             Operation status code: 0 = success, 1 = failure
         """
-        logging.info("Pinging ip address " + str(ip))
-        return os.system("ping -c 10 " + ip + " > /dev/null")
+
+        if device_type == "edison":
+            if self._verbose:
+                print "Pinging " + ip
+
+            logging.info("Pinging ip address " + ip)
+            return os.system("ping -c 10 " + ip + " > /dev/null")
+        else:
+            if self._verbose:
+                print "Testing ssh connection for " + ip
+            logging.info("Testing ssh connection for " + ip)
+            if ssh.test_ssh_connectivity(ip):
+                return 0
+            else:
+                return 1
 
     def _set_pc_device_ip_and_type(self, device, net_config):
         """
