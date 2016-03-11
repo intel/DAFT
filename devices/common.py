@@ -23,6 +23,8 @@ import logging
 import os
 import subprocess32
 import time
+import sys
+import aft.config as config
 
 import aft.tools.ssh as ssh
 
@@ -198,7 +200,21 @@ def verify_device_mode(ip, mode):
 
 
 
+def blacklist_device(dev_id, name, reason):
+    """
+    Blacklist the device with given id
 
+    Args:
+        dev_id (str): The device id
+        name (str): The human readable device name
+        reason (str): Reason for blacklisting
+
+    Returns:
+        None
+    """
+
+    with open(config.DEVICE_BLACKLIST, "a") as blacklist_file:
+        blacklist_file.write(dev_id + " " + name + " " + reason + "\n")
 
 
 

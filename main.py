@@ -26,7 +26,6 @@ from aft.tools.topology_builder import TopologyBuilder
 from aft.devicesmanager import DevicesManager
 from aft.tester import Tester
 
-
 def main(argv=None):
     """
     Entry point for library-like use.
@@ -45,6 +44,15 @@ def main(argv=None):
 
 
     args = parse_args()
+
+    if args.blacklist:
+        if not args.device:
+            print "Device must be specified for blacklisting"
+            return 1
+
+        manager = DevicesManager(args)
+        manager.blacklist_device(args.device, args.reason)
+        return 0
 
     if args.configure:
         builder = TopologyBuilder(args)
@@ -185,6 +193,18 @@ def parse_args():
         "--verbose",
         action="store_true",
         help="Prints additional information on various operations")
+
+    parser.add_argument(
+        "--blacklist",
+        action="store_true",
+        help=("Blacklist a device. The device must be specified with --device. "
+            "--reason can be used to provide a reason"))
+
+    parser.add_argument(
+        "--reason",
+        action="store",
+        help="Reason for given operation",
+        default="No reason given")
 
     return parser.parse_args()
 

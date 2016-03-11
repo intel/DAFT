@@ -20,6 +20,7 @@ LOCK_FILE = "/var/lock/"
 SERIAL_LOG_NAME = "serial.log"
 AFT_LOG_NAME = "aft.log"
 NFS_FOLDER = "/home/tester/"
+DEVICE_BLACKLIST="/etc/aft/blacklist"
 
 import sys
 import ConfigParser

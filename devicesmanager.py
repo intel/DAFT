@@ -27,6 +27,7 @@ import errno
 import aft.errors as errors
 import aft.config as config
 import aft.devicefactory as devicefactory
+import aft.devices.common as common
 
 class DevicesManager(object):
     """Class handling devices connected to the same host PC"""
@@ -50,6 +51,7 @@ class DevicesManager(object):
         self._args = args
         self._lockfiles = []
         self.device_configs = self._construct_configs()
+        self._device_blacklist = self._construct_blacklist()
 
 
 
@@ -58,7 +60,7 @@ class DevicesManager(object):
         Find and merge the device configurations into single data structure.
 
         Returns:
-            Array of dictionaries, where dictionaries have the following format:
+            List of dictionaries, where dictionaries have the following format:
             {
                 "name": "device_name",
                 "model": "device_model",
@@ -120,6 +122,38 @@ class DevicesManager(object):
 
         return configs
 
+    def _construct_blacklist(self):
+        """
+        Construct device blacklisting
+
+        Args:
+            None
+
+        Returns:
+            List of dictionaries, where dictionaries have the following format:
+            {
+                "id": "device_id",
+                "name": "device_name",
+                "reason": "reason for blacklisting"
+            }
+        """
+        blacklist = []
+        with open(config.DEVICE_BLACKLIST, "r") as blacklist_file:
+            for line in blacklist_file:
+                values = line.split()
+
+                reason = ""
+                for i in range(2, len(values)):
+                    reason += values[i] + " "
+                blacklist.append(
+                    {
+                        "id": values[0],
+                        "name": values[1],
+                        "reason": reason.strip()
+                    })
+
+        return blacklist
+
     def reserve(self, timeout = 3600):
         """
         Reserve and lock a device and return it
@@ -157,6 +191,9 @@ class DevicesManager(object):
 
     def _do_reserve(self, devices, name, timeout):
 
+        devices = self.remove_blacklisted_devices(devices)
+
+
         if len(devices) == 0:
             raise errors.AFTConfigurationError(
                 "No device configurations when reserving " + name +
@@ -189,8 +226,38 @@ class DevicesManager(object):
                         sys.exit(-1)
             logging.info("All devices busy ... waiting 10 seconds and trying again.")
             time.sleep(10)
-        raise errors.AFTTimeoutError("Could not reserve " + self._machine_type +
+        raise errors.AFTTimeoutError("Could not reserve " + name +
                                      " in " + str(timeout) + " seconds.")
+
+
+    def remove_blacklisted_devices(self, devices):
+        """
+        Remove blacklisted devices from the device list
+
+        Args:
+            List of devices
+
+        Returns:
+            Filtered list of devices
+        """
+
+        filtered_devices = []
+
+        for device in devices:
+            for blacklisted_device in self._device_blacklist:
+                if blacklisted_device["id"] == device.dev_id:
+                    msg = ("Removed blacklisted device " +
+                            blacklisted_device["name"] + " from device pool " +
+                            "(Reason: " + blacklisted_device["reason"] + ")")
+
+                    logging.info(msg)
+                    print msg
+                    break
+            else: # else clause for the for loop
+                filtered_devices.append(device)
+
+        return filtered_devices
+
 
     def release(self, reserved_device):
         """
@@ -216,3 +283,20 @@ class DevicesManager(object):
 
     def get_configs(self):
         return self.device_configs
+
+    def blacklist_device(self, device, reason):
+        """
+        Blacklist a device, preventing any further testing
+
+        Args:
+            Device (str): Name of the device
+            reason (str): Reason for blacklisting
+        """
+        dev_id = None
+
+        for config in self.device_configs:
+            if config["name"].lower() == device.lower():
+                dev_id = config["settings"]["id"]
+                break
+
+        common.blacklist_device(dev_id, device, reason)

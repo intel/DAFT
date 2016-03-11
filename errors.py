@@ -44,3 +44,9 @@ class AFTNotImplementedError(Exception):
     Feature not implemented
     """
     pass
+
+class AFTPotentiallyBrokenBootloader(Exception):
+    """
+    Device might have a broken bootloader
+    """
+    pass

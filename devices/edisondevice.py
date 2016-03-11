@@ -166,8 +166,9 @@ class EdisonDevice(Device):
 
         """
 
-        file_no_extension = os.path.splitext(file_name)[0]
-        self._mount_local(file_no_extension)
+        file_name_no_extension = os.path.splitext(file_name)[0]
+
+        self._mount_local(file_name_no_extension)
         self._add_usb_networking()
         self._add_ssh_key()
         self._unmount_local()
@@ -178,16 +179,16 @@ class EdisonDevice(Device):
         # self._flashing_attempts = 0 # dfu-util may occasionally fail. Extra
         # attempts could be used?
         logging.info("Executing flashing sequence.")
-        return self._flash_image()
+        return self._flash_image(file_name_no_extension)
 
-    def _mount_local(self, file_name):
+    def _mount_local(self, file_name_no_extension):
         """
         Mount a image-file to a class-defined folder.
 
         Aborts if the mount command fails.
 
         Args:
-            file_name (str):
+            file_name_no_extension (str):
                 The file name of the image that will be flashed on the device
 
         Returns:
@@ -198,7 +199,10 @@ class EdisonDevice(Device):
             "service injection.")
         try:
             common.make_directory(self._LOCAL_MOUNT_DIR)
-            root_file_system_file = file_name + "." + self._root_extension
+
+            root_file_system_file = file_name_no_extension + "." + \
+                self._root_extension
+
             subprocess32.check_call(
                 ["mount", root_file_system_file, self._LOCAL_MOUNT_DIR])
         except subprocess32.CalledProcessError as err:
@@ -365,11 +369,14 @@ class EdisonDevice(Device):
                              str(err.errno) + ". Is the xFSTK tool installed?")
             sys.exit(1)
 
-    def _flash_image(self):
+    def _flash_image(self, file_name_no_extension):
         """
-        Execute the sequence of DFU-calls to flash the image.
+        Flash the new bootloader and image
 
-        This is based on flashall.sh script
+        Args:
+            file_name_no_extension (str):
+                Image name without the extension (eg. edison-image.ext4 ->
+                    edison-image)
 
         Returns:
             True
@@ -378,6 +385,51 @@ class EdisonDevice(Device):
             errors.aft.AFTDeviceError if flashing fails
         """
         self._power_cycle()
+
+        try:
+            self._flash_partitions(file_name_no_extension)
+        except errors.AFTPotentiallyBrokenBootloader, err:
+            # if the bootloader is broken, the device is bricked until it is
+            # recovered through recovery flashing. As only one device can be
+            # powered on during recovery flashing, we just blacklist the device
+            # and recover it later
+
+            logging.critical(
+                "Bootloader seems to have been broken - blacklisting the " +
+                "device")
+
+            common.blacklist_device(
+                self._configuration["id"],
+                self._configuration["name"],
+                "Bootloader seems to be broken - recovery flashing " +
+                "required")
+
+            raise errors.AFTDeviceError(
+                "Bootloader seems to have been broken - blacklisting the " +
+                "device")
+
+        return True
+
+    def _flash_partitions(self, file_name_no_extension):
+        """
+        Execute the sequence of DFU-calls to flash the image.
+
+        This is based on flashall.sh script
+
+        Args:
+            file_name_no_extension (str):
+                Image name without the extension (eg. edison-image.ext4 ->
+                    edison-image)
+
+        Returns:
+            True
+
+        Raises:
+            errors.aft.AFTDeviceError if flashing fails
+        """
+
+        file_name_no_extension += "."
+
         logging.info("Flashing IFWI.")
         for i in range(0, 7):
             stri = str(i)
@@ -391,22 +443,23 @@ class EdisonDevice(Device):
         self._dfu_call("u-boot-env0", "u-boot-envs/edison-blankcdc.bin")
         self._dfu_call(
             "u-boot-env1", "u-boot-envs/edison-blankcdc.bin", ["-R"])
-        self._wait_for_device()
 
-        edison_image_prefix = self._configuration["edison_image"] + "."
+        try:
+            self._wait_for_device()
+        except errors.AFTDeviceError, err:
+            raise errors.AFTPotentiallyBrokenBootloader(
+                "Potentially broken bootloader")
+
         logging.info("Flashing boot partition.")
-        self._dfu_call("boot", edison_image_prefix +
+        self._dfu_call("boot", file_name_no_extension +
                        self._configuration["boot_extension"])
         logging.info("Flashing update partition.")
-        self._dfu_call("update", edison_image_prefix +
+        self._dfu_call("update", file_name_no_extension +
                        self._configuration["recovery_extension"])
         logging.info("Flashing root partition.")
-        self._dfu_call("rootfs", edison_image_prefix +
+        self._dfu_call("rootfs", file_name_no_extension +
                        self._configuration["root_extension"], ["-R"])
         logging.info("Flashing complete.")
-        return True
-
-
 
 
 
