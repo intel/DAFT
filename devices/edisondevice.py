@@ -173,9 +173,6 @@ class EdisonDevice(Device):
         self._add_ssh_key()
         self._unmount_local()
 
-        # self._recovery_flash() # Disabled for now. Concurrency issue. Should
-        # lock the xfstk util.
-
         # self._flashing_attempts = 0 # dfu-util may occasionally fail. Extra
         # attempts could be used?
         logging.info("Executing flashing sequence.")
@@ -333,11 +330,14 @@ class EdisonDevice(Device):
         except subprocess32.CalledProcessError as err:
             common.log_subprocess32_error_and_abort(err)
 
-    def _recovery_flash(self):
+    def recovery_flash(self):
         """
         Execute the flashing of device-side DFU-tools
 
         Aborts if the flashing fails
+
+        Note that only one Edison should be powered on when doing the recovery
+        flashing
 
         Returns:
             None
@@ -347,12 +347,22 @@ class EdisonDevice(Device):
             # This can cause race condition if multiple devices are booted at
             # the same time!
             attempts = 0
+
+
             xfstk_parameters = ["xfstk-dldr-solo",
                                 "--gpflags", "0x80000007",
-                                "--osimage", "u-boot-edison.img",
-                                "--fwdnx", "edison_dnx_fwr.bin",
-                                "--fwimage", "edison_ifwi-dbg-00.bin",
-                                "--osdnx", "edison_dnx_osr.bin"]
+                                "--osimage", os.path.join(
+                                    self._MODULE_DATA_PATH,
+                                    "u-boot-edison.img"),
+                                "--fwdnx", os.path.join(
+                                    self._MODULE_DATA_PATH,
+                                    "edison_dnx_fwr.bin"),
+                                "--fwimage", os.path.join(
+                                    self._MODULE_DATA_PATH,
+                                    "edison_ifwi-dbg-00.bin"),
+                                "--osdnx", os.path.join(
+                                    self._MODULE_DATA_PATH,
+                                    "edison_dnx_osr.bin")]
             self._power_cycle()
             while subprocess32.call(xfstk_parameters) and attempts < 10:
                 logging.info(
@@ -404,11 +414,14 @@ class EdisonDevice(Device):
                 "Bootloader seems to be broken - recovery flashing " +
                 "required")
 
+            self._recover_edison()
+
             raise errors.AFTDeviceError(
                 "Bootloader seems to have been broken - blacklisting the " +
                 "device")
 
         return True
+
 
     def _flash_partitions(self, file_name_no_extension):
         """
@@ -595,6 +608,31 @@ class EdisonDevice(Device):
             " seconds."
         logging.critical(err_str)
         raise errors.AFTDeviceError(err_str)
+
+
+    def _recover_edison(self):
+        """
+        Fork and launch a process that recovers the bricked Edison.
+
+        Reason for forking is that we do not want this flashing process to hang
+        around until recovery has been finished, as this blocks CI (the current
+        task will not finish in CI until this process exits). The recovery can
+        take significant amount of time, as it has to wait until *all* Edisons
+        are idle. If the testing load is high, one or more Edisons could be
+        constantly running tests, which blocks the recovery effort.
+
+        The reason for having to wait for all Edisons is that the recovery
+        program does not work correctly, if more than one Edison is powered on
+        at the same time. In order to recover an Edison, we must then acquire
+        and shut down all the Edisons, and only then proceed with the flashing.
+
+        """
+
+        pid = os.fork()
+        if pid == 0: # new process
+            os.system("nohup aft --recover_edisons &")
+            exit()
+
 
     def _run_tests(self, test_case):
         """

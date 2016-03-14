@@ -186,12 +186,12 @@ class DevicesManager(object):
                 break
 
 
-        return self._do_reserve(devices, self._args.device, timeout)
+        return self._do_reserve(devices, machine_name, timeout)
 
 
     def _do_reserve(self, devices, name, timeout):
 
-        devices = self.remove_blacklisted_devices(devices)
+        devices = self._remove_blacklisted_devices(devices)
 
 
         if len(devices) == 0:
@@ -230,7 +230,7 @@ class DevicesManager(object):
                                      " in " + str(timeout) + " seconds.")
 
 
-    def remove_blacklisted_devices(self, devices):
+    def _remove_blacklisted_devices(self, devices):
         """
         Remove blacklisted devices from the device list
 

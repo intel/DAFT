@@ -23,8 +23,10 @@ import argparse
 import aft.config as config
 import aft.tools.device_configuration_checker as device_config
 from aft.tools.topology_builder import TopologyBuilder
+from aft.tools.edison_recovery_flasher import recover_edisons
 from aft.devicesmanager import DevicesManager
 from aft.tester import Tester
+
 
 def main(argv=None):
     """
@@ -44,15 +46,6 @@ def main(argv=None):
 
 
     args = parse_args()
-
-    if args.blacklist:
-        if not args.device:
-            print "Device must be specified for blacklisting"
-            return 1
-
-        manager = DevicesManager(args)
-        manager.blacklist_device(args.device, args.reason)
-        return 0
 
     if args.configure:
         builder = TopologyBuilder(args)
@@ -78,11 +71,27 @@ def main(argv=None):
         else:
             return 1
 
+
+    device_manager = DevicesManager(args)
+
+    if args.blacklist:
+        if not args.device:
+            print "Device must be specified for blacklisting"
+            return 1
+
+        device_manager.blacklist_device(args.device, args.reason)
+        return 0
+
+    if args.recover_edisons:
+        recover_edisons(device_manager, args.verbose)
+        return 0
+
+
     if not args.machine or not args.file_name:
         print "Both machine and image must be specified"
         return 1
 
-    device_manager = DevicesManager(args)
+
     device = device_manager.reserve()
     tester = Tester(device)
 
@@ -205,6 +214,11 @@ def parse_args():
         action="store",
         help="Reason for given operation",
         default="No reason given")
+
+    parser.add_argument(
+        "--recover_edisons",
+        action="store_true",
+        help="Lock all Edisons and recover blacklisted ones")
 
     return parser.parse_args()
 
