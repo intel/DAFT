@@ -155,7 +155,7 @@ class Device(object):
         if ip:
             raise errors.AFTConfigurationError("Failed to power off device")
 
-        logging.info("Not ip could be acquired - device seems to be powered off")
+        logging.info("No ip could be acquired - device seems to be powered off")
 
 
     def detach(self):
