@@ -92,14 +92,22 @@ class DevicesManager(object):
 
         for device_title in topology_config.sections():
 
-            settings = dict(topology_config.items(device_title))
-            model = settings["model"]
+            device_entry = dict(topology_config.items(device_title))
 
+            model = device_entry["model"]
             catalog_entry = dict(catalog_config.items(model))
-            platform_entry = dict(platform_config.items(catalog_entry["platform"]))
 
-            settings.update(catalog_entry)
+            platform = catalog_entry["platform"]
+            platform_entry = dict(platform_config.items(platform))
+
+            settings = {}
+
+            # note the order: more specific file overrides changes from
+            # more generic. This should be maintained
             settings.update(platform_entry)
+            settings.update(catalog_entry)
+            settings.update(device_entry)
+
             settings["name"] = device_title.lower()
             settings["serial_log_name"] = config.SERIAL_LOG_NAME
 
