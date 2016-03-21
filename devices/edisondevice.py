@@ -785,7 +785,9 @@ class EdisonDevice(Device):
         """
         attempts = 3
         exception = None
-        for _ in range(attempts):
+        for i in range(attempts):
+            logging.info("Attempt " + str(i + 1) + " of " + str(attempts) +
+                " to power on the device " + self._configuration["name"])
             try:
                 self._power_cycle()
                 self._wait_for_device()
@@ -814,7 +816,9 @@ class EdisonDevice(Device):
 
         attempts = 3
 
-        for _ in range(attempts):
+        for i in range(attempts):
+            logging.info("Attempt " + str(i + 1) + " of " + str(attempts) +
+                " to open interface for " + self._configuration["name"])
             self._power_cycle()
             try:
                 self.open_interface()
