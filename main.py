@@ -117,25 +117,25 @@ def parse_args():
 
     parser.add_argument(
         "--catalog",
-        action = "store",
-        help = "Configuration file describing the supported device types",
-        default = "/etc/aft/devices/catalog.cfg")
+        action="store",
+        help="Configuration file describing the supported device types",
+        default="/etc/aft/devices/catalog.cfg")
 
     parser.add_argument(
         "--topology",
-        action = "store",
-        help = "Configuration file describing the (physically) attached devices",
-        default = "/etc/aft/devices/topology.cfg")
+        action="store",
+        help="Configuration file describing the (physically) attached devices",
+        default="/etc/aft/devices/topology.cfg")
 
     parser.add_argument(
         "machine",
-        action = "store",
-        nargs = "?",
-        help = "Model type")
+        action="store",
+        nargs="?",
+        help="Model type")
 
     parser.add_argument(
         "file_name",
-        action = "store",
+        action="store",
         nargs="?",
         help = "Image to write: a local file, compatible with the selected " +
         "machine."
@@ -143,41 +143,41 @@ def parse_args():
 
     parser.add_argument(
         "--device",
-        type = str,
-        nargs = "?",
-        action = "store",
-        default = "",
-        help = "Specify the individual physical device by name.")
+        type=str,
+        nargs="?",
+        action="store",
+        default="",
+        help="Specify the individual physical device by name.")
 
     parser.add_argument(
         "--record",
-        action = "store_true",
-        default = False,
-        help = "Record the serial output during testing to a file " +
+        action="store_true",
+        default=False,
+        help="Record the serial output during testing to a file " +
             "from the serial_port and serial_bauds defined in configuration.")
 
     parser.add_argument(
         "--noflash",
-        action = "store_true",
-        default = False,
-        help = "Skip device flashing")
+        action="store_true",
+        default=False,
+        help="Skip device flashing")
 
     parser.add_argument(
         "--notest",
-        action = "store_true",
-        default = False,
-        help = "Skip test case execution (still creates a test plan)")
+        action="store_true",
+        default=False,
+        help="Skip test case execution (still creates a test plan)")
 
     parser.add_argument(
         "--nopoweroff",
-        action = "store_true",
-        default = False,
-        help = "Do not power off the DUT after testing")
+        action="store_true",
+        default=False,
+        help="Do not power off the DUT after testing")
 
     parser.add_argument(
         "--check",
         action="store_true",
-        help = "Check that device is configured correctly")
+        help="Check that device is configured correctly")
 
     parser.add_argument(
         "--checkall",
@@ -185,7 +185,7 @@ def parse_args():
         nargs="?",
         const="fast",
         action="store",
-        choices = ["fast", "accurate"],
+        choices=["fast", "accurate"],
         help="Check configurations for all devices. Defaults to fast")
 
     parser.add_argument(
@@ -194,7 +194,7 @@ def parse_args():
         nargs="?",
         const="dryrun",
         action="store",
-        choices = ["dryrun", "save"],
+        choices=["dryrun", "save"],
         help=("Find and configure devices. Dryrun merely prints the configs, "
             "save actually saves them. Defaults to dryrun"))
 
