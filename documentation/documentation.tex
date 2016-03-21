@@ -199,7 +199,7 @@ Enable the server
 Set Boot Image Directory as /home/tester/
 \end{lstlisting}
 
-\note The above assumes that the tests are run under tester-user, and that the default AFT \ref{aft} settings for Beaglebone are used. Adjust the Boot Image Directory if needed.
+\note The above assumes that the tests are run under tester-user, and that the default AFT \ref{aft} settings for Beaglebone are used. Adjust the Boot Image Directory if needed. The path should be the same than the nfs folder on the testing harness.
 
 \subsection*{Udev (optional)}
 It is recommended to set udev-rules to create symbolic links from a human-readable file name to ttyUSB-devices used for PEM (section \ref{pem}), serial output recording (appendix \ref{app:aft}) and to the USB-relay powercutters used for Edisons. The USB-to-serial adapters are often unreliable and tend to occasionally reset, which causes a re-initialization by Linux kernel. This also triggers a (re-)creation of the ttyUSB-device created by udev.
@@ -1242,6 +1242,8 @@ This is also the place where settings for automatic construction of the device t
 \subsubsection*{devices/catalog.cfg}
 The \cmd{catalog.cfg} is the configuration file describing each device type. These are the options shared by all devices of the same type.
 
+Specifying an option here that is also specified in \cmd{platform.cfg} overrides the option. In general, this is discouraged, as if there is need to override settings, it usually means the setting does not belong in \cmd{platform.cfg}. It can be useful for debugging though.
+
 Each section in \cmd{catalog.cfg} must include at least the \cmd{platform}, \cmd{cutter\_type} and \cmd{test\_plan} options.
 
 The \cmd{platform} option is used to load the correct high-level device configuration from the \cmd{platform.cfg} file. 
@@ -1267,6 +1269,34 @@ For \emph{PC-devices}, the additional options are as follows:
 \item \cmd{test\_mode\_keystrokes}: Same as above but for testing mode.
 \end{itemize}
 
+For \emph{Beaglebone Black}, the additional options are as follows:
+\begin{itemize}
+\item \cmd{service\_mode}: Identical to PC-device option.
+
+\item \cmd{test\_mode}: Identical to PC-device option.
+
+\item \cmd{boot\_partition}: The block device and partition for the boot files. Example: \cmd{/dev/mmcblk0p1}
+
+\item \cmd{root\_partition}: The block device and partition for the root fs. Example: \cmd{/dev/mmcblk0p2}
+
+\item \cmd{support\_fs}: Specifies the path from nfs root to the support fs folder. If nfs root is \cmd{/home/tester/}, then this could be for example \cmd{support\_fs/beaglebone}, assuming the full path on the host system is \cmd{/home/tester/support\_fs/beaglebone}. Note that the lack of initial / is intentional.
+
+\item \cmd{support\_kernel\_path}: Path to kernel image on the support fs, starting from the support fs root. Example path: \cmd{boot/vmlinuz-4.1.12-ti-r29}. Note that the lack of initial / is intentional.
+
+\item \cmd{support\_dtb\_path}: Path to the device tree binary on the support fs, starting from the support fs root. Example path: \cmd{boot/dtbs/4.1.12-ti-r29/am335x-boneblack.dtb}. Note that the lack of initial / is intentional.
+
+\item \cmd{mlo\_file}: The name of the MLO file (second stage bootloader) that will be flashed to the boot partition.
+
+\item \cmd{u-boot\_file}: The name of the u-boot image file (third stage bootloader) that will be flashed to the boot partition.
+
+\item \cmd{root\_tarball}: The name of the tarball that contains the root filesystem that will be flashed  to the root partition.
+
+\item \cmd{dtb\_file}: The name of the device tree binary file that will be flashed to the root partition.
+
+\item \cmd{serial\_bauds}: See description below. This is a mandatory field for Beaglebones, as serial connection is used to pass some commands during initial service mode boot.
+
+\end{itemize}
+
 For \emph{Edison} devices there are no extra device specific options.
 
 For \emph{serial recording}, the add option:
@@ -1278,11 +1308,13 @@ For \emph{serial recording}, the add option:
 
 The \cmd{topology.cfg} file contains individual physical device specific information. The options you have to specify here depend on the device type and the power cutter used with it.
 
+Specifying an option here that is also specified in \cmd{platform.cfg} or \cmd{catalog.cfg} overrides the option. In general, this is discouraged, as if there is need to override settings, it usually means the setting does not belong in these configuration files (it is device specific). It can be useful for debugging though.
+
 The mandatory options for all devices are the \cmd{model} and \cmd{id}. The information required to construct a cutter instance specific to the device is also almost certainly required.
 
 The \cmd{model} is the device model. This is used to determine which device type from \cmd{catalog.cfg} is associated with the physical device.
 
-The \cmd{id} is a unique identifier which is used as the name of the lock file associated with the device, when the device is in use. For PC-devices this should be the MAC-address. For Edisons this can be anything that is unique.
+The \cmd{id} is a unique identifier which is used as the name of the lock file associated with the device, when the device is in use. For PC-devices and Beaglebone Blacks this should be the MAC-address. For Edisons this can be anything that is unique.
 
 The options related to \emph{Clewarecutters} are as follows:
 \begin{itemize}
@@ -1297,6 +1329,8 @@ For \emph{PC-devices} the mandatory options are as follows:
 \item \cmd{pem\_interface}: the interface used with PEM. The only option at the time of writing is serialconnection.
 \item \cmd{pem\_port}: The ttyUSB device for the USB-to-serial adapter connected to the PEM-Arduino.
 \end{itemize}
+
+For \emph{Beaglebone Blacks}, \cmd{serial\_port} is mandatory (see below for more details) as the commands required for booting service mode are passed through serial connection
 
 For \emph{Edisons} the mandatory options are as follows:
 \begin{itemize}
