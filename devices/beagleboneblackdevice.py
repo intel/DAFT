@@ -324,7 +324,7 @@ class BeagleBoneBlackDevice(Device):
 
             # enter uboot console
             for _ in range(counter):
-                serial_write(stream, "", 0.1)
+                serial_write(stream, " ", 0.1)
 
             # if autoload is on, dhcp command attempts to download kernel
             # as well. We do this later manually over tftp
