@@ -58,7 +58,7 @@ class QATestCase(BasicTestCase):
         """
         Test if there are FAILED test cases in the QA-test case output
         """
-        logging.debug(self.output)
+        logging.info(self.output)
 #        qa_log_file = open("results-runtest.py.log", "r")
 #        qa_log = qa_log_file.read()
 #        qa_log_file.close()

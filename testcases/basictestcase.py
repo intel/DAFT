@@ -50,7 +50,7 @@ class BasicTestCase(TestCase):
         Executes a command remotely, on the device.
         """
         self.output = device.execute(self["parameters"].split(), timeout=120)
-        logging.debug("Command: " + str(self.parameters) + "\nresult: " + str(self.output) + ".")
+        logging.info("Command: " + str(self.parameters) + "\nresult: " + str(self.output) + ".")
         return self._check_for_success()
 
     def _check_for_success(self):

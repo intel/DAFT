@@ -203,7 +203,7 @@ class EdisonDevice(Device):
             subprocess32.check_call(
                 ["mount", root_file_system_file, self._LOCAL_MOUNT_DIR])
         except subprocess32.CalledProcessError as err:
-            logging.debug("Failed to mount. Is AFT run as root?")
+            logging.info("Failed to mount. Is AFT run as root?")
             common.log_subprocess32_error_and_abort(err)
 
     def _add_usb_networking(self):

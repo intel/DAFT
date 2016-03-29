@@ -34,16 +34,13 @@ def main(argv=None):
     """
     config.parse()
 
-    logging.basicConfig(filename=config.AFT_LOG_NAME, level=logging.DEBUG,
+    logging.basicConfig(filename=config.AFT_LOG_NAME, level=logging.INFO,
                         format='%(asctime)s - %(name)s - '
                                '%(levelname)s - %(message)s')
 
     if argv != None:
         backup_argv = sys.argv
         sys.argv = argv
-
-
-
 
     args = parse_args()
 
