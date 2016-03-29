@@ -67,8 +67,10 @@ def main(argv=None):
         print results[1]
 
         if results[0] == True:
+            logging.info("All tests passed")
             return 0
         else:
+            logging.info("There were failures")
             return 1
 
 
