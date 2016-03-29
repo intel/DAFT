@@ -172,7 +172,7 @@ class PCDevice(Device):
 
     def _enter_mode(self, mode):
         """
-        Tries to put the device into the specified mode.
+        Try to put the device into the specified mode.
 
         Args:
             mode (Dictionary):
@@ -182,7 +182,8 @@ class PCDevice(Device):
             None
 
         Raises:
-            aft.error.AFTDeviceError if device fails to enter the mode
+            aft.errors.AFTDeviceError if device fails to enter the mode or if
+            PEM fails to connect
 
         """
         # Sometimes booting to a mode fails.
@@ -196,9 +197,8 @@ class PCDevice(Device):
 
             logging.info(
                 "Executing PEM with keyboard sequence " + mode["sequence"])
-            pem_main(["pem", "--interface", self.pem_interface,
-                      "--port", self.pem_port,
-                      "--playback", mode["sequence"]])
+
+            self._send_PEM_keystrokes(mode["sequence"])
 
             ip_address = self._wait_for_responsive_ip()
 
@@ -214,6 +214,59 @@ class PCDevice(Device):
 
         raise errors.AFTDeviceError(
             "Could not set the device in mode " + mode["name"])
+
+
+    def _send_PEM_keystrokes(self, keystrokes, attempts=1, timeout=60):
+        """
+        Try to send keystrokes within the time limit
+
+        Args:
+            keystrokes (str): PEM keystroke file
+            attempts (integer): How many attempts will be made
+            timeout (integer): Timeout for a single attempt
+
+        Returns:
+            None
+
+        Raises:
+            aft.errors.AFTDeviceError if PEM connection times out
+
+        """
+        def call_pem(exceptions):
+            try:
+                pem_main(
+                [
+                    "pem",
+                    "--interface", self.pem_interface,
+                    "--port", self.pem_port,
+                    "--playback", keystrokes
+                ])
+            except Exception, err:
+                exceptions.put(err)
+
+        for i in range(attempts):
+            logging.info(
+                "Attempt " + str(i + 1) + " of " + str(attempts) + " to send " +
+                "keystrokes through PEM")
+
+            exception_queue = Queue()
+            process = Process(target=call_pem, args=(exception_queue,))
+            # ensure python process is closed in case main process dies but
+            # the subprocess is still waiting for timeout
+            process.daemon = True
+
+            process.start()
+            process.join(timeout)
+
+            if not exception_queue.empty():
+                raise exception_queue.get()
+
+            if process.is_alive():
+                process.terminate()
+            else:
+                return
+
+        raise errors.AFTDeviceError("Failed to connect to PEM")
 
     def _wait_for_responsive_ip(self):
         """
@@ -281,8 +334,6 @@ class PCDevice(Device):
         Returns:
             None
         """
-
-
 
         logging.info("Mount one layer.")
         ssh.remote_execute(
@@ -459,7 +510,7 @@ class PCDevice(Device):
 
         Args:
             command (str): The command that will be executed
-            timeout (int): Timeout for the command
+            timeout (integer): Timeout for the command
             user (str): The user that executes the command
             verbose (boolean): Controls verbosity
 
@@ -484,6 +535,7 @@ class PCDevice(Device):
         ssh.push(self.get_ip(), source=source,
                  destination=destination, user=user)
 
+
     def check_poweron(self):
         """
         Check that PEM can be connected into. The device powers PEM, so this
@@ -501,40 +553,15 @@ class PCDevice(Device):
         attempts = 2
         attempt_timeout = 60
 
-        func = lambda: pem_main(
-            [
-                "pem",
-                "--interface",
-                self.pem_interface,
-                "--port", self.pem_port,
-                "--playback",
-                self._config_check_keystrokes
-            ])
-
-
-        for i in range(attempts):
-            logging.info(
-                "Attempt " + str(i + 1) + " of " + str(attempts) +
-                " to connect to PEM to verify the device is on")
-
-            process = Process(target=func)
-            # ensure python process is closed in case main process dies but
-            # the subprocess is still waiting for timeout
-            process.daemon = True
-
-            process.start()
-            process.join(attempt_timeout)
-
-            if process.is_alive():
-                process.terminate()
-            else:
-                return
-
-
-        raise errors.AFTConfigurationError(
-            "Could not connect to PEM - check power and pem settings and " +
-            "connections")
-
+        try:
+            self._send_PEM_keystrokes(
+                self._config_check_keystrokes,
+                attempts=attempts,
+                timeout=attempt_timeout)
+        except errors.AFTDeviceError:
+            raise errors.AFTConfigurationError(
+                "Could not connect to PEM - check power and pem settings and " +
+                "connections")
 
     def check_connection(self):
         """
@@ -587,11 +614,6 @@ class PCDevice(Device):
                 exception_queue.put(error)
 
         process = Process(target=invoker, args=(exception_queue,))
-
-        # ensure python process is closed in case main process dies but
-        # the subprocess is still waiting for timout
-        process.daemon = True
-
         process.start()
         process.join(1.5*self._RETRY_ATTEMPTS*self._BOOT_TIMEOUT)
 
@@ -622,32 +644,19 @@ class PCDevice(Device):
         # run Device class power of tests as well
         super(PCDevice, self).check_poweroff()
 
-        func = lambda: pem_main(
-            [
-                "pem",
-                "--interface",
-                self.pem_interface,
-                "--port",
-                self.pem_port,
-                "--playback",
-                self._config_check_keystrokes
-            ])
 
 
-        process = Process(target=func)
-        # ensure python process is closed in case main process dies but
-        # the subprocess is still waiting for timout
-        process.daemon = True
+        try:
+            self._send_PEM_keystrokes(
+                self._config_check_keystrokes,
+                timeout=20)
+        except errors.AFTDeviceError, err:
+            return
 
-        process.start()
-        process.join(20)
 
-        if process.is_alive():
-            process.terminate()
-        else:
-            raise errors.AFTConfigurationError(
-                "Device seems to have failed to shut down - " +
-                "PEM is still accessible")
+        raise errors.AFTConfigurationError(
+            "Device seems to have failed to shut down - " +
+            "PEM is still accessible")
 
 
 
