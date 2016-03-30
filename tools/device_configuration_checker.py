@@ -22,6 +22,7 @@ from Queue import Queue
 from threading import Thread
 
 import aft.errors as errors
+import aft.devices.common as common
 from aft.devicesmanager import DevicesManager
 
 def check_all(args):
@@ -245,8 +246,21 @@ def check(args):
         print "Releasing device " + args.device
 
     manager.release(device)
-    return _handle_test_results(args, device, test_results)
+    results =  _handle_test_results(args, device, test_results)
 
+    if not results[0]:
+        common.blacklist_device(
+                device.dev_id,
+                args.device,
+                "Failed device health check")
+
+        msg = "Device " + args.device + " failed health test - blacklisting"
+        logging.info(msg)
+        if args.verbose:
+            print msg
+
+
+    return results
 
 def _run_tests(args, device):
     """
