@@ -21,12 +21,11 @@ points)
 """
 
 from time import sleep
+import logging
+import os
+import shutil
 import serial
 import subprocess32
-import os
-import sys
-import shutil
-import logging
 
 from aft.device import Device
 import aft.config as config
@@ -202,26 +201,23 @@ class BeagleBoneBlackDevice(Device):
         self._enter_test_mode()
         return test_case.run(self)
 
-    def write_image(self, image_directory):
+    def write_image(self, root_tarball):
         """
         Writes the new image into the device.
 
         Args:
-            image_directory (str):
-                The directory where all the necessary files files for the
-                writing operations are stored (including, but not limited to:
-                root fs tarball, bootloader files, device tree binary etc)
-
+            root_tarball (str):
+                The name of the root tarball file
         Returns:
             None
         """
 
-        self._prepare_support_fs(image_directory)
+        self._prepare_support_fs(root_tarball)
         self._enter_service_mode()
         self._flash_image()
 
 
-    def _prepare_support_fs(self, image_directory):
+    def _prepare_support_fs(self, root_tarball):
         """
         Create directories and copy all the necessary files to the support fs
         working directory.
@@ -230,8 +226,8 @@ class BeagleBoneBlackDevice(Device):
         read only when accessed through nfs
 
         Args:
-            image_directory:
-                The directory where all the necessary files are stored
+            root_tarball:
+                The name of the root fs tarball
 
         Returns:
             None
@@ -260,19 +256,28 @@ class BeagleBoneBlackDevice(Device):
                 self.nfs_path, self.mount_dir[1:]))
 
         shutil.copy(
-            os.path.join(image_directory, self.parameters["mlo_file"]),
+            os.path.join(self.parameters["mlo_file"]),
             os.path.join(self.nfs_path, self.mlo_file[1:]))
 
         shutil.copy(
-            os.path.join(image_directory, self.parameters["u-boot_file"]),
+            os.path.join(self.parameters["u-boot_file"]),
             os.path.join(self.nfs_path, self.u_boot_file[1:]))
 
-        shutil.copy(
-            os.path.join(image_directory, self.parameters["root_tarball"]),
-            os.path.join(self.nfs_path, self.root_tarball[1:]))
+        # temporary hack - remove once CI scripts are updated
+
+        if "tar.bz2" in root_tarball:
+            logging.info("Using command line arg for root tarball")
+            shutil.copy(
+                os.path.join(root_tarball),
+                os.path.join(self.nfs_path, self.root_tarball[1:]))
+        else:
+            logging.info("No tarball name passed - using default value")
+            shutil.copy(
+                self.parameters["root_tarball"],
+                os.path.join(self.nfs_path, self.root_tarball[1:]))
 
         shutil.copy(
-            os.path.join(image_directory, self.parameters["dtb_file"]),
+            os.path.join(self.parameters["dtb_file"]),
             os.path.join(self.nfs_path, self.dtb_file[1:]))
 
         ssh_file = os.path.join(
@@ -449,8 +454,8 @@ class BeagleBoneBlackDevice(Device):
         """
         logging.info("Starting boot partition operations")
 
-        logging.info("Creating DOS filesystem on " +
-            self.parameters["boot_partition"])
+        logging.info(
+            "Creating DOS filesystem on " + self.parameters["boot_partition"])
 
         ssh.remote_execute(
             self.dev_ip,
@@ -490,8 +495,8 @@ class BeagleBoneBlackDevice(Device):
         """
         logging.info("Starting root partition operations")
 
-        logging.info("Creating ext4 filesystem on " +
-            self.parameters["root_partition"])
+        logging.info(
+            "Creating ext4 filesystem on " + self.parameters["root_partition"])
 
         ssh.remote_execute(
             self.dev_ip,
@@ -720,14 +725,13 @@ class BeagleBoneBlackDevice(Device):
 
     def _unmount_over_ssh(self):
         """
-        Syncs and unmounts the mounted directory at self.mount_dir
+        Unmount the mounted directory at self.mount_dir
 
         Returns:
             None
         """
-        logging.info("Flushing and unmounting " + self.mount_dir)
+        logging.info("Unmounting " + self.mount_dir)
         try:
-            ssh.remote_execute(self.dev_ip, ["sync"])
             ssh.remote_execute(self.dev_ip, ["umount", self.mount_dir])
         except subprocess32.CalledProcessError as err:
             common.log_subprocess32_error_and_abort(err)
