@@ -92,6 +92,23 @@ def pull(
         destination]
     return tools.local_execute(scp_args, timeout, ignore_return_codes)
 
+def init_log(logger_name, prefix):
+    """
+    Initialize ssh logger, if it has not been initialized yet
+    """
+    if not hasattr(init_log, "initialized"):
+        logger = logging.getLogger(logger_name)
+        formatter = logging.Formatter("%(asctime)s: %(message)s")
+        file_handler = logging.FileHandler("ssh.log", mode='w')
+        file_handler.setFormatter(formatter)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(file_handler)
+        logger.propagate = False # Do not send events to parent loggers
+        init_log.initialized = True
+
+        logger.info("All commands have following prefix - not repeated due to its length: " + prefix)
+
+
 def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
                    user = "root", connect_timeout = 15):
     """
@@ -99,6 +116,9 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
     Returns combines stdout and stderr if there are no errors. On error raises
     subprocess32 errors.
     """
+    logger_name = "ssh_logger"
+
+
     ssh_args = ["ssh",
                 "-i", "".join([os.path.expanduser("~"), "/.ssh/id_rsa_testing_harness"]),
                 "-o", "UserKnownHostsFile=/dev/null",
@@ -109,5 +129,19 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
                 user + "@" + str(remote_ip),
                 _get_proxy_settings(),]
 
-    return tools.local_execute(ssh_args + command, timeout, ignore_return_codes)
+    # Todo: Figure out a better way to do this. While init_log does nothing
+    # after the first call, it's still a stupid way to do this
+    init_log(logger_name, " ".join(ssh_args))
+    logger = logging.getLogger(logger_name)
 
+    logger.info("Executing " + " ".join(command))
+
+    ret = ""
+    try:
+        ret = tools.local_execute(ssh_args + command, timeout, ignore_return_codes)
+    except subprocess32.CalledProcessError, err:
+        logger.error("Command raised exception: " + str(err))
+        logger.error("Output: " + str(err.output))
+        raise err
+
+    return ret
