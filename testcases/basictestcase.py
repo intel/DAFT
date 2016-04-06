@@ -19,6 +19,7 @@ import subprocess32
 import re
 
 from aft.testcase import TestCase
+import aft.errors as errors
 
 class BasicTestCase(TestCase):
     """
@@ -34,15 +35,19 @@ class BasicTestCase(TestCase):
     def run(self, device):
         self.run_remote_command(device)
 
-    def run_local_command(self):
+    def run_local_command(self, timeout=1800):
         """
         Executes a command locally, on the test harness.
         """
-        process = subprocess32.Popen(self.parameters.split(),
+        command = "timeout " + str(timeout) + " " + self.parameters
+        process = subprocess32.Popen(command.split(),
                                      universal_newlines=True,
                                      stderr=subprocess32.STDOUT,
                                      stdout=subprocess32.PIPE)
         self.output = process.communicate()[0]
+
+        if process.returncode == 124 or process.returncode == 128 + 9:
+            raise errors.AFTTimeoutError("Test cases failed to complete in " + str(timeout) + " seconds")
         return True
 
     def run_remote_command(self, device):
