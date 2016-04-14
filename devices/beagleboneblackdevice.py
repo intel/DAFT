@@ -215,7 +215,7 @@ class BeagleBoneBlackDevice(Device):
         self._prepare_support_fs(root_tarball)
         self._enter_service_mode()
         self._flash_image()
-
+        self._remove_temp_dir()
 
     def _prepare_support_fs(self, root_tarball):
         """
@@ -583,6 +583,16 @@ class BeagleBoneBlackDevice(Device):
             self.parameters["leases_file_name"],
             self._BOOT_TIMEOUT,
             self._POLLING_INTERVAL)
+
+
+    def _remove_temp_dir(self):
+        """
+        Remove the temp directory  used during flashing
+        """
+        shutil.rmtree(os.path.join(
+                self.nfs_path,
+                self.working_directory[1:]))
+
 
     def get_ip(self):
         """

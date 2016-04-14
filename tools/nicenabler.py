@@ -53,7 +53,12 @@ def wait_and_enable_nic(usb_path, ip_address):
         if not nic:
             time.sleep(1)
             continue
-        subprocess32.check_call(["ifconfig", nic, ip_address])
+
+
+        # assumes the script is present in the same directory
+        interface_script = os.path.join(os.path.dirname(__file__), "interface_script.sh")
+
+        subprocess32.check_call(["sudo", interface_script, nic, ip_address])
         return
 
 

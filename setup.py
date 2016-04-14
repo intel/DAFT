@@ -1,3 +1,4 @@
+#coding=utf-8
 # Copyright (c) 2013-2015 Intel, Inc.
 # Author Topi Kuutela <topi.kuutela@intel.com>
 #
@@ -34,15 +35,16 @@ setup(
     name = "aft",
     version = "1.0.0",
     description = "Automated Flasher Tester",
-    author = "Igor Stoppa & Topi Kuutela",
-    author_email = "igor.stoppa@intel.com & topi.kuutela@intel.com",
+    author = "Igor Stoppa, Topi Kuutela, Erkka Kääriä",
+    author_email = "igor.stoppa@intel.com, topi.kuutela@intel.com, erkka.kaaria@intel.com",
     url = "github",
     packages = ["aft"],
     package_dir = {"aft" : "."},
     package_data = {"aft" : ["cutters/*.py",
                              "devices/*.py", "devices/data/*",
                              "testcases/*.py",
-                             "tools/*.py"]},
+                             "tools/*.py",
+                             "tools/*.sh"]},
     install_requires = ["netifaces", "subprocess32", "unittest-xml-reporting"],
     entry_points = { "console_scripts" : ["aft=aft.main:main"] },
     data_files = [("/etc/aft/devices/", DEVICE_FILES),

@@ -200,8 +200,9 @@ class EdisonDevice(Device):
             root_file_system_file = file_name_no_extension + "." + \
                 self._root_extension
 
+            # guestmount allows us to mount the image without root privileges
             subprocess32.check_call(
-                ["mount", root_file_system_file, self._LOCAL_MOUNT_DIR])
+                ["guestmount", "-a", root_file_system_file, "-m", "/dev/sda", self._LOCAL_MOUNT_DIR])
         except subprocess32.CalledProcessError as err:
             logging.info("Failed to mount. Is AFT run as root?")
             common.log_subprocess32_error_and_abort(err)
@@ -324,7 +325,7 @@ class EdisonDevice(Device):
         try:
             subprocess32.check_call(["sync"])
             subprocess32.check_call([
-                "umount",
+                "guestunmount",
                 os.path.join(os.curdir,self._LOCAL_MOUNT_DIR)])
 
         except subprocess32.CalledProcessError as err:
@@ -672,8 +673,19 @@ class EdisonDevice(Device):
         interface = self._get_usb_nic()
         ip_subnet = self._host_ip + "/30"
         logging.info("Opening the host network interface for testing.")
-        subprocess32.check_call(["ifconfig", interface, "up"])
-        subprocess32.check_call(["ifconfig", interface, ip_subnet])
+
+        # The ifconfig command requires root privileges to run, and in general
+        # we would like to run AFT without root privileges. However, we can add
+        # a shell script to the sudoers file, which allows us to invoke it with
+        # sudo, without the whole program requiring sudo. Hence, the below commands
+        # will succeed even without root privileges
+
+        # Note: Assumes that this file is under aft/devices, and that the shell
+        # script is under aft/tools
+        interface_script = os.path.join(os.path.dirname(__file__), os.path.pardir,
+                                     "tools", "interface_script.sh")
+        subprocess32.check_call(["sudo", interface_script, interface, "up"])
+        subprocess32.check_call(["sudo", interface_script, interface, ip_subnet])
 
     def _wait_until_ssh_visible(self, timeout=180):
         """
