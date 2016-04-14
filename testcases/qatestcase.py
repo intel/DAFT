@@ -33,10 +33,10 @@ class QATestCase(BasicTestCase):
                                             "--test-manifest iottest/testplan/iottest.manifest",
                           "MinnowboardMAX".lower(): " --machine intel-corei7-64 " +
                                                     "--test-manifest " +
-                                                    "iottest/testplan/beaglebone.iottest.manifest",
+                                                    "iottest/testplan/minnowmax.iottest.manifest",
                           "BeagleBoneBlack".lower(): " --machine beaglebone " +
                                                      "--test-manifest " +
-                                                     "iottest/testplan/minnowmax.iottest.manifest",
+                                                     "iottest/testplan/beaglebone.iottest.manifest",
                           "MinnowboardTurbot".lower(): " --machine intel-corei7-64 " +
                                                        "--test manifest " +
                                                        "iottest/testplan/minnowmax.iottest.manifest"
