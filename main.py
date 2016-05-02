@@ -34,15 +34,22 @@ def main(argv=None):
     """
     config.parse()
 
-    logging.basicConfig(filename=config.AFT_LOG_NAME, level=logging.INFO,
-                        format='%(asctime)s - %(name)s - '
-                               '%(levelname)s - %(message)s')
 
     if argv != None:
         backup_argv = sys.argv
         sys.argv = argv
 
     args = parse_args()
+
+    log_level = logging.INFO
+
+    if args.debug:
+        log_level = logging.DEBUG
+
+    logging.basicConfig(filename=config.AFT_LOG_NAME, level=log_level,
+                        format='%(asctime)s - %(name)s - '
+                               '%(levelname)s - %(message)s')
+
 
     if args.configure:
         builder = TopologyBuilder(args)
@@ -201,6 +208,11 @@ def parse_args():
         "--verbose",
         action="store_true",
         help="Prints additional information on various operations")
+
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Increases logging level")
 
     parser.add_argument(
         "--blacklist",

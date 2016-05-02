@@ -49,6 +49,9 @@ def wait_for_responsive_ip_for_pc_device(
 
     """
     logging.info("Waiting for the device to become responsive")
+    logging.debug("Timeout: " + str(timeout))
+    logging.debug("Polling interval: " + str(polling_interval))
+
     for _ in range(timeout / polling_interval):
         responsive_ip = get_ip_for_pc_device(mac_address, leases_file_path)
 
@@ -59,6 +62,7 @@ def wait_for_responsive_ip_for_pc_device(
         logging.info("Got a response from " + responsive_ip)
         return responsive_ip
 
+    logging.info("No responsive ip was found")
 
 def get_ip_for_pc_device(mac_address, leases_file_path):
     """
@@ -188,6 +192,8 @@ def verify_device_mode(ip, mode):
         if mode in sshout:
             logging.info("Found device in " + mode + " mode.")
             return True
+        logging.info("Device is not in " + mode + " mode")
+        logging.debug("/cat/proc/version: " + str(sshout))
         return False
     except subprocess32.CalledProcessError, err:
         logging.warning(
