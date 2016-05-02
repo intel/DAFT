@@ -121,7 +121,6 @@ class EdisonDevice(Device):
     _DUT_USB_SERVICE_CONFIG_DIR = "etc/conf.d"
     _DUT_CONNMAN_SERVICE_FILE = "lib/systemd/system/connman.service"
     _MODULE_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data')
-    _FLASHER_OUTPUT_LOG = "flash.log"
     _HARNESS_AUTHORIZED_KEYS_FILE = "authorized_keys"
     IFWI_DFU_FILE = "edison_ifwi-dbg"
     _NIC_FILESYSTEM_LOCATION = "/sys/class/net"
@@ -137,6 +136,9 @@ class EdisonDevice(Device):
         super(EdisonDevice, self).__init__(device_descriptor=parameters,
                                            channel=channel)
         self._configuration = parameters
+
+        self._FLASHER_OUTPUT_LOG = "flash_" + self._configuration["name"] + ".log"
+
 
         self._usb_path = self._configuration["edison_usb_port"]
         subnet_parts = self._configuration[
@@ -541,19 +543,24 @@ class EdisonDevice(Device):
                     continue
                 else:
                     flashing_log_file.close()
-                    if ignore_errors or execution.returncode == 0:
-                        return
+                    if not ignore_errors and execution.returncode != 0:
+                        logging.warning("Return value was non-zero - retrying")
+                        break
 
-                    # There was a warning here that dfu-util always returns 0
-                    # and as such we should grep ~5 last lines in flash log for
-                    # 'Done!' instead. However, my brief experimentation with
-                    # dfu-util seems to indicate that dfu-util infact does
-                    # return nonzero value on failure, and as such I removed
-                    # this log check in favor of return value check. I'm leaving
-                    # this comment here in case this turns out to be a bad idea
-                    # and some future maintainer can revert this decision
-
-                    break
+                    # dfu-util does not return non-zero value when flashing
+                    # fails due to download error. Instead, check if last few
+                    # lines in the log contain "Error during download"
+                    with open(self._FLASHER_OUTPUT_LOG) as flash_log:
+                        last_lines = flash_log.readlines()[-10:]
+                        break_outer = False
+                        for line in last_lines:
+                            if "Error during download" in line:
+                                logging.warning("Error in log - retrying")
+                                break_outer = True
+                                break
+                        if break_outer:
+                            break
+                    return
 
             try:
                 execution.kill()
@@ -655,6 +662,7 @@ class EdisonDevice(Device):
                                       self._usb_path, self._host_ip + "/30"])
         atexit.register(misc.subprocess_killer, enabler)
         self._wait_until_ssh_visible()
+        logging.info("Running test cases")
         return test_case.run(self)
 
     def execute(self, command, timeout, user="root", verbose=False):
@@ -827,21 +835,22 @@ class EdisonDevice(Device):
         """
 
         attempts = 3
+#
+#        for i in range(attempts):
+#            logging.info("Attempt " + str(i + 1) + " of " + str(attempts) +
+#                " to open interface for " + self._configuration["name"])
+#            self._power_cycle()
+#            try:
+#                self.open_interface()
+#            except errors.AFTDeviceError, error:
+#                pass
+#            else:
+#                return
+#
+#
+#        raise errors.AFTConfigurationError("Failed to open connection")
 
-        for i in range(attempts):
-            logging.info("Attempt " + str(i + 1) + " of " + str(attempts) +
-                " to open interface for " + self._configuration["name"])
-            self._power_cycle()
-            try:
-                self.open_interface()
-            except errors.AFTDeviceError, error:
-                pass
-            else:
-                return
-
-
-        raise errors.AFTConfigurationError("Failed to open connection")
-
+        raise errors.AFTNotImplementedError("Skipped - known to be unstable")
         # ssh connection test would probably be inappropriate, as we would be
         # testing whether we can connect to the testable image. This might
         # be missing or broken.
