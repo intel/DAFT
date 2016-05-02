@@ -524,10 +524,12 @@ reset
 \end{enumerate}
 
 
-\section{MinnowBoard MAX}
+\section{MinnowBoard MAX and MinnowBoard Turbot}
 \label{minnowboard}
 
 MinnowBoard MAX is an open development board with a 64-bit Intel Atom E3825 CPU (the same as in Gigabyte) and 2 GB ram. It provides one microSD slot, a SATA2 connector, one of each USB 2.0 and USB 3.0 sockets, gigabit ethernet and a 6-pin serial output. It also has a microHDMI connector for monitors.
+
+MinnowBoard Turbot is a MinnowBoard Max-compatible derivative board. It fixes several hardware related issues and uses a slightly faster Intel Atom E3826 CPU. For the purpose of this documentation, Turbot is interchangeable with Max (\note: Turbot is also compatible with MAX BIOSes).
 
 MinnowBoard MAX uses EFI for hardware initialization. The BIOS menu can be entered by pressing \cmd{F2} during boot. The boot priorities can be overridden in the \cmd{Boot Manager} menu, and the priorities can be adjusted in \cmd{Boot Maintenance Manager}.
 
@@ -1010,7 +1012,7 @@ This writes 40 megabytes worth of zeros into the eMMC, which should be more than
 
 \note If you have SD card connected, the eMMC should be \cmd{/dev/mmcblk1} instead of \cmd{/dev/mmcblk0}. It's best not to connect SD card at this point to avoid confusion
 
-\item Copy bootloader files into the SD card boot partition, or flash the SD card with an functioning image. The test automation USB stick should have the necessary bootloader files, but any valid bootloader should do. See \ref{part_sd} on how to partition the SD card correctly.
+\item Copy bootloader files, \cmd{MLO} and \cmd{u-boot.img}, into the SD card boot partition, or flash the SD card with an functioning image. The test automation USB stick should have the necessary bootloader files, but any valid bootloader should do. See \ref{part_sd} on how to partition the SD card correctly.
 
 \end{enumerate}
 
@@ -1020,7 +1022,7 @@ This writes 40 megabytes worth of zeros into the eMMC, which should be more than
 \label{part_sd}
 AFT assumes that the SD-card is partitioned properly. When adding a new device, or replacing old SD-card, the SD-card must have at least two partitions: 64 megabyte boot partition and at least 4 gigabyte root partition.
 
-These following steps use fdisk, but any partitioning software will do.
+These following steps use \cmd{fdisk}, but any partitioning software will do.
 
 \begin{enumerate}
 
@@ -1032,7 +1034,7 @@ These following steps use fdisk, but any partitioning software will do.
 sudo fdisk /dev/sdX
 \end{lstlisting} 
 
-where \cmd{/dev/sdX} is the device file for your SD-card. This can be found by using e.g. lsblk.
+where \cmd{/dev/sdX} is the device file for your SD-card. This can be found by using e.g. \cmd{lsblk}.
 
 \item Use the following commands to partition the card:
 
@@ -1047,7 +1049,7 @@ a -- set first partition as bootable
 n -- add new partition
 enter -- use default (primary partition)
 enter -- use default (second partition)
-enter -- use default (defautl starting position
+enter -- use default (default starting position
 enter -- use default (any remaining space is added to the partition)
 t -- change partition type
 1 -- first partition 
@@ -1055,9 +1057,11 @@ t -- change partition type
 t -- change partition t
 2 -- second partition 
 83 -- Linux partition
+p -- print the partition table (optional)
+w -- write the results
 \end{lstlisting}
 
-After these steps, the SD-card should be partitioned correctly. You can verify this by pressing \cmd{p} to print the partition table. It should look something like this:
+If the commands were entered correctly, the partition table (press \cmd{p} to print the partition table) should look something like this:
 
 \begin{tabular}{c c c c c c c c}
 Device & Boot & Start & End & Sectors & Size & Id & Type \\
@@ -1067,11 +1071,11 @@ Device & Boot & Start & End & Sectors & Size & Id & Type \\
 
 If the partition table looks correct, you can write the results by entering \cmd{w}. You may need to run \cmd{partprobe} so that the kernel sees the new partitions.
 
-\item After the disk has been partitioned, file systems must be created on the card. While AFT recreates file systems on flashing, the SD card must have a valid bootloader present on the boot partition or the initial boot fails. (Strictly speaking, ext4 filesystem is not needed, so if you are feeling lazy, feel free to skip that. You should feel bad for being lazy though)
+\item After the disk has been partitioned, file systems must be created on the card. While AFT recreates file systems on flashing, the SD card must have a valid bootloader present on the boot partition or the initial boot fails. 
 
 \begin{lstlisting}
 sudo mkfs.fat /dev/sdX1
-sudo mkfs.ext4 /dev/sdX2
+sudo mkfs.ext4 /dev/sdX2 (optional - AFT will recreate the file system on flashing)
 \end{lstlisting}
 
 Where \cmd{/dev/sdX} once again is the SD-card device file
@@ -1091,45 +1095,23 @@ The following steps can be run on either personal computer or the testing harnes
 \note Newer images should work as well, but some of the following steps might be inaccurate.
 
 \item Extract the root filesystem from the image file
+
+
+\item Extract the root filesystem from the image
+
 \begin{lstlisting}
 mkdir temp
-mount -o loop,offset=101711872 bone-debian-8.2-tester-2gb-armhf-2015-11-12-2gb.img temp/
-cp -R temp/* /home/tester/support_fs/beaglebone/
+losetup --show -f -P bone-debian-8.2-tester-2gb-armhf-2015-11-12-2gb.img
+mount /dev/loop0p2 temp
+cp -R temp/* /home/tester/support_fs/beaglebone/ 
 umount temp
+losetup -D 
 rmdir temp
 \end{lstlisting}
 
-The offset can be calculated by opening the image file with fdisk, printing the partition table and then multiplying the starting position by sector size
+Replace \cmd{/dev/loop0} with the loop device that was printed when initially creating the loop device, and \cmd{p2} with the actual root filesystem partition.
 
-\begin{lstlisting}
-
-fdisk bone-debian-8.2-tester-2gb-armhf-2015-11-12-2gb.img 
-Enter 'p' to print the partition table
-Read sector size and root system start position
-Multiply these values with each other
-
-\end{lstlisting}
-
-Example output (image names have been edited as they were too long):
-
-
-\cmd{Command (m for help): p} \\
-\cmd{Disk name-too-long.img: 1,7 GiB,  1782579200 bytes, 3481600 sectors} \\
-\cmd{Units: sectors of 1 * 512 = 512 bytes} \\
-\cmd{Sector size (logical/physical): 512 bytes / 512 bytes} \\
-\cmd{I/O size (minimum/optimal): 512 bytes / 512 bytes} \\
-\cmd{Disklabel type: dos} \\
-\cmd{Disk identifier: 0x00000000} \\
-
-
-\cmd{\begin{tabular}{c c c c c c c c}
-Device & Boot & Start & End & Sectors & Size & Id & Type \\
-name-too-long.img1 & * & 2048 & 198655  & 196608 & 96M & e & W95 FAT \\
-name-too-long.img2 &   & 198656 & 3481599 & 3282944 &  1,6G & 83 & Linux \\
-\end{tabular}
-}
-
-Here the sector size is 512 bytes, and the root filesystem starts at sector 198656. Now we can calculate the offset: 512*198656 = 101711872 
+\note \cmd{losetup -D} Detaches all loop devices
 
 \item Remove the connman service
 
@@ -1181,10 +1163,52 @@ exportfs -vr
 
 \item Remove the new export from \cmd{/etc/exports} and run the update command
 
+The change in \cmd{/etc/exports} changes the nfs from read-only to read/write. This allows the support os to write any configuration files and do whatever changes it needs during the first boot. Without this step, at least the ssh service will fail to start. After one succesful run, the export can be removed so that the file system is read-only. This is recommended for security reasons.
+
+
 \end{enumerate}
 
+\subsubsection{Alternate way of mounting the image}
 
-The change in \cmd{/etc/exports} changes the nfs from read-only to read/write. This allows the support os to write any configuration files and do whatever changes it needs during the first boot. Without this step, at least the ssh service will fail to start. After one succesful run, the export can be removed so that the file system is read-only. This is recommended for security reasons.
+If the \cmd{losetup}-command does not work for some reason, the following command can be used instead.
+
+\begin{lstlisting}
+mount -o loop,offset=<offset value here> bone-debian-8.2-tester-2gb-armhf-2015-11-12-2gb.img temp/
+<copy the root filesystem as above>
+umount temp
+\end{lstlisting}
+
+The offset can be calculated by printing the partition table with fdisk and then multiplying the starting position by sector size
+
+\begin{lstlisting}
+
+fdisk -l bone-debian-8.2-tester-2gb-armhf-2015-11-12-2gb.img 
+Read sector size and root system start position
+Multiply these values with each other
+
+\end{lstlisting}
+
+Example output (image names have been edited as they were too long):
+
+\cmd{Disk name-too-long.img: 1,7 GiB,  1782579200 bytes, 3481600 sectors} \\
+\cmd{Units: sectors of 1 * 512 = 512 bytes} \\
+\cmd{Sector size (logical/physical): 512 bytes / 512 bytes} \\
+\cmd{I/O size (minimum/optimal): 512 bytes / 512 bytes} \\
+\cmd{Disklabel type: dos} \\
+\cmd{Disk identifier: 0x00000000} \\
+
+
+\cmd{\begin{tabular}{c c c c c c c c}
+Device & Boot & Start & End & Sectors & Size & Id & Type \\
+name-too-long.img1 & * & 2048 & 198655  & 196608 & 96M & e & W95 FAT \\
+name-too-long.img2 &   & 198656 & 3481599 & 3282944 &  1,6G & 83 & Linux \\
+\end{tabular}
+}
+
+Here the sector size is 512 bytes, and the root filesystem starts at sector 198656. Now we can calculate the offset: 512*198656 = 101711872 
+
+
+
 
 \subsection{Booting into the service mode}
 \label{bbbboot}
@@ -1199,7 +1223,7 @@ where \cmd{/dev/ttyUSBX} is the device file for the serial port.
 
 \item Power on the device
 
-\item Immediately after powering on the device, press any key on screen to interrupt the regular boot to enter u-boot console
+\item Immediately after powering on the device, press space\footnote{The button has changed at least once after writing this document, so this might have changed by the time you read this} to interrupt the regular boot to enter u-boot console
 
 \item Enter the following commands to boot the device over nfs
 
@@ -1412,13 +1436,57 @@ Power cutter modules.
 \section{AFT without root privileges}
 \label{app:noroot}
 
-If none of the testable devices require actions which require root privileges, e.g. \cmd{mount} on the testing harness, AFT can be run without root privileges. In other words, if only PC-devices are used in the testing system, AFT can be run with lowered privileges.
+AFT can be run without root privileges, but it requires configuration changes. In no particular order:
+
+\begin{itemize}
+\item The user, under which AFT is run, must be a member of \cmd{dialout} and \cmd{lock}-groups (or equivalent, when not using OpenSuse)
+\item \cmd{clewarecontrol} and \cmd{dfu-util} require that setuid bit is set (not recommended) or that udev rules are created (recommended)
+\item Beaglebone support filesystem permissions must allow modification by the test user.
+\item Ifconfig must be configured to allow non-root users to modify interfaces
+\end{itemize}
+
+\note AFT uses guestmount-command when mounting disk images locally, to avoid the regular mount command, which always requires root privileges
+
+\subsection*{Configuring \cmd{dialout} and \cmd{lock} -groups}
 
 The privileges that are mandatory for AFT are access to serial devices and the ability to lock files. The corresponding user groups on OpenSUSE are \cmd{dialout} and \cmd{lock}. These are easiest to set using \cmd{yast} on the testing harness and setting the user used for testing to these groups.
+For different operating systems, equivalent groups or functionality should be used.
 
-Additionally \cmd{clewarecontrol} always requires root privileges. By setting the \cmd{setuid} bit on the executable makes the program always run on its \emph{owner user}. Because the programs under \cmd{/usr/bin} are owned by root, this provides the necessary privileges for those executions. The setuid bit can be set by issuing as a root user:
+\subsection*{Configuring \cmd{clewarecontrol} and \cmd{dfu-util}}
+By default, neither \cmd{clewarecontrol} and \cmd{dfu-util} can be run without root privileges. The straightforward (do not actually do the following unless you have no choice!), if insecure, fix for this is to set the \cmd{setuid} bit. When the \cmd{setuid} bit is set, the program is always run on its \emph{owner user}. Because the programs under \cmd{/usr/bin} are owned by root, this provides the necessary privileges for those executions. The setuid bit can be set by issuing as a root user:
 \begin{lstlisting}
 chmod 4755 /usr/bin/clewarecontrol
 \end{lstlisting}
+with similar command for the \cmd{dfu-util}. However, this approach is generally \emph{not} recommended, as any bugs in these binaries may lead to a privilege escalation exploit, where malicious program gains root access to the system.
+
+Alternative for setuid is to use udev rules. This involves creating a new user group, adding the tester user (and any additional users who should be able to run AFT without root) to this group, and then granting this group access to the Cleware power cutters and Edisons with rule(s) like:
+
+\begin{lstlisting}
+# Add rule like this for each idProduct, idVendor pair
+ATTRS{idProduct}=="<device product id>", ATTRS{idVendor}=="<device vendor id>", MODE="660", GROUP="<group here>"
+\end{lstlisting}
+Where device and vendor IDs can be found, for example, with the aid of \cmd{dmesg} - just replug the device. MODE="660" grants both the owner and group members (root and the new group) read and write permissions for these devices. Creating the group and adding users to the group can be done, as always, with the aid of \cmd{yast}.
+
+\note Edison will show up as multiple devices, with different vendor and product IDs during the first few seconds after power has been turned on. It is best to add a rule for each of these vendor ID/product ID pairs.
+
+\note All Edisons, and all Clewarecutters should respectively share the vendor and product ID, so there should be no need for more than 4 rules (1 for Clewares, 3 for Edisons due to the multiple ID pairs mentioned above) 
+
+These rules are placed in \cmd{/etc/udev/rules.d/xx-your-rule-name-here.rules}-file, where xx is the rule priority (00 - 99, higher is more important \footnote{More precisely, the files are read in alphabetical order, meaning a file with higher number is read later and its rules will override any previous, conflicting rules. Numbering the files is just a convenient way to signal the priority.}. The rule changes should be detected automatically, but any devices need to be replugged for the rules to take effect. Alternatively \cmd{udevadm trigger} should force-trigger the rules.
+
+\subsection*{Configuring Beaglebone support filesystem}
+
+The Beaglebone flashing procedure involves creating a working directory in the support filesystem directory on the testing harness and moving the image files over to the working directory. The directory permissions must be set in such way, that the tester account can do this. Generally the best way is to add the tester account in a new group, which has full access (x7x-permission) to the support filesystem directory. You may for example reuse the group that was created for the udev rules (you didn't use the setuid bit approach, right\footnote{If you did, now is a good time to go and fix things}). This allows the owner to remain as root to ensure that everything works well when using the support filesystem over nfs.
+
+\subsection*{Configuring \cmd{ifconfig}}
+
+Edison flashing requires usage of \cmd{ifconfig <usb-interface> up} and \cmd{ifconfig <usb-interface> <ip-address>} -commands. Both of these require root privileges. AFT invokes these commands through a bash script, so that the script may be added to the sudoers list. This allows invoking the script with 'sudo', without actually requiring root privileges. The script does some sanity checking on the arguments in order to limit the script to these two commands. 
+
+The script can be added to sudoers list by using \cmd{visudo}
+and adding the following rule into the file:
+
+\begin{lstlisting}
+<user name> ALL=(ALL) NOPASSWD: /full/path/to/the/interface_script.sh
+\end{lstlisting}
+This allows the desired user to invoke the script without root password with root privileges. As the script will still be owned by root, it cannot actually be modified without root password.
 
 \end{document}
