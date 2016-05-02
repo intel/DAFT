@@ -398,6 +398,7 @@ class BeagleBoneBlackDevice(Device):
             self._power_cycle()
             self.dev_ip = self._wait_for_responsive_ip()
 
+
             if self.dev_ip and self._verify_mode(self.parameters["test_mode"]):
                 return
             else:
@@ -635,15 +636,11 @@ class BeagleBoneBlackDevice(Device):
             The exceptions that _enter_service_mode raises.
         """
 
-        # set the retry count and boot timeout to lower values
-        # as otherwise on failing device this stage would take
-        # retry_count*boot timeout seconds (with values 8 and 240
-        # that would be 1920 seconds or 32 minutes)
 
-        # retry count should be > 1 as sometimes the device fails to
-        # acquire ip.
+        # Reduce boot timeout a bit, so that we don't spend so much time
+        # here waiting for a failing device
         self._SERVICE_MODE_RETRY_ATTEMPTS = 3
-        self._BOOT_TIMEOUT = 60
+        self._BOOT_TIMEOUT = 140
 
         self._enter_service_mode()
         logging.info("Succesfully booted device into service mode")
