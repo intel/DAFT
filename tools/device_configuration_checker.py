@@ -456,10 +456,10 @@ def _run_tests_on_know_good_image(args, device):
                     os.remove(f)
 
             os.chdir(image_directory_path)
-            # Remove all log and xml files from previous run to prevent clutter
-            for f in os.listdir("."):
-                if f.endswith(".log") or f.endswith(".xml"):
-                    os.remove(f)
+            ## Remove all log and xml files from previous run to prevent clutter
+            #for f in os.listdir("."):
+            #    if f.endswith(".log") or f.endswith(".xml"):
+            #        os.remove(f)
 
 
             device.write_image(image)
