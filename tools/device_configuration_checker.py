@@ -247,7 +247,7 @@ def check(args):
 
     sanity_results = _run_sanity_tests(args, device)
 
-    image_test_results= (True, "Image Test result: Not run")
+    image_test_results = (True, "Image Test result: Not run")
     # only run image test if sanity test passed
     if sanity_results[0] == True:
         image_test_results = _run_tests_on_know_good_image(args, device)
@@ -263,16 +263,18 @@ def check(args):
         )
 
     if not results[0]:
-        common.blacklist_device(
-                device.dev_id,
-                args.device,
-                "Failed device health check")
-
-        msg = "Device " + args.device + " failed health test - blacklisting"
-        logging.info(msg)
-        if args.verbose:
-            print msg
-
+        # Too many cases where all devices were blacklisted due to some unlucky streak
+        # Especially too many cases where this would happen on Friday...
+        #
+        #common.blacklist_device(
+        #        device.dev_id,
+        #        args.device,
+        #        "Failed device health check")
+        #msg = "Device " + args.device + " failed health test - blacklisting"
+        #logging.info(msg)
+        #if args.verbose:
+        #    print msg
+        logging.info("Device blacklisting is disabled for now")
 
     return results
 
@@ -409,6 +411,9 @@ def _format_sanity_test_result(args, device, test_results):
 
 
 def _run_tests_on_know_good_image(args, device):
+    
+    if device.model.lower() == "edison":
+        return (True, "Skipped - produces too many false negatives")
 
     if args.verbose:
         print "Flashing and testing a known good image"
