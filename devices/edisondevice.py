@@ -487,7 +487,7 @@ class EdisonDevice(Device):
         source,
         extras=[],
         attempts=4,
-        timeout=600,
+        timeout=900,
         ignore_errors=False):
         """
         Call DFU-util successively with arguments until it succeeds
@@ -570,7 +570,8 @@ class EdisonDevice(Device):
                 else:
                     raise
             attempt += 1
-
+            if time.time() - start >= timeout:
+                logging.warning("Flashing timeout")
             logging.warning(
                 "Flashing failed on alt " + alt + " for file " + source +
                 " on USB-path " + self._usb_path +
