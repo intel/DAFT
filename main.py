@@ -88,6 +88,13 @@ def main(argv=None):
         device_manager.blacklist_device(args.device, args.reason)
         return 0
 
+    if args.unblacklist:
+        if not args.device:
+            print "Device must be specified for unblacklisting"
+            return 1
+        device_manager.unblacklist_device(args.device)
+        return 0
+
     if args.recover_edisons:
         recover_edisons(device_manager, args.verbose)
         return 0
@@ -219,6 +226,11 @@ def parse_args():
         action="store_true",
         help=("Blacklist a device. The device must be specified with --device. "
             "--reason can be used to provide a reason"))
+
+    parser.add_argument(
+        "--unblacklist",
+        action="store_true",
+        help=("Removes device from the blacklist. The device must be specified with --device."))
 
     parser.add_argument(
         "--reason",

@@ -222,13 +222,16 @@ def blacklist_device(dev_id, name, reason):
     with open(config.DEVICE_BLACKLIST, "a") as blacklist_file:
         blacklist_file.write(dev_id + " " + name + " " + reason + "\n")
 
+def unblacklist_device(dev_id):
+    lines = []
+    with open(config.DEVICE_BLACKLIST, "r") as device_blacklist:
+        for line in device_blacklist:
+            if line.split()[0] == dev_id:
+                continue
+            lines.append(line)
 
 
-
-
-
-
-
-
-
+    with open(config.DEVICE_BLACKLIST, "w") as device_blacklist:
+        for line in lines:
+            device_blacklist.write(line)
 

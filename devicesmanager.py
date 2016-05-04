@@ -308,3 +308,20 @@ class DevicesManager(object):
                 break
 
         common.blacklist_device(dev_id, device, reason)
+
+
+    def unblacklist_device(self, device):
+        """
+        Unblacklist a device
+
+        Args:
+            Device (str): Name of the device
+        """
+        dev_id = None
+
+        for config in self.device_configs:
+            if config["name"].lower() == device.lower():
+                dev_id = config["settings"]["id"]
+                break
+
+        common.unblacklist_device(dev_id)
