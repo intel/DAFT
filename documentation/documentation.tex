@@ -1242,6 +1242,105 @@ bootz 0x81000000 - 0x80000000
 
 \end{enumerate}
 
+\section{VirtualBox}
+
+VirtualBox is open-source hypervisor for x86 computers. It is currently developed primarily by Oracle Corporation. It is available on Windows, Linux, OS X and Solaris, with ports available to FreeBSD and Genode.
+
+VirtualBox can be used to run 32- and 64-bit x86 based Ostro images. Currently only 64-bit corei7-64 images are used for CI testing.
+
+\subsection{CI-integration}
+
+As the testable image is run in a virtual machine, there are no additional physical requirements for the testing setup. The VirtualBox setup however requires several configuration changes. Note that the following commands assume root privileges for terseness; you may need to use sudo or equivalent command.
+
+\begin{enumerate}
+
+\item
+First of all, VirtualBox must be installed
+
+\begin{lstlisting}
+zypper install virtualbox
+\end{lstlisting}
+
+\item 
+After installation VirtualBox kernel modules may not be active. You can list the active modules by running
+
+\begin{lstlisting}
+lsmod | grep vbox
+\end{lstlisting}
+
+The following modules should be present: \cmd{vboxdrv}, \cmd{vboxnetapd}, \cmd{vboxnetflt} and \cmd{vboxpci}. If one or more of them are missing, you can use the following commands to load the missing modules
+
+\begin{lstlisting}
+modprobe vboxdrv
+modprobe vboxnetctl
+modprobe vboxnetflt
+modprobe vboxpci
+\end{lstlisting}
+
+\note \cmd{vboxnetctl} has different name than the kernel modules. This is intentional
+
+\item
+Linux Kernel-based virtual machine (KVM) interferes with VirtualBox and needs to be shut down. You can check if the KVM is currently loaded by running
+
+\begin{lstlisting}
+lsmod | grep kvm
+\end{lstlisting}
+
+If \cmd{kvm-intel} or \cmd{kvm-amd} is present (depending on your system CPU), you can use one of the following commands to disable the module
+
+\begin{lstlisting}
+sudo modprobe -r kvm-intel
+sudo modprobe -r kvm-amd 
+\end{lstlisting}
+
+\item 
+By default, VirtualBox requires root privileges to run. See \ref{virtualboxnoroot} for more information how to configure the system to avoid this requirement.
+
+\item
+AFT sets the testable .ova appliance into bridged mode for testing. This means we need to create a virtual network interface and modify it to use the \cmd{dnsmasq} for ip address allocation.
+
+\begin{lstlisting}
+VBoxManage hostonlyif create
+\end{lstlisting}
+
+The virtual network interface by default uses a VirtualBox based DHCP server for IP-address allocation. As the testing setup already uses \cmd{dnsmasq} for this, we need to remove the default DHCP server and modify \cmd{dnsmasq} to also allocate IP addresses for the VirtualBox.
+
+Removing the DHCP server can be done with the following commands
+
+\begin{lstlisting}
+VBoxManage list dhcpservers
+VBoxManage dhcpserver remove --netname <network name>
+\end{lstlisting}
+
+\cmd{dnsmasq} must be configured to allocate IPs for the virtual adapter as well. You first need to get the interface name by running
+
+\begin{lstlisting}
+VBoxManage list hostonlyifs
+\end{lstlisting}
+
+The name seems to be \cmd{vboxnet0} and the ip address 192.168.56.1 by default, assuming they weren't already taken. It is best to verify this however. The interface name and the ip address range must be then added into \cmd{/etc/dnsmasq.conf}. 
+
+\begin{lstlisting}
+interface=vboxnet0
+dhcp-range=192.168.56.2,192.168.56.254,10m
+\end{lstlisting}
+
+Where \cmd{vboxnet0} is the default name and \cmd{dhcp-range} has the default ip address. Replace these if necessary.
+
+\item
+AFT uses \cmd{guestmount} to mount the VirtualBox hard drive to inject the ssh key. The key needs a correct \cmd{security.ima} extended attribute, or Ostro Integrity Management Architecture (IMA) feature rejects the file. The attribute is set using \cmd{setfattr} command line tool. By default, the tool requires root privileges for this operation. See \ref{virtualboxsetfattr} for more information how to avoid the root privilege requirement.
+
+Guestmounted files by default are visible only to the user who mounted the file; any other user will get a 'permission denied' error, including root, when attempting to access these files. As AFT must work without root privileges (when the system has been properly configured), it always uses \cmd{-o allow\_other} -option when mounting the VirtualBox hard drive to allow other users to see the mounted files. This is required so that the \cmd{setfattr} can modify the file attributes, as this command is always executed as root. This option however is unavailable without modifying FUSE (filesystem in userspace) configuration file. This means the following line must be added (if not already present) into \cmd{/etc/fuse.conf} (\note The configuration file may not be present in the system. You need to create it if this is the case)
+
+\begin{lstlisting}
+user_allow_other
+\end{lstlisting}
+
+
+
+\end{enumerate}
+
+
 
 \newpage
 \appendix
@@ -1443,6 +1542,10 @@ AFT can be run without root privileges, but it requires configuration changes. I
 \item \cmd{clewarecontrol} and \cmd{dfu-util} require that setuid bit is set (not recommended) or that udev rules are created (recommended)
 \item Beaglebone support filesystem permissions must allow modification by the test user.
 \item Ifconfig must be configured to allow non-root users to modify interfaces
+\item VirtualBox requires user to be member of \cmd{vboxusers}-group
+\item \cmd{setfattr} must be configured to allow non-root users to modify file extended attributes
+\item \cmd{guestmount} must be configured to allow non-mounter users to see the mounted partition (closely related to the \cmd{setfattr} changes)
+
 \end{itemize}
 
 \note AFT uses guestmount-command when mounting disk images locally, to avoid the regular mount command, which always requires root privileges
@@ -1479,7 +1582,7 @@ The Beaglebone flashing procedure involves creating a working directory in the s
 
 \subsection*{Configuring \cmd{ifconfig}}
 
-Edison flashing requires usage of \cmd{ifconfig <usb-interface> up} and \cmd{ifconfig <usb-interface> <ip-address>} -commands. Both of these require root privileges. AFT invokes these commands through a bash script, so that the script may be added to the sudoers list. This allows invoking the script with 'sudo', without actually requiring root privileges. The script does some sanity checking on the arguments in order to limit the script to these two commands. 
+Edison flashing requires usage of \cmd{ifconfig <usb-interface> up} and \cmd{ifconfig <usb-interface> <ip-address>} -commands. Both of these require root privileges. AFT invokes these commands through a bash script, so that the script may be added to the sudoers list. This allows invoking the script with \cmd{sudo}, without actually requiring root privileges. The script does some sanity checking on the arguments in order to limit the script to these two commands. 
 
 The script can be added to sudoers list by using \cmd{visudo}
 and adding the following rule into the file:
@@ -1487,6 +1590,17 @@ and adding the following rule into the file:
 \begin{lstlisting}
 <user name> ALL=(ALL) NOPASSWD: /full/path/to/the/interface_script.sh
 \end{lstlisting}
-This allows the desired user to invoke the script without root password with root privileges. As the script will still be owned by root, it cannot actually be modified without root password.
+This allows the desired user to invoke the script without root password with root privileges. As the script will still be owned by root, it cannot actually be modified without root password, which is crucial from security standpoint. 
+
+\subsection*{Configuring VirtualBox}
+\label{virtualboxnoroot}
+
+By default, VirtualBox requires root privileges to access certain VirtualBox specific files (files are owned by root:vboxusers). User must be added into \cmd{vboxusers}-group to remove this requirement. This can be done with \cmd{zypper}
+
+\subsection*{Configuring \cmd{setfattr}}
+\label{virtualboxsetfattr}
+Todo
+
+
 
 \end{document}

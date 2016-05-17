@@ -19,17 +19,21 @@ Factory module for creation of AFT device instances and their cutter objects
 import aft.devices.beagleboneblackdevice
 import aft.devices.edisondevice
 import aft.devices.pcdevice
+import aft.devices.virtualboxdevice
 import aft.cutters.clewarecutter
 import aft.cutters.usbrelay
+import aft.cutters.mockcutter
 
 _DEVICE_CLASSES = {
     "beagleboneblack" : aft.devices.beagleboneblackdevice.BeagleBoneBlackDevice,
     "edison" : aft.devices.edisondevice.EdisonDevice,
-    "pc" : aft.devices.pcdevice.PCDevice
+    "pc" : aft.devices.pcdevice.PCDevice,
+    "virtualbox" : aft.devices.virtualboxdevice.VirtualBoxDevice
 }
 _CUTTER_CLASSES = {
     "clewarecutter" : aft.cutters.clewarecutter.ClewareCutter,
-    "usbrelay" : aft.cutters.usbrelay.Usbrelay
+    "usbrelay" : aft.cutters.usbrelay.Usbrelay,
+    "mockcutter" : aft.cutters.mockcutter.Mockcutter
 }
 
 
