@@ -189,7 +189,7 @@ class BeagleBoneBlackDevice(Device):
 
     def _run_tests(self, test_case):
         """
-        Enter test modes and runs QA tests using visitor pattern
+        Enter test mode and run QA tests using visitor pattern
 
         Args:
             test_case (aft.TestCase): The test case object
