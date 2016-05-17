@@ -103,7 +103,7 @@ def get_leased_ip_addresses_for_mac(mac_address, leases_file_path):
     """
 
     leases = get_mac_leases_from_dnsmasq(leases_file_path)
-    return [lease["ip"] for lease in leases if lease["mac"] == mac_address]
+    return [lease["ip"] for lease in leases if lease["mac"].lower() == mac_address.lower()]
 
 
 def get_mac_leases_from_dnsmasq(leases_file_path):
