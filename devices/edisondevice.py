@@ -206,7 +206,7 @@ class EdisonDevice(Device):
             subprocess32.check_call(
                 ["guestmount", "-a", root_file_system_file, "-m", "/dev/sda", self._LOCAL_MOUNT_DIR])
         except subprocess32.CalledProcessError as err:
-            logging.info("Failed to mount. Is AFT run as root?")
+            logging.info("Failed to mount.")
             common.log_subprocess32_error_and_abort(err)
 
     def _add_usb_networking(self):
@@ -408,20 +408,21 @@ class EdisonDevice(Device):
             # and recover it later
 
             logging.critical(
-                "Bootloader seems to have been broken - blacklisting the " +
-                "device")
+                "Bootloader might be broken - blacklisting the " +
+                "device as a precaution (Note: This could be a false positive)")
 
             common.blacklist_device(
                 self._configuration["id"],
                 self._configuration["name"],
-                "Bootloader seems to be broken - recovery flashing " +
-                "required")
+                "Bootloader might be broken - recovery flashing " +
+                "will be performed as a precaution (Note: This could be a " +
+                "false positive")
 
             self._recover_edison()
 
             raise errors.AFTDeviceError(
-                "Bootloader seems to have been broken - blacklisting the " +
-                "device")
+                "Bootloader might be broken - blacklisting the " +
+                "device as a precaution (Note: This could be a false positive)")
 
         return True
 
@@ -487,7 +488,7 @@ class EdisonDevice(Device):
         source,
         extras=[],
         attempts=4,
-        timeout=900,
+        timeout=1800,
         ignore_errors=False):
         """
         Call DFU-util successively with arguments until it succeeds
