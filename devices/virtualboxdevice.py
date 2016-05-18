@@ -277,13 +277,26 @@ class VirtualBoxDevice(Device):
         sha1sum = sha1sum.split()[0] # discard the file path
 
         logging.info("Adding IMA attribute to the ssh-key")
+
+        # The setfattr command requires root privileges to run, and in general
+        # we would like to run AFT without root privileges. However, we can add
+        # a shell script to the sudoers file, which allows us to invoke it with
+        # sudo, without the whole program requiring sudo. Hence, the below commands
+        # will succeed even without root privileges.
+
+        # The script also validates that the ssh_file path is at least somewhat
+        # sane. This should be taken account if file or directory names are
+        # changed
+
+        # Note: Assumes that this file is under aft/devices, and that the shell
+        # script is under aft/tools
+        setfattr_script = os.path.join(os.path.dirname(__file__), os.path.pardir,
+                                     "tools", "setfattr_script.sh")
+
         misc.local_execute(
             [
                 "sudo",
-                "setfattr",
-                "-n",
-                "security.ima",
-                "-v",
+                setfattr_script,
                 "0x01" + sha1sum + " ",
                 ssh_file
             ])
