@@ -459,7 +459,7 @@ class PCDevice(Device):
             self.dev_ip,
             [
                 "cat",
-                "/root/.ssh/authorized_keys",
+                "~/.ssh/authorized_keys",
                 ">>",
                 os.path.join(
                     self._ROOT_PARTITION_MOUNT_POINT,
