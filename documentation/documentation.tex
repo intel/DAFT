@@ -100,8 +100,9 @@ Configuration of AFT is explained in appendix \ref{app:aft}.
 \subsection*{Base system}
 A set of common tools and utilities:
 \begin{lstlisting}
-zypper install git gcc gcc-c++ make automake cmake autoconf man emacs nano screen tree attr dnsmasq gdisk nfs-kernel-server python python-setuptools python-devel python-tk python-idle ipython libusb-1_0-devel usbutils tftp yast2-tftp-server
+zypper install git gcc gcc-c++ make automake cmake autoconf man emacs nano screen tree attr dnsmasq gdisk nfs-kernel-server python python-setuptools python-devel python-tk python-idle ipython libusb-1_0-devel usbutils tftp yast2-tftp-server guestfs-tools
 \end{lstlisting}
+
 
 OpenSUSE comes with \cmd{YaST} configuration utility. It can be used to configure most base OS options. Using \cmd{yast} configure:
 \begin{enumerate}
@@ -124,6 +125,8 @@ In order to support multiple Edisons, dfu-util requires USB-tree support. Fortun
 
 Dfu-util can also be built from the source, using the following steps.
 
+\note See \ref{gitclone} if git clone fails
+
 \begin{lstlisting}
 git clone git://git.code.sf.net/p/dfu-util/dfu-util dfu-util-src
 cd dfu-util-src
@@ -133,14 +136,57 @@ make
 make install
 \end{lstlisting}
 
-The USB-tree patch is available at \cmd{http://sourceforge.net/p/dfu-util/tickets/6/attachment/0001-Fix-reimplement-USBPATH-support.patch} if it is required.
+The USB-tree patch is available at \\ \cmd{http://sourceforge.net/p/dfu-util/tickets/6/attachment/0001-Fix-reimplement-\\USBPATH-support.patch} if it is required.
+
+\subsection*{Edison recovery tool}
+
+Edison recovery flashing requires a tool that is not available in the regular repositories. It can be installed by adding \\
+\cmd{http://download.opensuse.org/repositories/home:/lvader:/xfstk/
+openSUSE\_13.2/} \\
+to the available repositories by using \cmd{YaST} (Software -> Software repositories -> Add). The tool can then be installed with zypper:
+\begin{lstlisting}
+zypper install xfstk-downloader-solo
+\end{lstlisting}
+
+\subsection*{Git proxy}
+\label{gitclone}
+If \cmd{git clone} fails (time outs or gets stuck), a proxy script may be needed for \cmd{git clone} to work.
+
+Begin by installing socat
+
+\begin{lstlisting}
+zypper install socat
+\end{lstlisting}
+
+Then create \cmd{git-proxy} under \cmd{/usr/bin} and add the the following lines into this file
+
+\begin{lstlisting}
+#!/bin/bash
+# $1 = hostname, $2 = port
+PROXY=proxy.server.address.here.com
+exec socat STDIO SOCKS4:$PROXY:$1:$2
+\end{lstlisting}
+
+Where \cmd{PROXY} must be appropriately
+The file needs to be executable
+
+\begin{lstlisting}
+chmod +x /usr/bin/git-proxy
+\end{lstlisting}
+
+Finally add the following lines under your .gitconfig file (\cmd{\textasciitilde/.gitconfig})
+
+\begin{lstlisting}
+[core]
+	gitproxy=git-proxy
+\end{lstlisting}
 
 \subsection*{Clewarecontrol}
 Clewarecontrol utility is used to control the power cutters made by Cleware GmbH. At the time of writing, the latest clewarecontrol, version 4.1, was broken. Therefore the version 2.8 is recommended.
 
 To install clewarecontrol commandline utility:
 \begin{lstlisting}
-wget https://www.vanheusden.com/clewarecontrol/clewarecontrol-2.8.tgz
+wget https://www.vanheusden.com/clewarecontrol/files/clewarecontrol-2.8.tgz
 tar -xvf clewarecontrol-2.8.tgz
 cd clewarecontrol-2.8
 make
@@ -1328,7 +1374,7 @@ dhcp-range=192.168.56.2,192.168.56.254,10m
 Where \cmd{vboxnet0} is the default name and \cmd{dhcp-range} has the default ip address. Replace these if necessary.
 
 \item
-AFT uses \cmd{guestmount} to mount the VirtualBox hard drive to inject the ssh key. The key needs a correct \cmd{security.ima} extended attribute, or Ostro Integrity Management Architecture (IMA) feature rejects the file. The attribute is set using \cmd{setfattr} command line tool. By default, the tool requires root privileges for this operation. See \ref{virtualboxsetfattr} for more information how to avoid the root privilege requirement.
+AFT uses \cmd{guestmount} to mount the VirtualBox hard drive to inject the ssh key. The key needs a correct \cmd{security.ima} extended attribute, or Ostro Integrity Management Architecture (IMA) feature rejects the file. The attribute is set using \cmd{setfattr} command line tool.The tool requires root privileges for this operation. See \ref{virtualboxsetfattr} for more information how to use the tool if the tester account does not have root privileges.
 
 Guestmounted files by default are visible only to the user who mounted the file; any other user will get a 'permission denied' error, including root, when attempting to access these files. As AFT must work without root privileges (when the system has been properly configured), it always uses \cmd{-o allow\_other} -option when mounting the VirtualBox hard drive to allow other users to see the mounted files. This is required so that the \cmd{setfattr} can modify the file attributes, as this command is always executed as root. This option however is unavailable without modifying FUSE (filesystem in userspace) configuration file. This means the following line must be added (if not already present) into \cmd{/etc/fuse.conf} (\note The configuration file may not be present in the system. You need to create it if this is the case)
 
@@ -1339,6 +1385,8 @@ user_allow_other
 
 
 \end{enumerate}
+
+
 
 
 
@@ -1541,6 +1589,7 @@ AFT can be run without root privileges, but it requires configuration changes. I
 \item The user, under which AFT is run, must be a member of \cmd{dialout} and \cmd{lock}-groups (or equivalent, when not using OpenSuse)
 \item \cmd{clewarecontrol} and \cmd{dfu-util} require that setuid bit is set (not recommended) or that udev rules are created (recommended)
 \item Beaglebone support filesystem permissions must allow modification by the test user.
+\item AFT blacklist file needs to be writable by the tester
 \item Ifconfig must be configured to allow non-root users to modify interfaces
 \item VirtualBox requires user to be member of \cmd{vboxusers}-group
 \item \cmd{setfattr} must be configured to allow non-root users to modify file extended attributes
@@ -1580,6 +1629,15 @@ These rules are placed in \cmd{/etc/udev/rules.d/xx-your-rule-name-here.rules}-f
 
 The Beaglebone flashing procedure involves creating a working directory in the support filesystem directory on the testing harness and moving the image files over to the working directory. The directory permissions must be set in such way, that the tester account can do this. Generally the best way is to add the tester account in a new group, which has full access (x7x-permission) to the support filesystem directory. You may for example reuse the group that was created for the udev rules (you didn't use the setuid bit approach, right\footnote{If you did, now is a good time to go and fix things}). This allows the owner to remain as root to ensure that everything works well when using the support filesystem over nfs.
 
+\subsection*{Configuring AFT blacklist file}
+
+The AFT blacklist file is owned by root after fresh installation (root:root). This file however needs to be writable by non-roots so that blacklisted devices can be added. This can be solved by changing the group to the same group that was used for Beaglebone support filesystem and Udev rules:
+
+\begin{lstlisting}
+chown root:<insert the group here> /etc/aft/blacklist
+chmod 660 /etc/aft/blacklist
+\end{lstlisting}
+
 \subsection*{Configuring \cmd{ifconfig}}
 
 Edison flashing requires usage of \cmd{ifconfig <usb-interface> up} and \cmd{ifconfig <usb-interface> <ip-address>} -commands. Both of these require root privileges. AFT invokes these commands through a bash script, so that the script may be added to the sudoers list. This allows invoking the script with \cmd{sudo}, without actually requiring root privileges. The script does some sanity checking on the arguments in order to limit the script to these two commands. 
@@ -1599,8 +1657,150 @@ By default, VirtualBox requires root privileges to access certain VirtualBox spe
 
 \subsection*{Configuring \cmd{setfattr}}
 \label{virtualboxsetfattr}
-Todo
+The problem with setfattr is similar to the \cmd{ifconfig}. The operations it is used for always require root privileges. This is solved similarily than the \cmd{ifconfig} case; a script \cmd{setfattr\_script.sh} exists under \cmd{tools}-directory that encapsulates setfattr calls. Much like the ifconfig script, this script limits the usage of the command to bare minimum in order to reduce security footprint.
 
+This script can be executed with root privileges by adding it tu sudoers list:
+
+\begin{lstlisting}
+<user name> ALL=(ALL) NOPASSWD: /full/path/to/the/setfattr_script.sh
+\end{lstlisting}
+
+\section{Support image based on Ostro\texttrademark}
+
+While using Debian based support images is easy for supported systems, Ostro may also target systems that are only supported by the latest kernel, or even target systems that aren't supported by the mainline kernel at all. Galileo support image is a good example on how this lack of support complicates things.
+
+As Ostro already has support for these systems, it might make sense to use a modified Ostro image as the support image for the devices. This requires some modifications to the existing image. These modifications can be added into local.conf when building an image, although creating a separate .bb image recipe file is recommended for repeatability. A base recipe is included on the testing automation stick, but this could be out of date by the time you read this. The general steps for creating a new recipe are also include below
+
+\begin{itemize}
+
+\item The support image requires nfs-utils, parted, bmaptool and python runtime for flashing the image on the device.
+
+\item Various security features interfere with the flashing. These need to be configured correctly or outright removed.
+
+\item Linux nfs kernel module needs to be enabled
+
+\item Partition ID must be changed, as otherwise support image and testable image rootfs share same ID, which confuses the kernel.
+
+\item The name that gets printed by "uname -a" needs to be changed, as otherwise AFT is unable to distinguish between support and testable image.
+
+\item SSH key needs to be added to the image and the image needs to be configured to auto-mount the network filesystem on boot.
+
+\end{itemize}
+
+\subsection*{Image recipe}
+
+Create a new recipe under \cmd{recipes-image/images} and add the following lines to it.
+
+\begin{lstlisting}
+
+OSTRO_IMAGE_CI_SUPPORT_EXTRA_FEATURES ?= " "
+OSTRO_IMAGE_CI_SUPPORT_EXTRA_INSTALL ?= " "
+
+OSTRO_IMAGE_EXTRA_FEATURES += "${OSTRO_IMAGE_CI_SUPPORT_EXTRA_FEATURES}"
+OSTRO_IMAGE_EXTRA_INSTALL += "${OSTRO_IMAGE_CI_SUPPORT_EXTRA_INSTALL}"
+
+inherit ostro-image
+
+\end{lstlisting}
+
+\note The variable names might have changed. Verify that these and any other names mentioned in this section are still valid (the *\_CI\_SUPPORT\_* variables are always valid as they are for this recipe only)
+
+\subsection*{Required extra software}
+
+nfs-utils, parted and python runtime have an existing recipe, so these can be added to the image without any issues. They can be added to the variables that were created in previous section
+
+\begin{lstlisting}
+OSTRO_IMAGE_CI_SUPPORT_EXTRA_FEATURES ?= " python-runtime"
+OSTRO_IMAGE_CI_SUPPORT_EXTRA_INSTALL ?= " nfs-utils parted"
+\end{lstlisting}
+
+The bmaptool has an existing recipe, but unfortunately it always installs the tool under \cmd{deploy/tools} directory, even when building the non-native version. Assuming this is still the case, the recipe either needs to be fixed or a custom recipe for bmap-tool needs to be created. 
+
+For the support image I opted to create a new recipe, as then there is no need to worry about breaking the original recipe. The recipe is available on the testing automation stick. The following can also be used:
+
+\begin{lstlisting}
+
+LICENSE="GPLv2"
+LIC_FILES_CHKSUM="file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263"
+
+SRC_URI = " \
+    file://bmaptool-3.2 \
+    file://COPYING \
+"
+
+do_move_files() {
+    # move license & binary file to correct folder
+    cp ${WORKDIR}/COPYING ${B}/COPYING
+    cp ${WORKDIR}/bmaptool-3.2 ${B}/bmaptool-3.2
+}
+
+addtask move_files after do_unpack before do_configure
+
+do_install() {
+    install -d ${D}${bindir}
+    install -m 0755 ${B}/bmaptool-3.2 ${D}${bindir}/bmaptool
+}
+
+\end{lstlisting}
+
+bmaptool binary and license file need to be placed under files-directory. The binary can be grabbed from the \cmd{deploy/tools}-directory. The license file is just a standard GPLv2 license.
+
+The recipe can now be added to the \cmd{OSTRO\_IMAGE\_CI\_SUPPORT\_EXTRA\_INSTALL} variable
+
+
+\subsection*{Removing security features}
+
+Ostro uses \cmd{IMA} and \cmd{SMACK} based security features as well as \cmd{iptables} firewall. These interfere with the flashing tools and NFS mounting. While they could be configured to fix these issues, it is easier to just disable these features. The support image is intended to be used in a closed local area network so this security downgrade should not matter.
+
+The features can be removed by adding the following line *AFTER* \cmd{inherit ostro-image}
+
+\begin{lstlisting}
+
+IMAGE_INSTALL_remove = " iptables iptables-settings-default"
+DISTRO_FEATURES_remove = " ima smack"
+
+\end{lstlisting}
+
+\subsection*{Kernel NFS module}
+
+The kernel module can be activated by adding
+
+\begin{lstlisting}
+KERNEL_FEATURES_append = " features/nfsd/nfsd-enable.scc"
+\end{lstlisting}
+into local.conf. 
+
+\subsection*{Partition id}
+
+Linux kernel uses the partition id to decide which partition gets mounted at boot time. If Ostro image is used as both support image and testable image without modifying the id, the kernel may mount the wrong rootfs when booting the device.
+
+This can be prevented by defining unique partition id by adding
+
+\begin{lstlisting}
+ROOTFS_PARTUUID_VALUE = "<partuuid here>
+\end{lstlisting}
+
+The default value is defined in meta-ostro/classes/image-dsk.bbclass file. Check the format there and make sure that the value added in local.conf is unique.
+
+
+\note This is again something that could have changed.
+
+\note It might sense to group the various local.conf modifications into separate .conf file and just require that from local.conf
+
+\subsection*{Kernel name}
+
+AFT checks the kernel name to see it booted into correct mode. When using Ostro as the support image, the name will contain 'yocto-standard' for both support image and testable image, which makes this verification impossible.
+
+The kernel name is controlled by 
+
+
+\subsection*{Optional - remove unnecessary software}
+
+Ununsed software may be removed to shorten build times. The following can be added *AFTER* \cmd{inherit ostro-image} to remove some of the features that take long time to build. Note that this list is by no means exhaustive. Feel free to remove additional packages.
+
+\begin{lstlisting}
+IMAGE_FEATURES_remove = " java-jdk iotivity node-runtime nodejs-runtime-tools soletta soletta-tools"
+\end{lstlisting}
 
 
 \end{document}
