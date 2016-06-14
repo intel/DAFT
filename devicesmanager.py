@@ -3,6 +3,7 @@
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -325,3 +326,14 @@ class DevicesManager(object):
                 break
 
         common.unblacklist_device(dev_id)
+
+    def blacklist_print(self):
+        """
+        Print the contents of the blacklist file
+        """
+        with open(config.DEVICE_BLACKLIST, "r") as blacklist_file:
+            blacklist = blacklist_file.read().strip()
+            if len(blacklist) < 1:
+                print("Blacklist is empty")
+            else:
+                print(blacklist)
