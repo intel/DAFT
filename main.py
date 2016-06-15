@@ -3,6 +3,7 @@
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -93,6 +94,10 @@ def main(argv=None):
             print "Device must be specified for unblacklisting"
             return 1
         device_manager.unblacklist_device(args.device)
+        return 0
+
+    if args.blacklist_print:
+        device_manager.blacklist_print()
         return 0
 
     if args.recover_edisons:
@@ -230,13 +235,19 @@ def parse_args():
     parser.add_argument(
         "--unblacklist",
         action="store_true",
-        help=("Removes device from the blacklist. The device must be specified with --device."))
+        help=("Removes device from the blacklist. The device must be specified"
+            "with --device."))
 
     parser.add_argument(
         "--reason",
         action="store",
         help="Reason for given operation",
         default="No reason given")
+
+    parser.add_argument(
+        "--blacklist_print",
+        action="store_true",
+        help="Print the contents of the blacklist")
 
     parser.add_argument(
         "--recover_edisons",
