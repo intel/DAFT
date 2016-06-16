@@ -24,7 +24,6 @@ import logging
 
 from time import sleep
 
-import aft.tools.ssh as ssh
 import aft.errors as errors
 import aft.tools.misc as misc
 
