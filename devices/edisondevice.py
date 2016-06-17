@@ -401,7 +401,7 @@ class EdisonDevice(Device):
 
         try:
             self._flash_partitions(file_name_no_extension)
-        except errors.AFTPotentiallyBrokenBootloader, err:
+        except errors.AFTPotentiallyBrokenBootloader as err:
             # if the bootloader is broken, the device is bricked until it is
             # recovered through recovery flashing. As only one device can be
             # powered on during recovery flashing, we just blacklist the device
@@ -463,7 +463,7 @@ class EdisonDevice(Device):
 
         try:
             self._wait_for_device()
-        except errors.AFTDeviceError, err:
+        except errors.AFTDeviceError as err:
             raise errors.AFTPotentiallyBrokenBootloader(
                 "Potentially broken bootloader")
 
@@ -813,7 +813,7 @@ class EdisonDevice(Device):
             try:
                 self._power_cycle()
                 self._wait_for_device()
-            except errors.AFTDeviceError, error:
+            except errors.AFTDeviceError as error:
                 exception = error
                 pass
             else:
@@ -874,7 +874,7 @@ class EdisonDevice(Device):
 
         try:
             self._wait_for_device()
-        except errors.AFTDeviceError, error:
+        except errors.AFTDeviceError as error:
             pass
         else:
             raise errors.AFTConfigurationError(

@@ -97,12 +97,12 @@ class VirtualBoxDevice(Device):
             self._import_vm(ova_appliance)
             self._find_mac_address()
             self._inject_ssh_key()
-        except subprocess32.CalledProcessError, err:
+        except subprocess32.CalledProcessError as err:
             logging.info("Error when executing '" + ' '.join(err.cmd) + "':\n" +
                          err.output)
             self._unregister_vm()
             raise err
-        except errors.AFTDeviceError, err:
+        except errors.AFTDeviceError as err:
             logging.info(str(err))
             self._unregister_vm()
             raise err
@@ -331,10 +331,10 @@ class VirtualBoxDevice(Device):
             logging.info("Running test cases")
             result = test_case.run(self)
             return result
-        except subprocess32.CalledProcessError, err:
+        except subprocess32.CalledProcessError as err:
             logging.info("Error when executing '" + ' '.join(err.cmd) + "':\n" +
                          err.output)
-        except errors.AFTDeviceError, err:
+        except errors.AFTDeviceError as err:
             logging.info(str(err))
         finally:
             self._stop_vm()

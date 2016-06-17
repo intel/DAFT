@@ -242,7 +242,7 @@ class PCDevice(Device):
                     "--port", self.pem_port,
                     "--playback", keystrokes
                 ])
-            except Exception, err:
+            except Exception as err:
                 exceptions.put(err)
 
         for i in range(attempts):
@@ -620,7 +620,7 @@ class PCDevice(Device):
                 self._enter_mode(self._service_mode)
             except KeyboardInterrupt:
                 pass
-            except Exception, error:
+            except Exception as error:
                 exception_queue.put(error)
 
         process = Process(target=invoker, args=(exception_queue,))
@@ -660,7 +660,7 @@ class PCDevice(Device):
             self._send_PEM_keystrokes(
                 self._config_check_keystrokes,
                 timeout=20)
-        except errors.AFTDeviceError, err:
+        except errors.AFTDeviceError as err:
             return
 
 

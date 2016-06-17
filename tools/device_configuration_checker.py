@@ -313,9 +313,9 @@ def _run_sanity_tests(args, device):
         device.check_poweron()
     except KeyboardInterrupt:
         raise
-    except errors.AFTNotImplementedError, error:
+    except errors.AFTNotImplementedError as error:
         poweron_status = (True, str(error))
-    except Exception, error:
+    except Exception as error:
         poweron_status = (False, str(error))
 
     try:
@@ -324,9 +324,9 @@ def _run_sanity_tests(args, device):
         device.check_connection()
     except KeyboardInterrupt:
         raise
-    except errors.AFTNotImplementedError, error:
+    except errors.AFTNotImplementedError as error:
         connection_status = (True, str(error))
-    except Exception, error:
+    except Exception as error:
         connection_status = (False, str(error))
 
     try:
@@ -335,9 +335,9 @@ def _run_sanity_tests(args, device):
         device.check_poweroff()
     except KeyboardInterrupt:
         raise
-    except errors.AFTNotImplementedError, error:
+    except errors.AFTNotImplementedError as error:
         poweroff_status = (True, str(error))
-    except Exception, error:
+    except Exception as error:
         poweroff_status = (False, str(error))
 
     return _format_sanity_test_result(args, device, {
@@ -494,5 +494,5 @@ def _run_tests_on_know_good_image(args, device):
 
         return (result, result_str)
 
-    except Exception, error:
+    except Exception as error:
         return (False, "Image Test result: " + str(error))

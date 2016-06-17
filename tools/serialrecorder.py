@@ -67,7 +67,7 @@ def record(serial_stream, output):
     while True:
         try:
             read_buffer += serial_stream.read(4096)
-        except serial.SerialException, err:
+        except serial.SerialException as err:
             # This is a hacky way to fix random, frequent, read errors. May catch more than
             # intended.
             serial_stream.close()

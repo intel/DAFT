@@ -663,7 +663,7 @@ class BeagleBoneBlackDevice(Device):
         """
         try:
             ssh.remote_execute(self.dev_ip, ["mkdir", "-p", directory])
-        except subprocess32.CalledProcessError, err:
+        except subprocess32.CalledProcessError as err:
             common.log_subprocess32_error_and_abort(err)
 
 
@@ -680,7 +680,7 @@ class BeagleBoneBlackDevice(Device):
         """
         try:
             ssh.remote_execute(self.dev_ip, ["cp", src, dst])
-        except subprocess32.CalledProcessError, err:
+        except subprocess32.CalledProcessError as err:
             common.log_subprocess32_error_and_abort(err)
 
     def _change_ownership_over_ssh(self, file_name, uid, gid):
@@ -699,7 +699,7 @@ class BeagleBoneBlackDevice(Device):
             ssh.remote_execute(
                 self.dev_ip,
                 ["chown", str(uid) + ":" + str(gid), file_name])
-        except subprocess32.CalledProcessError, err:
+        except subprocess32.CalledProcessError as err:
             common.log_subprocess32_error_and_abort(err)
 
     def _change_permissions_over_ssh(self, file_name, permission):
@@ -708,7 +708,7 @@ class BeagleBoneBlackDevice(Device):
         """
         try:
             ssh.remote_execute(self.dev_ip, ["chmod", permission, file_name])
-        except subprocess32.CalledProcessError, err:
+        except subprocess32.CalledProcessError as err:
             common.log_subprocess32_error_and_abort(err)
 
     def _mount(self, device_file):
