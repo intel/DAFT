@@ -51,81 +51,87 @@ def main(argv=None):
                         format='%(asctime)s - %(name)s - '
                                '%(levelname)s - %(message)s')
 
-
-    if args.configure:
-        builder = TopologyBuilder(args)
-        builder.build_topology()
-        return 0
-
-    if args.check:
-        results = device_config.check(args)
-        logging.info(results[1])
-        print results[1]
-
-        if results[0] == True:
+    try:
+        if args.configure:
+            builder = TopologyBuilder(args)
+            builder.build_topology()
             return 0
-        else:
-            return 1
-    elif args.checkall:
-        results = device_config.check_all(args)
-        logging.info(results[1])
-        print results[1]
 
-        if results[0] == True:
-            logging.info("All tests passed")
+        if args.check:
+            results = device_config.check(args)
+            logging.info(results[1])
+            print results[1]
+
+            if results[0] == True:
+                return 0
+            else:
+                return 1
+        elif args.checkall:
+            results = device_config.check_all(args)
+            logging.info(results[1])
+            print results[1]
+
+            if results[0] == True:
+                logging.info("All tests passed")
+                return 0
+            else:
+                logging.info("There were failures")
+                return 1
+
+
+        device_manager = DevicesManager(args)
+
+        if args.blacklist:
+            if not args.device:
+                print "Device must be specified for blacklisting"
+                return 1
+
+            device_manager.blacklist_device(args.device, args.reason)
             return 0
-        else:
-            logging.info("There were failures")
+
+        if args.unblacklist:
+            if not args.device:
+                print "Device must be specified for unblacklisting"
+                return 1
+            device_manager.unblacklist_device(args.device)
+            return 0
+
+        if args.blacklist_print:
+            device_manager.blacklist_print()
+            return 0
+
+        if args.recover_edisons:
+            recover_edisons(device_manager, args.verbose)
+            return 0
+
+        if not args.machine or not args.file_name:
+            print "Both machine and image must be specified"
             return 1
 
+        device = device_manager.reserve()
+        tester = Tester(device)
 
-    device_manager = DevicesManager(args)
+        if args.record:
+            device.record_serial()
 
-    if args.blacklist:
-        if not args.device:
-            print "Device must be specified for blacklisting"
-            return 1
+        if not args.noflash:
+            print "Flashing " + str(device.name) + "."
+            device.write_image(args.file_name)
 
-        device_manager.blacklist_device(args.device, args.reason)
+        if not args.notest:
+            tester.execute()
+
+        if not args.nopoweroff:
+            device.detach()
+
+        if "backup_argv" in locals():
+            sys.argv = backup_argv
         return 0
 
-    if args.unblacklist:
-        if not args.device:
-            print "Device must be specified for unblacklisting"
-            return 1
-        device_manager.unblacklist_device(args.device)
-        return 0
-
-    if args.blacklist_print:
-        device_manager.blacklist_print()
-        return 0
-
-    if args.recover_edisons:
-        recover_edisons(device_manager, args.verbose)
-        return 0
-
-
-    if not args.machine or not args.file_name:
-        print "Both machine and image must be specified"
-        return 1
-
-
-    device = device_manager.reserve()
-    tester = Tester(device)
-
-    if args.record:
-        device.record_serial()
-    if not args.noflash:
-        print "Flashing " + str(device.name) + "."
-        device.write_image(args.file_name)
-    if not args.notest:
-        tester.execute()
-    if not args.nopoweroff:
-        device.detach()
-
-    if "backup_argv" in locals():
-        sys.argv = backup_argv
-    return 0
+    except:
+        _err = sys.exc_info()
+        logging.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
+        raise
 
 def parse_args():
     """
