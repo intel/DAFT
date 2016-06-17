@@ -19,7 +19,6 @@ import logging
 
 import aft.tools.ssh as Ssh
 import aft.cutter as Cutter
-from aft.devicestopology import DevicesTopology
 from aft.devices.pcdevice import PCDevice
 
 

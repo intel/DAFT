@@ -15,9 +15,6 @@
 Mock cutter. Does nothing
 """
 
-import subprocess32
-import os
-
 from aft.cutter import Cutter
 
 

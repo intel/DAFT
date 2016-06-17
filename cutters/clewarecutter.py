@@ -19,7 +19,6 @@ Tool for handling Cleware USB Cutter devices.
 
 import subprocess32
 import aft.tools.misc as misc
-import os
 import random
 from time import sleep
 
@@ -183,9 +182,3 @@ class ClewareCutter(Cutter):
 
 
         return cutters
-
-
-
-
-
-

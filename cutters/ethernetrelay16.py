@@ -64,8 +64,6 @@ dec   hex
 
 """
 
-import subprocess32
-import os
 
 from aft.cutter import Cutter
 
