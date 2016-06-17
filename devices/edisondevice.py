@@ -244,7 +244,7 @@ class EdisonDevice(Device):
                 logging.critical(
                     "The image file was not replaced. USB-networking service " +
                      "already exists.")
-                print ("The image file was not replaced! The symlink for "
+                print("The image file was not replaced! The symlink for "
                     "usb-networking service already exists.")
 
                 # print "Aborting."
@@ -774,8 +774,8 @@ class EdisonDevice(Device):
                     if os.path.basename(usb_path) == self._usb_path:
                         return interface
                 except IOError as err:
-                    print "IOError: " + str(err.errno) + " " + err.message
-                    print (
+                    print("IOError: " + str(err.errno) + " " + err.message)
+                    print(
                         "Error likely caused by jittering network interface."
                         " Ignoring.")
                     logging.warning(

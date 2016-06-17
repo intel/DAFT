@@ -60,7 +60,7 @@ def main(argv=None):
         if args.check:
             results = device_config.check(args)
             logging.info(results[1])
-            print results[1]
+            print(results[1])
 
             if results[0] == True:
                 return 0
@@ -69,7 +69,7 @@ def main(argv=None):
         elif args.checkall:
             results = device_config.check_all(args)
             logging.info(results[1])
-            print results[1]
+            print(results[1])
 
             if results[0] == True:
                 logging.info("All tests passed")
@@ -83,7 +83,7 @@ def main(argv=None):
 
         if args.blacklist:
             if not args.device:
-                print "Device must be specified for blacklisting"
+                print("Device must be specified for blacklisting")
                 return 1
 
             device_manager.blacklist_device(args.device, args.reason)
@@ -91,7 +91,7 @@ def main(argv=None):
 
         if args.unblacklist:
             if not args.device:
-                print "Device must be specified for unblacklisting"
+                print("Device must be specified for unblacklisting")
                 return 1
             device_manager.unblacklist_device(args.device)
             return 0
@@ -105,7 +105,7 @@ def main(argv=None):
             return 0
 
         if not args.machine or not args.file_name:
-            print "Both machine and image must be specified"
+            print("Both machine and image must be specified")
             return 1
 
         device = device_manager.reserve()
@@ -115,7 +115,7 @@ def main(argv=None):
             device.record_serial()
 
         if not args.noflash:
-            print "Flashing " + str(device.name) + "."
+            print("Flashing " + str(device.name) + ".")
             device.write_image(args.file_name)
 
         if not args.notest:

@@ -45,7 +45,7 @@ def recover_edisons(device_manager, verbose):
 
     if len(blacklisted_edison_names) == 0:
         if verbose:
-            print "No blacklisted Edisons - doing nothing"
+            print("No blacklisted Edisons - doing nothing")
         return
 
     working_edison_names = list(
@@ -53,7 +53,7 @@ def recover_edisons(device_manager, verbose):
 
 
     if verbose:
-        print "Locking working edisons"
+        print("Locking working edisons")
 
     locked_edisons = _lock_working_edisons(
         device_manager,
@@ -62,7 +62,7 @@ def recover_edisons(device_manager, verbose):
 
 
     if verbose:
-        print "Acquiring blacklisted Edisons"
+        print("Acquiring blacklisted Edisons")
 
     blacklisted_edisons = _get_blacklisted_edison_devices(
         device_manager,
@@ -70,14 +70,14 @@ def recover_edisons(device_manager, verbose):
 
 
     if verbose:
-        print "Powering down working edisons"
+        print("Powering down working edisons")
 
     # power down the working edisons
     for edison in locked_edisons:
         edison.detach()
 
     if verbose:
-        print "Powering down blacklisted edisons"
+        print("Powering down blacklisted edisons")
 
     # power down the blacklisted edisons
     for edison in blacklisted_edisons:
@@ -85,12 +85,12 @@ def recover_edisons(device_manager, verbose):
 
 
     if verbose:
-        print "Recovering edisons"
+        print("Recovering edisons")
 
     _recover(blacklisted_edisons)
 
     if verbose:
-        print "Updating blacklist"
+        print("Updating blacklist")
 
     _update_blacklist(blacklisted_edison_names)
 
@@ -161,7 +161,7 @@ def _lock_working_edisons(device_manager, working_edison_names, verbose):
     while True:
 
         if verbose:
-            print "Attempt " + str(attempt) + " to acquire Edisons"
+            print("Attempt " + str(attempt) + " to acquire Edisons")
             attempt += 1
 
         try:
@@ -173,12 +173,12 @@ def _lock_working_edisons(device_manager, working_edison_names, verbose):
 
         except errors.AFTTimeoutError:
             if verbose:
-                print "A device is busy - releasing all acquired Edisons"
+                print("A device is busy - releasing all acquired Edisons")
             for device in locked_edisons:
                 device_manager.release(device)
 
             if verbose:
-                print "Sleeping for a while before retrying"
+                print("Sleeping for a while before retrying")
 
             locked_edisons = []
             sleep(120)

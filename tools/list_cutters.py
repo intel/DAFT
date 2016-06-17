@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Intel, Inc.
-# Author 
+# Author
 # Author Topi Kuutela <topi.kuutela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -48,7 +48,7 @@ def main():
     tty_devices = [dev for dev in devices_full_paths if fnmatch.fnmatch(dev, "/dev/ttyUSB*")]
     cutter_devices = [dev for dev in tty_devices if vidpid_filter(dev)]
     for device in enumerate(cutter_devices, start=1):
-        print str(1) + " " + str(device[1])
+        print(str(1) + " " + str(device[1]))
     return 0
 
 

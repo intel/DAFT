@@ -260,7 +260,7 @@ class DevicesManager(object):
                             "(Reason: " + blacklisted_device["reason"] + ")")
 
                     logging.info(msg)
-                    print msg
+                    print(msg)
                     break
             else: # else clause for the for loop
                 filtered_devices.append(device)

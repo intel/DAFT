@@ -31,7 +31,7 @@ def signal_handler(sig, frame):
     # pylint: disable=global-statement
     global TERMINATE_FLAG
     # pylint: enable=global-statement
-    print "Terminating serial recorder."
+    print("Terminating serial recorder.")
     TERMINATE_FLAG = True
 # pylint: enable=unused-argument
 
@@ -50,10 +50,10 @@ def main():
     serial_stream = serial.Serial(args.port, args.rate, timeout=0.01, xonxoff=True)
     output_file = open(args.output, "w")
 
-    print "Starting recording from " + str(args.port) + " to " + str(args.output) + "."
+    print("Starting recording from " + str(args.port) + " to " + str(args.output) + ".")
     record(serial_stream, output_file)
 
-    print "Parsing output"
+    print("Parsing output")
     ansiparser.parse_file(args.output)
 
     serial_stream.close()
