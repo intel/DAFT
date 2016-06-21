@@ -166,7 +166,7 @@ def _lock_working_edisons(device_manager, working_edison_names, verbose):
 
         try:
             for edison in working_edison_names:
-                device = device_manager.reserve_specific(edison, 20)
+                device = device_manager.reserve_specific(edison, timeout=20)
                 locked_edisons.append(device)
 
             return locked_edisons

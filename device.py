@@ -26,7 +26,6 @@ import abc
 from time import sleep
 
 import aft.errors as errors
-import aft.tools.misc as misc
 from aft.logger import Logger as logger
 
 class Device(object):

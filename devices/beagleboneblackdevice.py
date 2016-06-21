@@ -125,8 +125,8 @@ class BeagleBoneBlackDevice(Device):
     _BOOT_TIMEOUT = 240
     _POLLING_INTERVAL = 10
     _ROOTFS_WRITING_TIMEOUT = 1800
-    _SERVICE_MODE_RETRY_ATTEMPTS = 8
-    _TEST_MODE_RETRY_ATTEMPTS = 8
+    _SERVICE_MODE_RETRY_ATTEMPTS = 4
+    _TEST_MODE_RETRY_ATTEMPTS = 4
 
 
     def __init__(self, parameters, channel):

@@ -52,8 +52,6 @@ class DevicesManager(object):
         self._args = args
         self._lockfiles = []
         self.device_configs = self._construct_configs()
-        self._device_blacklist = self._construct_blacklist()
-
 
 
     def _construct_configs(self):
@@ -181,12 +179,14 @@ class DevicesManager(object):
         return self._do_reserve(devices, self._args.machine, timeout)
 
 
-    def reserve_specific(self, machine_name, timeout = 3600):
-        """Reserve and lock a specific device"""
+    def reserve_specific(self, machine_name, timeout = 3600, model=None):
+        """
+        Reserve and lock a specific device. If model is given, check if
+        the device is the given model
+        """
 
         # Basically very similar to a reserve-method
         # we just populate they devices array with a single device
-
         devices = []
         for device_config in self.device_configs:
             if device_config["name"].lower() == machine_name.lower():
@@ -195,14 +195,19 @@ class DevicesManager(object):
                 devices.append(device)
                 break
 
+        #Check if device is a given model
+        if model and len(devices):
+            if not devices[0].model.lower() == model.lower():
+                raise errors.AFTConfigurationError(
+                    "Device and machine doesn't match")
 
         return self._do_reserve(devices, machine_name, timeout)
 
 
     def _do_reserve(self, devices, name, timeout):
-
-
-
+        """
+        Try to reserve and lock a device from devices list.
+        """
         if len(devices) == 0:
             raise errors.AFTConfigurationError(
                 "No device configurations when reserving " + name +
@@ -249,11 +254,12 @@ class DevicesManager(object):
         Returns:
             Filtered list of devices
         """
+        _device_blacklist = self._construct_blacklist()
 
         filtered_devices = []
 
         for device in devices:
-            for blacklisted_device in self._device_blacklist:
+            for blacklisted_device in _device_blacklist:
                 if blacklisted_device["id"] == device.dev_id:
                     msg = ("Removed blacklisted device " +
                             blacklisted_device["name"] + " from device pool " +

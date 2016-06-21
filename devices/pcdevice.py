@@ -67,7 +67,7 @@ class PCDevice(Device):
 
 
     """
-    _RETRY_ATTEMPTS = 8
+    _RETRY_ATTEMPTS = 4
     _BOOT_TIMEOUT = 240
     _POLLING_INTERVAL = 10
     _SSH_IMAGE_WRITING_TIMEOUT = 1440
@@ -89,7 +89,7 @@ class PCDevice(Device):
                                        channel=channel)
 
 
-        self.retry_attempts = 8
+        self.retry_attempts = 4
 
         self._leases_file_name = parameters["leases_file_name"]
         self.default_root_patition = parameters["root_partition"]
