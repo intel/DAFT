@@ -14,3 +14,6 @@ documentation.log
 *.tmp
 *.toc
 *.xref
+build/*
+aft.egg-info/*
+dist/*
