@@ -195,7 +195,7 @@ def verify_device_mode(ip, mode):
         logging.info("Device is not in " + mode + " mode")
         logging.debug("/cat/proc/version: " + str(sshout))
         return False
-    except subprocess32.CalledProcessError, err:
+    except subprocess32.CalledProcessError as err:
         logging.warning(
             "Failed verifying the device mode with command: '" +
             str(err.cmd) + "' failed with error code: '" +
@@ -234,4 +234,3 @@ def unblacklist_device(dev_id):
     with open(config.DEVICE_BLACKLIST, "w") as device_blacklist:
         for line in lines:
             device_blacklist.write(line)
-

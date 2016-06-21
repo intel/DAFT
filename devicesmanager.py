@@ -176,6 +176,7 @@ class DevicesManager(object):
                 device = devicefactory.build_device(device_config["settings"], cutter)
                 devices.append(device)
 
+        devices = self._remove_blacklisted_devices(devices)
 
         return self._do_reserve(devices, self._args.machine, timeout)
 
@@ -200,7 +201,6 @@ class DevicesManager(object):
 
     def _do_reserve(self, devices, name, timeout):
 
-        devices = self._remove_blacklisted_devices(devices)
 
 
         if len(devices) == 0:
@@ -260,7 +260,7 @@ class DevicesManager(object):
                             "(Reason: " + blacklisted_device["reason"] + ")")
 
                     logging.info(msg)
-                    print msg
+                    print(msg)
                     break
             else: # else clause for the for loop
                 filtered_devices.append(device)

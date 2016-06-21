@@ -3,6 +3,7 @@
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -142,7 +143,7 @@ class PCDevice(Device):
             config.NFS_FOLDER,
             self._IMG_NFS_MOUNT_POINT)
 
-        self._flash_image(nfs_file_name=file_on_nfs)
+        self._flash_image(nfs_file_name=file_on_nfs, filename=file_name)
         self._install_tester_public_key(file_name)
 
     def _run_tests(self, test_case):
@@ -241,7 +242,7 @@ class PCDevice(Device):
                     "--port", self.pem_port,
                     "--playback", keystrokes
                 ])
-            except Exception, err:
+            except Exception as err:
                 exceptions.put(err)
 
         for i in range(attempts):
@@ -265,8 +266,6 @@ class PCDevice(Device):
                 process.terminate()
             else:
                 return
-
-        raise errors.AFTDeviceError("Failed to connect to PEM")
 
     def _wait_for_responsive_ip(self):
         """
@@ -299,13 +298,14 @@ class PCDevice(Device):
         """
         return common.verify_device_mode(self.dev_ip, mode)
 
-    def _flash_image(self, nfs_file_name):
+    def _flash_image(self, nfs_file_name, filename):
         """
         Writes image into the internal storage of the device.
 
         Args:
-            nfs_file_name (str):
-                The image file path on the nfs
+            nfs_file_name (str): The image file path on the nfs
+            filename (str): The image filename
+
         Returns:
             None
         """
@@ -314,9 +314,19 @@ class PCDevice(Device):
                            ignore_return_codes=[32])
 
         logging.info("Writing " + str(nfs_file_name) + " to internal storage.")
-        ssh.remote_execute(self.dev_ip, ["bmaptool", "copy", "--nobmap",
-                                         nfs_file_name, self._target_device],
+
+        bmap_args = ["bmaptool", "copy", nfs_file_name, self._target_device]
+        if os.path.isfile(filename + ".bmap"):
+            logging.info("Found "+ filename +".bmap. Using bmap for flashing.")
+
+        else:
+            logging.info("Didn't find " + filename +
+                         ".bmap. Flashing without it.")
+            bmap_args.insert(2, "--nobmap")
+
+        ssh.remote_execute(self.dev_ip, bmap_args,
                            timeout=self._SSH_IMAGE_WRITING_TIMEOUT)
+
         # Flashing the same file as already on the disk causes non-blocking
         # removal and re-creation of /dev/disk/by-partuuid/ files. This sequence
         # either delays enough or actually settles it.
@@ -610,7 +620,7 @@ class PCDevice(Device):
                 self._enter_mode(self._service_mode)
             except KeyboardInterrupt:
                 pass
-            except Exception, error:
+            except Exception as error:
                 exception_queue.put(error)
 
         process = Process(target=invoker, args=(exception_queue,))
@@ -650,7 +660,7 @@ class PCDevice(Device):
             self._send_PEM_keystrokes(
                 self._config_check_keystrokes,
                 timeout=20)
-        except errors.AFTDeviceError, err:
+        except errors.AFTDeviceError as err:
             return
 
 

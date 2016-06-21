@@ -139,7 +139,7 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
     ret = ""
     try:
         ret = tools.local_execute(ssh_args + command, timeout, ignore_return_codes)
-    except subprocess32.CalledProcessError, err:
+    except subprocess32.CalledProcessError as err:
         logger.error("Command raised exception: " + str(err))
         logger.error("Output: " + str(err.output))
         raise err

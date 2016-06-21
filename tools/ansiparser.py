@@ -94,7 +94,7 @@ def do_parse(input_file, output_file):
 
 
     # use for heuristic write & clear screen
-    control_codes_after_top_left_move = False;
+    control_codes_after_top_left_move = False
 
     while True:
         char = input_file.read(1)
@@ -360,8 +360,3 @@ def get_line_length(row, screen_buffer, width):
         if screen_buffer[row][column] != '\0':
             return column + 1
     return 0
-
-
-
-
-

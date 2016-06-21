@@ -244,7 +244,7 @@ class EdisonDevice(Device):
                 logging.critical(
                     "The image file was not replaced. USB-networking service " +
                      "already exists.")
-                print ("The image file was not replaced! The symlink for "
+                print("The image file was not replaced! The symlink for "
                     "usb-networking service already exists.")
 
                 # print "Aborting."
@@ -401,7 +401,7 @@ class EdisonDevice(Device):
 
         try:
             self._flash_partitions(file_name_no_extension)
-        except errors.AFTPotentiallyBrokenBootloader, err:
+        except errors.AFTPotentiallyBrokenBootloader as err:
             # if the bootloader is broken, the device is bricked until it is
             # recovered through recovery flashing. As only one device can be
             # powered on during recovery flashing, we just blacklist the device
@@ -463,7 +463,7 @@ class EdisonDevice(Device):
 
         try:
             self._wait_for_device()
-        except errors.AFTDeviceError, err:
+        except errors.AFTDeviceError as err:
             raise errors.AFTPotentiallyBrokenBootloader(
                 "Potentially broken bootloader")
 
@@ -774,8 +774,8 @@ class EdisonDevice(Device):
                     if os.path.basename(usb_path) == self._usb_path:
                         return interface
                 except IOError as err:
-                    print "IOError: " + str(err.errno) + " " + err.message
-                    print (
+                    print("IOError: " + str(err.errno) + " " + err.message)
+                    print(
                         "Error likely caused by jittering network interface."
                         " Ignoring.")
                     logging.warning(
@@ -813,7 +813,7 @@ class EdisonDevice(Device):
             try:
                 self._power_cycle()
                 self._wait_for_device()
-            except errors.AFTDeviceError, error:
+            except errors.AFTDeviceError as error:
                 exception = error
                 pass
             else:
@@ -874,7 +874,7 @@ class EdisonDevice(Device):
 
         try:
             self._wait_for_device()
-        except errors.AFTDeviceError, error:
+        except errors.AFTDeviceError as error:
             pass
         else:
             raise errors.AFTConfigurationError(

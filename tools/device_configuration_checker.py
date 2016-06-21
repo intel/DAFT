@@ -81,7 +81,7 @@ def check_all_parallel(args, configs):
     """
 
     if args.verbose:
-        print "Running parallel configuration check on all devices"
+        print("Running parallel configuration check on all devices")
 
     threads = []
 
@@ -150,7 +150,7 @@ def check_all_serial(args, configs):
             Success/Failure). Second parameter contains the result string.
     """
     if args.verbose:
-        print "Running serial configuration check on all devices"
+        print("Running serial configuration check on all devices")
 
     success = True
     result = ""
@@ -235,7 +235,7 @@ def check(args):
             "You must specify the device that will be checked")
 
     if args.verbose:
-        print "Running configuration check on " + args.device
+        print("Running configuration check on " + args.device)
 
     logging.info("Running configuration check on " + args.device)
 
@@ -243,7 +243,7 @@ def check(args):
     device = manager.reserve_specific(args.device)
 
     if args.verbose:
-        print "Device " + args.device + " acquired, running checks"
+        print("Device " + args.device + " acquired, running checks")
 
     sanity_results = _run_sanity_tests(args, device)
 
@@ -253,7 +253,7 @@ def check(args):
         image_test_results = _run_tests_on_know_good_image(args, device)
 
     if args.verbose:
-        print "Releasing device " + args.device
+        print("Releasing device " + args.device)
 
     manager.release(device)
 
@@ -293,13 +293,13 @@ def _run_sanity_tests(args, device):
     """
     if args.record:
         if args.verbose:
-            print "Serial recording enabled on " + args.device
+            print("Serial recording enabled on " + args.device)
 
         device.parameters["serial_log_name"] = args.device + "_serial.log"
         device.record_serial()
     else:
         if args.verbose:
-            print "Serial recording disabled on " + args.device
+            print("Serial recording disabled on " + args.device)
 
 
     poweron_status = (True, "Ok")
@@ -309,35 +309,35 @@ def _run_sanity_tests(args, device):
 
     try:
         if args.verbose:
-            print "Running power on test on " + args.device
+            print("Running power on test on " + args.device)
         device.check_poweron()
     except KeyboardInterrupt:
         raise
-    except errors.AFTNotImplementedError, error:
+    except errors.AFTNotImplementedError as error:
         poweron_status = (True, str(error))
-    except Exception, error:
+    except Exception as error:
         poweron_status = (False, str(error))
 
     try:
         if args.verbose:
-            print "Running connection test on " + args.device
+            print("Running connection test on " + args.device)
         device.check_connection()
     except KeyboardInterrupt:
         raise
-    except errors.AFTNotImplementedError, error:
+    except errors.AFTNotImplementedError as error:
         connection_status = (True, str(error))
-    except Exception, error:
+    except Exception as error:
         connection_status = (False, str(error))
 
     try:
         if args.verbose:
-            print "Running power off test on " + args.device
+            print("Running power off test on " + args.device)
         device.check_poweroff()
     except KeyboardInterrupt:
         raise
-    except errors.AFTNotImplementedError, error:
+    except errors.AFTNotImplementedError as error:
         poweroff_status = (True, str(error))
-    except Exception, error:
+    except Exception as error:
         poweroff_status = (False, str(error))
 
     return _format_sanity_test_result(args, device, {
@@ -411,12 +411,12 @@ def _format_sanity_test_result(args, device, test_results):
 
 
 def _run_tests_on_know_good_image(args, device):
-    
+
     if device.model.lower() == "edison":
         return (True, "Skipped - produces too many false negatives")
 
     if args.verbose:
-        print "Flashing and testing a known good image"
+        print("Flashing and testing a known good image")
 
     logging.info("Flashing and testing a known good image")
 
@@ -438,8 +438,8 @@ def _run_tests_on_know_good_image(args, device):
             "good-image.dsk")
 
     if args.verbose:
-        print "Image file: " + str(image)
-        print "Flashing " + str(device.name)
+        print("Image file: " + str(image))
+        print("Flashing " + str(device.name))
 
     logging.info("Image file: " + str(image))
 
@@ -494,7 +494,5 @@ def _run_tests_on_know_good_image(args, device):
 
         return (result, result_str)
 
-    except Exception, error:
+    except Exception as error:
         return (False, "Image Test result: " + str(error))
-
-
