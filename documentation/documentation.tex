@@ -1664,15 +1664,79 @@ This script can be executed with root privileges by adding it tu sudoers list:
 <user name> ALL=(ALL) NOPASSWD: /full/path/to/the/setfattr_script.sh
 \end{lstlisting}
 
-\section{Support image based on Ostro\texttrademark}
+\section{Creating support images for hardware with limited support}
 
-While using Debian based support images is easy for supported systems, Ostro may also target systems that are only supported by the latest kernel, or even target systems that aren't supported by the mainline kernel at all. Galileo support image is a good example on how this lack of support complicates things.
+Sometimes the target hardware may require custom patches (for example, see Galileo section). This means using regular Debian image might be impossible, as the stock kernel will not support the debice. This section lists a few ways of solving the issue
 
-As Ostro already has support for these systems, it might make sense to use a modified Ostro image as the support image for the devices. This requires some modifications to the existing image. These modifications can be added into local.conf when building an image, although creating a separate .bb image recipe file is recommended for repeatability. A base recipe is included on the testing automation stick, but this could be out of date by the time you read this. The general steps for creating a new recipe are also include below
+\subsection*{Upgrading Debian Kernel}
+
+Debian provides tools for easy kernel upgrade. Only the kernel source code and the .config file are required. As Ostro itself supports the target hardware, the Ostro kernel code and \cmd{.config} file can be copied from the bitbake directories after the kernel has been built at least once. 
+
+\begin{enumerate}
+
+\item Install Debian on a compatible device or virtual machine - the general architecture must be correct.
+
+\item Install \cmd{kernel-package} (\cmd{apt install kernel-package})
+
+\item Copy the kernel source code directory to the Debian installation, and place the \cmd{.config} file inside this directory, if it wasn't already.
+
+\item Check if IMA is enabled in .config file - if so, disable it. IMA will block the \cmd{security.ima} attribute modifications that the support OS must perform when installing the ssh key to the target image. The \cmd{.config} file can be either modified manually (copy the way other configs are disabled) or the provided \cmd{make menuconfig} utility can be used for terminal-oriented configuration
+
+\item It is best to disable SMACK as well, if this is enabled as this could interfere with support OS functionality . Use DAC instead.
+
+
+\item Ostro by default ships with limited driver support. For example, USB-to-Ethernet adapters were found to be unusable before the appropriate drivers were enabled. In case the board requires additional hardware support for devices like the USB-to-Ethernet adapters, drivers may need to be enabled in .config. One way to find out the driver is to plug the device in to a desktop PC and observe dmesg messages; desktop kernel likely has the driver enabled and the appropriate driver will print diagnostic messages into dmesg.
+
+\item Rename the kernel in the \cmd{.config}; by default the name is yocto-standard. This name will be used to verify that the device booted into correct mode and yocto-standard is already the name for Ostro distributions. It is best to replace the name with something that has 'Debian' in it, as then the default AFT configuration will work with the image.
+
+\item After configuring the kernel, it can finally be built. This is done by using command \cmd{make-kpkg -{}-initrd kernel\_image} in the kernel source directory. This creates a debian package one level up that contains the new kernel.
+
+\item Install the kernel by using command \cmd{dpkg -i <package-name.deb>}
+
+\item Reboot and verify that new kernel was loaded, for example by using \cmd{uname -a}. If the old kernel is still in use, check the bootloader (e.g. \cmd{grub}) manual on how to load a specific kernel.
+
+\end{enumerate}
+
+After these steps, the support OS should now be usable on the target device. Note that required programs must be installed (e.g. bmaptool) and the OS must be configured correctly (ssh keys, nfs mounts etc.)
+
+
+\subsubsection*{EFI boot issues}
+
+At least on one device, the Debian image failed the early EFI boot process, before the kernel was launched. This turned out to be an issue with the \cmd{grub} bootloader. The reason for this failure is unknown but it can be fixed by using similar kernel \& initramfs squashing that Ostro uses.
+
+Instead of using a bootloader, the required files (kernel, initramfs, kernel command line and EFI loader stub) can be squashed into single binary that can then be placed under /boot/EFI/<grub dir>/, replacing the grub loader. This does mean that the system can no longer switch between different kernels and operating systems as grub is no longer accessible, but this is not an issue for a support OS.
+
+The squashing can be done by using following instructions
+
+\begin{enumerate}
+
+\item Create two files, \cmd{machine.txt} and \cmd{cmdline.txt}. The \cmd{machine.txt} file contains machine architecture name and is not too important as this is meant for human consumption. The \cmd{cmdline.txt} contains the kernel command line and should be something like \cmd{root=PARTUUID=<root partition UUID> rootfstype=<root partition file system, e.g. ext4>}
+
+\item Copy the kernel and the initramfs from the Debian /boot directory
+
+\item Copy the EFI stub from Ostro image directory 
+
+\item Squash the files into single binary by using command 
+
+\begin{lstlisting}
+objcopy --add-section .osrel=machine.txt --change-section-vma  .osrel=0x20000 
+--add-section .cmdline=cmdline.txt --change-section-vma .cmdline=0x30000 --add-section .linux=<kernel name here> --change-section-vma .linux=0x40000 --add-section .initrd=<initramfs here> --change-section-vma .initrd=0x3000000 <efi stub name> <output name>
+
+\end{lstlisting} 
+
+The resulting binary can now be used as combined EFI bootloader and kernel.
+
+\end{enumerate}
+
+\subsection*{Support image based on Ostro\texttrademark}
+
+An alternative for Debian support OS is Ostro-based support OS. As Ostro already has support for all its target systems, it might make sense to use a modified Ostro image as the support image for the devices. This requires some modifications to the existing image. These modifications can be added into local.conf when building an image, although creating a separate .bb image recipe file is recommended for repeatability. 
+
+\note Ostro is still under active development, and as such the below instructions may be out of date. Ostro in general is unstable base at best for the support OS, so this should only be done if Debian base images for some reason are not acceptable.
 
 \begin{itemize}
 
-\item The support image requires nfs-utils, parted, bmaptool and python runtime for flashing the image on the device.
+\item The support image requires nfs-utils, parted, bmaptool and python runtime for flashing the image on the device. Connman, openssh and attr are also required and may not be installed, depending on the base recipe that ends up being used. It is best to explicitly request them to be installed.
 
 \item Various security features interfere with the flashing. These need to be configured correctly or outright removed.
 
@@ -1686,7 +1750,7 @@ As Ostro already has support for these systems, it might make sense to use a mod
 
 \end{itemize}
 
-\subsection*{Image recipe}
+\subsubsection*{Image recipe}
 
 Create a new recipe under \cmd{recipes-image/images} and add the following lines to it.
 
@@ -1704,18 +1768,18 @@ inherit ostro-image
 
 \note The variable names might have changed. Verify that these and any other names mentioned in this section are still valid (the *\_CI\_SUPPORT\_* variables are always valid as they are for this recipe only)
 
-\subsection*{Required extra software}
+\subsubsection*{Required extra software}
 
-nfs-utils, parted and python runtime have an existing recipe, so these can be added to the image without any issues. They can be added to the variables that were created in previous section
+nfs-utils, parted and python runtime have an existing recipe, so these can be added to the image without any issues. They can be added to the variables that were created in previous section. Connman, openssh and attr are also listed, as these may or may not be installed otherwise.
 
 \begin{lstlisting}
 OSTRO_IMAGE_CI_SUPPORT_EXTRA_FEATURES ?= " python-runtime"
-OSTRO_IMAGE_CI_SUPPORT_EXTRA_INSTALL ?= " nfs-utils parted"
+OSTRO_IMAGE_CI_SUPPORT_EXTRA_INSTALL ?= " nfs-utils parted connman openssh attr"
 \end{lstlisting}
 
 The bmaptool has an existing recipe, but unfortunately it always installs the tool under \cmd{deploy/tools} directory, even when building the non-native version. Assuming this is still the case, the recipe either needs to be fixed or a custom recipe for bmap-tool needs to be created. 
 
-For the support image I opted to create a new recipe, as then there is no need to worry about breaking the original recipe. The recipe is available on the testing automation stick. The following can also be used:
+For the support image I opted to create a new recipe, as then there is no need to worry about breaking the original recipe. 
 
 \begin{lstlisting}
 
@@ -1747,7 +1811,7 @@ bmaptool binary and license file need to be placed under files-directory. The bi
 The recipe can now be added to the \cmd{OSTRO\_IMAGE\_CI\_SUPPORT\_EXTRA\_INSTALL} variable
 
 
-\subsection*{Removing security features}
+\subsubsection*{Removing security features}
 
 Ostro uses \cmd{IMA} and \cmd{SMACK} based security features as well as \cmd{iptables} firewall. These interfere with the flashing tools and NFS mounting. While they could be configured to fix these issues, it is easier to just disable these features. The support image is intended to be used in a closed local area network so this security downgrade should not matter.
 
@@ -1760,7 +1824,7 @@ DISTRO_FEATURES_remove = " ima smack"
 
 \end{lstlisting}
 
-\subsection*{Kernel NFS module}
+\subsubsection*{Kernel NFS module}
 
 The kernel module can be activated by adding
 
@@ -1769,7 +1833,7 @@ KERNEL_FEATURES_append = " features/nfsd/nfsd-enable.scc"
 \end{lstlisting}
 into local.conf. 
 
-\subsection*{Partition id}
+\subsubsection*{Partition id}
 
 Linux kernel uses the partition id to decide which partition gets mounted at boot time. If Ostro image is used as both support image and testable image without modifying the id, the kernel may mount the wrong rootfs when booting the device.
 
@@ -1786,14 +1850,14 @@ The default value is defined in meta-ostro/classes/image-dsk.bbclass file. Check
 
 \note It might sense to group the various local.conf modifications into separate .conf file and just require that from local.conf
 
-\subsection*{Kernel name}
+\subsubsection*{Kernel name}
 
 AFT checks the kernel name to see it booted into correct mode. When using Ostro as the support image, the name will contain 'yocto-standard' for both support image and testable image, which makes this verification impossible.
 
 The kernel name is controlled by 
 
 
-\subsection*{Optional - remove unnecessary software}
+\subsubsection*{Optional - remove unnecessary software}
 
 Ununsed software may be removed to shorten build times. The following can be added *AFTER* \cmd{inherit ostro-image} to remove some of the features that take long time to build. Note that this list is by no means exhaustive. Feel free to remove additional packages.
 
@@ -1801,5 +1865,18 @@ Ununsed software may be removed to shorten build times. The following can be add
 IMAGE_FEATURES_remove = " java-jdk iotivity node-runtime nodejs-runtime-tools soletta soletta-tools"
 \end{lstlisting}
 
+\subsubsection*{Post-build configuration}
 
+Under construction
+\begin{lstlisting}
+*SSH authorized key
+*nfs mount into /etc/fstab. May require nfsvers=4 as one of the parameters
+
+192.168.30.1:/home/tester /mnt/img_data_nfs nfs rsize=8192,wsize=8192,timeo=14,intr,nolock,auto,nfsvers=4
+
+*Recipes may need to be added to the supported-recipes list 
+* Connman may need to be installed separately
+* openssh may need to be installed
+* Create /mnt/target_root on the device
+\end{lstlisting}
 \end{document}
