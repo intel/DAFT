@@ -263,18 +263,14 @@ def check(args):
         )
 
     if not results[0]:
-        # Too many cases where all devices were blacklisted due to some unlucky streak
-        # Especially too many cases where this would happen on Friday...
-        #
-        #common.blacklist_device(
-        #        device.dev_id,
-        #        args.device,
-        #        "Failed device health check")
-        #msg = "Device " + args.device + " failed health test - blacklisting"
-        #logging.info(msg)
-        #if args.verbose:
-        #    print msg
-        logging.info("Device blacklisting is disabled for now")
+        common.blacklist_device(
+                device.dev_id,
+                args.device,
+                "Failed device health check")
+        msg = "Device " + args.device + " failed health test - blacklisting"
+        logging.info(msg)
+        if args.verbose:
+            print msg
 
     return results
 
