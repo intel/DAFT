@@ -38,12 +38,14 @@ class QATestCase(BasicTestCase):
                                                      "--test-manifest " +
                                                      "iottest/testplan/beaglebone.iottest.manifest",
                           "MinnowboardTurbot".lower(): " --machine intel-corei7-64 " +
-                                                       "--test manifest " +
+                                                       "--test-manifest " +
                                                        "iottest/testplan/minnowmax.iottest.manifest",
                           "VirtualBox".lower(): " --machine intel-corei7-64 " +
                                                     "--test-manifest " +
+                                                    "iottest/testplan/minnowmax.iottest.manifest",
+                          "generic_64".lower(): " --machine intel-corei7-64 " +
+                                                    "--test-manifest " +
                                                     "iottest/testplan/minnowmax.iottest.manifest"
-
                           }
 
     def run(self, device):
