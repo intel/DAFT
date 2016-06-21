@@ -267,6 +267,8 @@ class PCDevice(Device):
             else:
                 return
 
+        raise errors.AFTDeviceError("Failed to connect to PEM")
+
     def _wait_for_responsive_ip(self):
         """
         For a limited amount of time, try to assess if the device
