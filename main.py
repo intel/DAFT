@@ -22,6 +22,7 @@ import sys
 import logging
 import argparse
 import aft.config as config
+import aft.errors as errors
 import aft.tools.device_configuration_checker as device_config
 from aft.tools.topology_builder import TopologyBuilder
 from aft.tools.edison_recovery_flasher import recover_edisons
@@ -108,7 +109,10 @@ def main(argv=None):
             print("Both machine and image must be specified")
             return 1
 
-        device = device_manager.reserve()
+        try:
+            device = device_manager.reserve_specific(args.machine)
+        except errors.AFTConfigurationError:
+            device = device_manager.reserve()
         tester = Tester(device)
 
         if args.record:
