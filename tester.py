@@ -19,8 +19,8 @@ Class implementing a Tester interface.
 import os
 import time
 import ConfigParser
-import logging
 
+from aft.logger import Logger as logger
 import aft.errors as errors
 import aft.testcasefactory
 
@@ -52,24 +52,24 @@ class Tester(object):
             test_case = aft.testcasefactory.build_test_case(test_case_config)
             self.test_cases.append(test_case)
 
-        logging.info("Built test plan with " + str(len(self.test_cases)) + " test cases.")
+        logger.info("Built test plan with " + str(len(self.test_cases)) + " test cases.")
 
 
     def execute(self):
         """
         Execute the test plan.
         """
-        logging.info("Executing the test plan")
+        logger.info("Executing the test plan")
         self._start_time = time.time()
-        logging.info("Test plan start time: " + str(self._start_time))
+        logger.info("Test plan start time: " + str(self._start_time))
 
         for index, test_case in enumerate(self.test_cases, 1):
-            logging.info("Executing test case " + str(index) + " of " + str(self.test_cases))
+            logger.info("Executing test case " + str(index) + " of " + str(self.test_cases))
             test_case.execute(self._device)
             self._results.append(test_case.result)
 
         self._end_time = time.time()
-        logging.info("Test plan end time: " + str(self._end_time))
+        logger.info("Test plan end time: " + str(self._end_time))
         self._save_test_results()
 
     def _results_to_xunit(self):
@@ -104,12 +104,12 @@ class Tester(object):
         """
         Store the test results.
         """
-        logging.info("Storing the test results.")
+        logger.info("Storing the test results.")
         xunit_results = self._results_to_xunit()
         results_filename = self.get_results_location()
         with open(results_filename, "w") as results_file:
             results_file.write(xunit_results)
-        logging.info("Results saved to " + str(results_filename) + ".")
+        logger.info("Results saved to " + str(results_filename) + ".")
 
     def get_results(self):
         return self._results

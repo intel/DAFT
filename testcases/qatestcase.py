@@ -15,9 +15,9 @@
 """
 QA Test Case class.
 """
-import logging
 import re
 
+from aft.logger import Logger as logger
 from aft.testcases.basictestcase import BasicTestCase
 
 class QATestCase(BasicTestCase):
@@ -65,7 +65,7 @@ class QATestCase(BasicTestCase):
         """
         Test if there are FAILED test cases in the QA-test case output
         """
-        logging.info(self.output)
+        logger.info(self.output)
 #        qa_log_file = open("results-runtest.py.log", "r")
 #        qa_log = qa_log_file.read()
 #        qa_log_file.close()
@@ -92,4 +92,3 @@ class QATestCase(BasicTestCase):
         xml.append('</system-out>')
         xml.append('</testcase>\n')
         self.xunit_section = "".join(xml)
-

@@ -19,11 +19,13 @@ Main entry point for aft.
 """
 
 import sys
-import logging
 import argparse
+import logging
+
 import aft.config as config
 import aft.errors as errors
 import aft.tools.device_configuration_checker as device_config
+from aft.logger import Logger as logger
 from aft.tools.topology_builder import TopologyBuilder
 from aft.tools.edison_recovery_flasher import recover_edisons
 from aft.devicesmanager import DevicesManager
@@ -34,8 +36,11 @@ def main(argv=None):
     """
     Entry point for library-like use.
     """
-    config.parse()
 
+    logger.init_root_logger()
+    logger.init_thread()
+
+    config.parse()
 
     if argv != None:
         backup_argv = sys.argv
@@ -43,14 +48,8 @@ def main(argv=None):
 
     args = parse_args()
 
-    log_level = logging.INFO
-
     if args.debug:
-        log_level = logging.DEBUG
-
-    logging.basicConfig(filename=config.AFT_LOG_NAME, level=log_level,
-                        format='%(asctime)s - %(name)s - '
-                               '%(levelname)s - %(message)s')
+        logger.level(logging.DEBUG)
 
     try:
         if args.configure:
@@ -60,7 +59,7 @@ def main(argv=None):
 
         if args.check:
             results = device_config.check(args)
-            logging.info(results[1])
+            logger.info(results[1])
             print(results[1])
 
             if results[0] == True:
@@ -69,14 +68,14 @@ def main(argv=None):
                 return 1
         elif args.checkall:
             results = device_config.check_all(args)
-            logging.info(results[1])
+            logger.info(results[1])
             print(results[1])
 
             if results[0] == True:
-                logging.info("All tests passed")
+                logger.info("All tests passed")
                 return 0
             else:
-                logging.info("There were failures")
+                logger.info("There were failures")
                 return 1
 
 
@@ -134,7 +133,7 @@ def main(argv=None):
 
     except:
         _err = sys.exc_info()
-        logging.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
+        logger.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
         raise
 
 def parse_args():

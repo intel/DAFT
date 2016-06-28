@@ -1,6 +1,7 @@
 # coding=utf-8
 # Copyright (c) 2016 Intel, Inc.
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -15,7 +16,6 @@
 Module for device configuration check functionality.
 """
 import os
-import logging
 import copy
 from Queue import Queue
 from threading import Thread
@@ -27,8 +27,7 @@ import aft.errors as errors
 import aft.devices.common as common
 from aft.tester import Tester
 from aft.devicesmanager import DevicesManager
-
-import pprint
+from aft.logger import Logger as logger
 
 def check_all(args):
     """
@@ -237,7 +236,10 @@ def check(args):
     if args.verbose:
         print("Running configuration check on " + args.device)
 
-    logging.info("Running configuration check on " + args.device)
+    if args.checkall:
+        logger.init_thread(args.device + "_")
+
+    logger.info("Running configuration check on " + args.device)
 
     manager = DevicesManager(args)
     device = manager.reserve_specific(args.device)
@@ -257,6 +259,7 @@ def check(args):
 
     manager.release(device)
 
+
     results = (
         sanity_results[0] and image_test_results[0],
         sanity_results[1] + "\n" + image_test_results[1]
@@ -268,7 +271,7 @@ def check(args):
                 args.device,
                 "Failed device health check")
         msg = "Device " + args.device + " failed health test - blacklisting"
-        logging.info(msg)
+        logger.info(msg)
         if args.verbose:
             print msg
 
@@ -414,7 +417,7 @@ def _run_tests_on_know_good_image(args, device):
     if args.verbose:
         print("Flashing and testing a known good image")
 
-    logging.info("Flashing and testing a known good image")
+    logger.info("Flashing and testing a known good image")
 
     image_directory_path = os.path.join(
         config.KNOWN_GOOD_IMAGE_FOLDER,
@@ -437,7 +440,7 @@ def _run_tests_on_know_good_image(args, device):
         print("Image file: " + str(image))
         print("Flashing " + str(device.name))
 
-    logging.info("Image file: " + str(image))
+    logger.info("Image file: " + str(image))
 
     try:
 

@@ -18,10 +18,10 @@ Class representing a PC-like Device with an IP.
 """
 
 import os
-import logging
 import json
 from multiprocessing import Process, Queue
 
+from aft.logger import Logger as logger
 import aft.config as config
 from aft.device import Device
 import aft.errors as errors
@@ -189,14 +189,14 @@ class PCDevice(Device):
         """
         # Sometimes booting to a mode fails.
 
-        logging.info(
+        logger.info(
             "Trying to enter " + mode["name"] + " mode up to " +
             str(self._RETRY_ATTEMPTS) + " times.")
 
         for _ in range(self._RETRY_ATTEMPTS):
             self._power_cycle()
 
-            logging.info(
+            logger.info(
                 "Executing PEM with keyboard sequence " + mode["sequence"])
 
             self._send_PEM_keystrokes(mode["sequence"])
@@ -207,9 +207,9 @@ class PCDevice(Device):
                 if self._verify_mode(mode["name"]):
                     return
             else:
-                logging.warning("Failed entering " + mode["name"] + " mode.")
+                logger.warning("Failed entering " + mode["name"] + " mode.")
 
-        logging.critical(
+        logger.critical(
             "Unable to get device " + self.dev_id + " in mode " +
             mode["name"])
 
@@ -246,7 +246,7 @@ class PCDevice(Device):
                 exceptions.put(err)
 
         for i in range(attempts):
-            logging.info(
+            logger.info(
                 "Attempt " + str(i + 1) + " of " + str(attempts) + " to send " +
                 "keystrokes through PEM")
 
@@ -311,18 +311,18 @@ class PCDevice(Device):
         Returns:
             None
         """
-        logging.info("Mounting the nfs containing the image to flash.")
+        logger.info("Mounting the nfs containing the image to flash.")
         ssh.remote_execute(self.dev_ip, ["mount", self._IMG_NFS_MOUNT_POINT],
                            ignore_return_codes=[32])
 
-        logging.info("Writing " + str(nfs_file_name) + " to internal storage.")
+        logger.info("Writing " + str(nfs_file_name) + " to internal storage.")
 
         bmap_args = ["bmaptool", "copy", nfs_file_name, self._target_device]
         if os.path.isfile(filename + ".bmap"):
-            logging.info("Found "+ filename +".bmap. Using bmap for flashing.")
+            logger.info("Found "+ filename +".bmap. Using bmap for flashing.")
 
         else:
-            logging.info("Didn't find " + filename +
+            logger.info("Didn't find " + filename +
                          ".bmap. Flashing without it.")
             bmap_args.insert(2, "--nobmap")
 
@@ -332,7 +332,7 @@ class PCDevice(Device):
         # Flashing the same file as already on the disk causes non-blocking
         # removal and re-creation of /dev/disk/by-partuuid/ files. This sequence
         # either delays enough or actually settles it.
-        logging.info("Partprobing.")
+        logger.info("Partprobing.")
         ssh.remote_execute(self.dev_ip, ["partprobe", self._target_device])
         ssh.remote_execute(self.dev_ip, ["sync"])
         ssh.remote_execute(self.dev_ip, ["udevadm", "trigger"])
@@ -347,7 +347,7 @@ class PCDevice(Device):
             None
         """
 
-        logging.info("Mount one layer.")
+        logger.info("Mount one layer.")
         ssh.remote_execute(
             self.dev_ip,
             [
@@ -372,7 +372,7 @@ class PCDevice(Device):
         layout_file_name = self.get_layout_file_name(image_file_name)
 
         if not os.path.isfile(layout_file_name):
-            logging.info("Disk layout file " + layout_file_name  +
+            logger.info("Disk layout file " + layout_file_name  +
                          " doesn't exist. Using root_partition from config.")
             return self.default_root_patition
 
@@ -400,7 +400,7 @@ class PCDevice(Device):
         Returns:
             None
         """
-        logging.info("Mounts two layers.")
+        logger.info("Mounts two layers.")
         ssh.remote_execute(self.dev_ip, ["modprobe", "vfat"])
 
         # mount the first layer of .hddimg
@@ -444,7 +444,7 @@ class PCDevice(Device):
                 '"s/:.*//"']).rstrip().lstrip("/")
 
         # Ignore return value: directory might exist
-        logging.info("Writing ssh-key to device.")
+        logger.info("Writing ssh-key to device.")
         ssh.remote_execute(
             self.dev_ip,
             [
@@ -490,7 +490,7 @@ class PCDevice(Device):
             ])
 
         if not self._uses_hddimg:
-            logging.info("Adding IMA attribute to the ssh-key")
+            logger.info("Adding IMA attribute to the ssh-key")
             ssh.remote_execute(
                 self.dev_ip,
                 [
@@ -509,10 +509,10 @@ class PCDevice(Device):
                         ".ssh/authorized_keys")
                 ])
 
-        logging.info("Flushing.")
+        logger.info("Flushing.")
         ssh.remote_execute(self.dev_ip, ["sync"])
 
-        logging.info("Unmounting.")
+        logger.info("Unmounting.")
         ssh.remote_execute(
             self.dev_ip, ["umount", self._ROOT_PARTITION_MOUNT_POINT])
 
@@ -637,7 +637,7 @@ class PCDevice(Device):
         if not exception_queue.empty():
             raise exception_queue.get()
 
-        logging.info("Succesfully booted device into service mode")
+        logger.info("Succesfully booted device into service mode")
 
 
     def check_poweroff(self):

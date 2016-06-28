@@ -14,10 +14,10 @@
 """
 Basic Test Case class.
 """
-import logging
 import subprocess32
 import re
 
+from aft.logger import Logger as logger
 from aft.testcase import TestCase
 import aft.errors as errors
 
@@ -55,30 +55,30 @@ class BasicTestCase(TestCase):
         Executes a command remotely, on the device.
         """
         self.output = device.execute(self["parameters"].split(), timeout=120)
-        logging.info("Command: " + str(self.parameters) + "\nresult: " + str(self.output) + ".")
+        logger.info("Command: " + str(self.parameters) + "\nresult: " + str(self.output) + ".")
         return self._check_for_success()
 
     def _check_for_success(self):
         """
         Test for success.
         """
-        logging.info("self.output " + self.output)
+        logger.info("self.output " + self.output)
         if self.output == None or self.output.returncode != 0:
-            logging.info("Test Failed: returncode " + str(self.output.returncode))
+            logger.info("Test Failed: returncode " + str(self.output.returncode))
             if self.output != None:
-                logging.info("stdout:\n" + str(self.output.stdoutdata))
-                logging.info("stderr:\n" + str(self.output.stderrdata))
+                logger.info("stdout:\n" + str(self.output.stdoutdata))
+                logger.info("stderr:\n" + str(self.output.stderrdata))
         elif self.pass_regex == "":
-            logging.info("Test passed: returncode 0, no pass_regex")
+            logger.info("Test passed: returncode 0, no pass_regex")
             return True
         else:
             for line in self.output.stdoutdata.splitlines():
                 if re.match(self.pass_regex, line) != None:
-                    logging.info("Test passed: returncode 0 " +
+                    logger.info("Test passed: returncode 0 " +
                                  "Matching pass_regex " + str(self.pass_regex))
                     return True
                 else:
-                    logging.info("Test failed: returncode 0\n" +
+                    logger.info("Test failed: returncode 0\n" +
                                  "But could not find matching pass_regex " +
                                  str(self["pass_regex"]))
         return False

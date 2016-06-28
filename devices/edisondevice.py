@@ -18,7 +18,6 @@ can get an IP-address.
 
 import os
 import sys
-import logging
 import subprocess32
 import time
 import netifaces
@@ -26,6 +25,7 @@ import shutil
 import random
 import atexit
 
+from aft.logger import Logger as logger
 from aft.device import Device
 import aft.errors as errors
 import aft.tools.misc as misc
@@ -177,7 +177,7 @@ class EdisonDevice(Device):
 
         # self._flashing_attempts = 0 # dfu-util may occasionally fail. Extra
         # attempts could be used?
-        logging.info("Executing flashing sequence.")
+        logger.info("Executing flashing sequence.")
         return self._flash_image(file_name_no_extension)
 
     def _mount_local(self, file_name_no_extension):
@@ -193,7 +193,7 @@ class EdisonDevice(Device):
         Returns:
             None
         """
-        logging.info(
+        logger.info(
             "Mounting the root partition for ssh-key and USB-networking " +
             "service injection.")
         try:
@@ -206,7 +206,7 @@ class EdisonDevice(Device):
             subprocess32.check_call(
                 ["guestmount", "-a", root_file_system_file, "-m", "/dev/sda", self._LOCAL_MOUNT_DIR])
         except subprocess32.CalledProcessError as err:
-            logging.info("Failed to mount.")
+            logger.info("Failed to mount.")
             common.log_subprocess32_error_and_abort(err)
 
     def _add_usb_networking(self):
@@ -216,7 +216,7 @@ class EdisonDevice(Device):
         Returns:
             None
         """
-        logging.info("Injecting USB-networking service.")
+        logger.info("Injecting USB-networking service.")
         source_file = os.path.join(self._MODULE_DATA_PATH,
                                    self._DUT_USB_SERVICE_FILE)
         target_file = os.path.join(os.curdir,
@@ -241,7 +241,7 @@ class EdisonDevice(Device):
                                     self._DUT_USB_SERVICE_FILE))
         except OSError as err:
             if err.errno == 17:
-                logging.critical(
+                logger.critical(
                     "The image file was not replaced. USB-networking service " +
                      "already exists.")
                 print("The image file was not replaced! The symlink for "
@@ -297,7 +297,7 @@ class EdisonDevice(Device):
         Returns:
             None
         """
-        logging.info("Injecting ssh-key.")
+        logger.info("Injecting ssh-key.")
         source_file = os.path.join(self._MODULE_DATA_PATH,
                                    self._HARNESS_AUTHORIZED_KEYS_FILE)
         ssh_directory = os.path.join(os.curdir,
@@ -323,7 +323,7 @@ class EdisonDevice(Device):
         Returns:
             None
         """
-        logging.info("Flushing and unmounting the root filesystem.")
+        logger.info("Flushing and unmounting the root filesystem.")
         try:
             subprocess32.check_call(["sync"])
             subprocess32.check_call([
@@ -345,7 +345,7 @@ class EdisonDevice(Device):
         Returns:
             None
         """
-        logging.info("Recovery flashing.")
+        logger.info("Recovery flashing.")
         try:
             # This can cause race condition if multiple devices are booted at
             # the same time!
@@ -368,7 +368,7 @@ class EdisonDevice(Device):
                                     "edison_dnx_osr.bin")]
             self._power_cycle()
             while subprocess32.call(xfstk_parameters) and attempts < 10:
-                logging.info(
+                logger.info(
                     "Rebooting and trying recovery flashing again. "
                     + str(attempts))
                 self._power_cycle()
@@ -378,7 +378,7 @@ class EdisonDevice(Device):
         except subprocess32.CalledProcessError as err:
             common.log_subprocess32_error_and_abort(err)
         except OSError as err:
-            logging.critical("Failed recovery flashing, errno = " +
+            logger.critical("Failed recovery flashing, errno = " +
                              str(err.errno) + ". Is the xFSTK tool installed?")
             sys.exit(1)
 
@@ -407,7 +407,7 @@ class EdisonDevice(Device):
             # powered on during recovery flashing, we just blacklist the device
             # and recover it later
 
-            logging.critical(
+            logger.critical(
                 "Bootloader might be broken - blacklisting the " +
                 "device as a precaution (Note: This could be a false positive)")
 
@@ -447,7 +447,7 @@ class EdisonDevice(Device):
 
         file_name_no_extension += "."
 
-        logging.info("Flashing IFWI.")
+        logger.info("Flashing IFWI.")
         for i in range(0, 7):
             stri = str(i)
             self._dfu_call("ifwi0" + stri, self.IFWI_DFU_FILE +
@@ -455,7 +455,7 @@ class EdisonDevice(Device):
             self._dfu_call("ifwib0" + stri, self.IFWI_DFU_FILE +
                            "-0" + stri + "-dfu.bin", ignore_errors=True)
 
-        logging.info("Flashing u-boot")
+        logger.info("Flashing u-boot")
         self._dfu_call("u-boot0", "u-boot-edison.bin")
         self._dfu_call("u-boot-env0", "u-boot-envs/edison-blankcdc.bin")
         self._dfu_call(
@@ -467,16 +467,16 @@ class EdisonDevice(Device):
             raise errors.AFTPotentiallyBrokenBootloader(
                 "Potentially broken bootloader")
 
-        logging.info("Flashing boot partition.")
+        logger.info("Flashing boot partition.")
         self._dfu_call("boot", file_name_no_extension +
                        self._configuration["boot_extension"])
-        logging.info("Flashing update partition.")
+        logger.info("Flashing update partition.")
         self._dfu_call("update", file_name_no_extension +
                        self._configuration["recovery_extension"])
-        logging.info("Flashing root partition.")
+        logger.info("Flashing root partition.")
         self._dfu_call("rootfs", file_name_no_extension +
                        self._configuration["root_extension"], ["-R"])
-        logging.info("Flashing complete.")
+        logger.info("Flashing complete.")
 
 
 
@@ -545,7 +545,7 @@ class EdisonDevice(Device):
                 else:
                     flashing_log_file.close()
                     if not ignore_errors and execution.returncode != 0:
-                        logging.warning("Return value was non-zero - retrying")
+                        logger.warning("Return value was non-zero - retrying")
                         break
 
                     # dfu-util does not return non-zero value when flashing
@@ -556,7 +556,7 @@ class EdisonDevice(Device):
                         break_outer = False
                         for line in last_lines:
                             if "Error during download" in line:
-                                logging.warning("Error in log - retrying")
+                                logger.warning("Error in log - retrying")
                                 break_outer = True
                                 break
                         if break_outer:
@@ -572,8 +572,8 @@ class EdisonDevice(Device):
                     raise
             attempt += 1
             if time.time() - start >= timeout:
-                logging.warning("Flashing timeout")
-            logging.warning(
+                logger.warning("Flashing timeout")
+            logger.warning(
                 "Flashing failed on alt " + alt + " for file " + source +
                 " on USB-path " + self._usb_path +
                 ". Rebooting and attempting again for " +
@@ -616,7 +616,7 @@ class EdisonDevice(Device):
 
         err_str = "Could not find the device in DFU-mode in " + str(timeout) + \
             " seconds."
-        logging.critical(err_str)
+        logger.critical(err_str)
         raise errors.AFTDeviceError(err_str)
 
 
@@ -664,7 +664,7 @@ class EdisonDevice(Device):
                                       self._usb_path, self._host_ip + "/30"])
         atexit.register(misc.subprocess_killer, enabler)
         self._wait_until_ssh_visible()
-        logging.info("Running test cases")
+        logger.info("Running test cases")
         return test_case.run(self)
 
     def execute(self, command, timeout, user="root", verbose=False):
@@ -682,7 +682,7 @@ class EdisonDevice(Device):
         """
         interface = self._get_usb_nic()
         ip_subnet = self._host_ip + "/30"
-        logging.info("Opening the host network interface for testing.")
+        logger.info("Opening the host network interface for testing.")
 
         # The ifconfig command requires root privileges to run, and in general
         # we would like to run AFT without root privileges. However, we can add
@@ -714,7 +714,7 @@ class EdisonDevice(Device):
         while time.time() - start < timeout:
             if ssh.test_ssh_connectivity(self.get_ip()):
                 return
-        logging.critical(
+        logger.critical(
             "Failed to establish ssh-connection in " + str(timeout) +
             " seconds after enabling the network interface.")
 
@@ -756,7 +756,7 @@ class EdisonDevice(Device):
         Raises:
             aft.errors.AFTDeviceError if USB network interface was not found
         """
-        logging.info(
+        logger.info(
             "Searching for the host network interface from usb path " +
             self._usb_path)
 
@@ -778,7 +778,7 @@ class EdisonDevice(Device):
                     print(
                         "Error likely caused by jittering network interface."
                         " Ignoring.")
-                    logging.warning(
+                    logger.warning(
                         "An IOError occured when testing network interfaces. " +
                         " IOERROR: " + str(err.errno) + " " + err.message)
             time.sleep(1)
@@ -808,7 +808,7 @@ class EdisonDevice(Device):
         attempts = 3
         exception = None
         for i in range(attempts):
-            logging.info("Attempt " + str(i + 1) + " of " + str(attempts) +
+            logger.info("Attempt " + str(i + 1) + " of " + str(attempts) +
                 " to power on the device " + self._configuration["name"])
             try:
                 self._power_cycle()
@@ -839,7 +839,7 @@ class EdisonDevice(Device):
         attempts = 3
 #
 #        for i in range(attempts):
-#            logging.info("Attempt " + str(i + 1) + " of " + str(attempts) +
+#            logger.info("Attempt " + str(i + 1) + " of " + str(attempts) +
 #                " to open interface for " + self._configuration["name"])
 #            self._power_cycle()
 #            try:

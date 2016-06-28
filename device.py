@@ -1,7 +1,9 @@
+# coding=utf-8
 # Copyright (c) 2013-2016 Intel, Inc.
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -20,12 +22,12 @@ import os
 import atexit
 import subprocess32
 import abc
-import logging
 
 from time import sleep
 
 import aft.errors as errors
 import aft.tools.misc as misc
+from aft.logger import Logger as logger
 
 class Device(object):
     """
@@ -143,18 +145,18 @@ class Device(object):
 
         sleep_delay = 30
 
-        logging.info("Powering down the device and waiting for " +
+        logger.info("Powering down the device and waiting for " +
             str(sleep_delay) + " seconds")
         self.detach()
 
         sleep(30)
 
-        logging.info("Attempting to acquire ip")
+        logger.info("Attempting to acquire ip")
         ip = self.get_ip()
         if ip:
             raise errors.AFTConfigurationError("Failed to power off device")
 
-        logging.info("No ip could be acquired - device seems to be powered off")
+        logger.info("No ip could be acquired - device seems to be powered off")
 
 
     def detach(self):
@@ -190,7 +192,7 @@ class Device(object):
         """
         Reboot the device.
         """
-        logging.info("Rebooting the device.")
+        logger.info("Rebooting the device.")
         self.detach()
         sleep(self._POWER_CYCLE_DELAY)
         self.attach()

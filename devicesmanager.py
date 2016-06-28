@@ -16,7 +16,7 @@
 
 """Tool for managing collection of devices from the same host PC"""
 
-import logging
+from aft.logger import Logger as logger
 import ConfigParser
 import time
 import atexit
@@ -126,7 +126,7 @@ class DevicesManager(object):
                 "are correct and that the files have some settings inside")
 
 
-        logging.info("Built configuration sets for " + str(len(configs)) +
+        logger.info("Built configuration sets for " + str(len(configs)) +
                      " devices")
 
         return configs
@@ -211,7 +211,7 @@ class DevicesManager(object):
         start = time.time()
         while time.time() - start < timeout:
             for device in devices:
-                logging.info("Attempting to acquire " + device.name)
+                logger.info("Attempting to acquire " + device.name)
                 try:
                     # This is a non-atomic operation which may cause trouble
                     # Using a locking database system could be a viable fix.
@@ -220,7 +220,7 @@ class DevicesManager(object):
                                                        os.O_WRONLY | os.O_CREAT, 0660), "w")
                     fcntl.flock(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
-                    logging.info("Device acquired.")
+                    logger.info("Device acquired.")
 
                     self._lockfiles.append((device.dev_id, lockfile))
 
@@ -229,11 +229,11 @@ class DevicesManager(object):
                     return device
                 except IOError as err:
                     if err.errno in {errno.EACCES, errno.EAGAIN}:
-                        logging.info("Device busy.")
+                        logger.info("Device busy.")
                     else:
-                        logging.critical("Cannot obtain lock file.")
+                        logger.critical("Cannot obtain lock file.")
                         sys.exit(-1)
-            logging.info("All devices busy ... waiting 10 seconds and trying again.")
+            logger.info("All devices busy ... waiting 10 seconds and trying again.")
             time.sleep(10)
         raise errors.AFTTimeoutError("Could not reserve " + name +
                                      " in " + str(timeout) + " seconds.")
@@ -259,7 +259,7 @@ class DevicesManager(object):
                             blacklisted_device["name"] + " from device pool " +
                             "(Reason: " + blacklisted_device["reason"] + ")")
 
-                    logging.info(msg)
+                    logger.info(msg)
                     print(msg)
                     break
             else: # else clause for the for loop
