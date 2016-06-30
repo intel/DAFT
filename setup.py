@@ -23,6 +23,7 @@ DEVICE_FILES = ["default_config/devices/platform.cfg",
                 "default_config/devices/topology.cfg"]
 TEST_PLANS = ["default_config/test_plan/iot_qatest.cfg"]
 CONFIG_FILES = ["default_config/aft.cfg", "default_config/topology_builder.json"]
+BLACKLIST_FILES = ["default_config/blacklist"]
 
 CONFIG_FILTER = lambda filename : not os.path.isfile(os.path.join("/etc/aft",
                                                                   filename[len("default_config/"):]
@@ -49,4 +50,5 @@ setup(
     entry_points = { "console_scripts" : ["aft=aft.main:main"] },
     data_files = [("/etc/aft/devices/", DEVICE_FILES),
                   ("/etc/aft/test_plan/", TEST_PLANS),
-                  ("/etc/aft/", CONFIG_FILES)])
+                  ("/etc/aft/", CONFIG_FILES),
+                  ("/etc/aft/", BLACKLIST_FILES)])
