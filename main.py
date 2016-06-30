@@ -19,6 +19,7 @@ Main entry point for aft.
 """
 
 import sys
+import os.path
 import argparse
 import logging
 
@@ -104,9 +105,19 @@ def main(argv=None):
             recover_edisons(device_manager, args.verbose)
             return 0
 
-        if not args.machine or not args.file_name:
+        if not args.machine:
             print("Both machine and image must be specified")
             return 1
+
+        if not args.noflash:
+            if not args.file_name:
+                print("Both machine and image must be specified")
+                return 1
+
+            if not os.path.isfile(args.file_name):
+                print("Didn't find image: " + args.file_name)
+                logger.error("Didn't find image: " + args.file_name)
+                return 1
 
         if args.device:
             device, tester = try_flash_specific(args, device_manager)
