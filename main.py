@@ -132,6 +132,8 @@ def main(argv=None):
         if not args.nopoweroff:
             device.detach()
 
+        device_manager.release(device)
+
         if "backup_argv" in locals():
             sys.argv = backup_argv
         return 0

@@ -247,18 +247,21 @@ def check(args):
     if args.verbose:
         print("Device " + args.device + " acquired, running checks")
 
-    sanity_results = _run_sanity_tests(args, device)
+    try:
+        sanity_results = _run_sanity_tests(args, device)
+        image_test_results = (True, "Image Test result: Not run")
+        # only run image test if sanity test passed
+        if sanity_results[0] == True:
+            image_test_results = _run_tests_on_know_good_image(args, device)
 
-    image_test_results = (True, "Image Test result: Not run")
-    # only run image test if sanity test passed
-    if sanity_results[0] == True:
-        image_test_results = _run_tests_on_know_good_image(args, device)
+    finally:
+        if args.verbose:
+            print("Releasing device " + args.device)
 
-    if args.verbose:
-        print("Releasing device " + args.device)
+        if not args.nopoweroff:
+            device.detach()
 
-    manager.release(device)
-
+        manager.release(device)
 
     results = (
         sanity_results[0] and image_test_results[0],
