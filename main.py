@@ -122,6 +122,7 @@ def main(argv=None):
             device.write_image(args.file_name)
 
         if not args.notest:
+            print("Testing " + str(device.name) + ".")
             tester.execute()
 
         if not args.nopoweroff:
