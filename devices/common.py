@@ -19,12 +19,12 @@ classes. In case all the device classes share a feature, it should be part of
 the Device base class.
 """
 
-import logging
 import os
 import subprocess32
 import time
 import sys
 
+from aft.logger import Logger as logger
 import aft.config as config
 import aft.tools.ssh as ssh
 
@@ -48,9 +48,9 @@ def wait_for_responsive_ip_for_pc_device(
         Ip address as a string, or None if ip address was not responsive.
 
     """
-    logging.info("Waiting for the device to become responsive")
-    logging.debug("Timeout: " + str(timeout))
-    logging.debug("Polling interval: " + str(polling_interval))
+    logger.info("Waiting for the device to become responsive")
+    logger.debug("Timeout: " + str(timeout))
+    logger.debug("Polling interval: " + str(polling_interval))
 
     for _ in range(timeout / polling_interval):
         responsive_ip = get_ip_for_pc_device(mac_address, leases_file_path)
@@ -59,10 +59,10 @@ def wait_for_responsive_ip_for_pc_device(
             time.sleep(polling_interval)
             continue
 
-        logging.info("Got a response from " + responsive_ip)
+        logger.info("Got a response from " + responsive_ip)
         return responsive_ip
 
-    logging.info("No responsive ip was found")
+    logger.info("No responsive ip was found")
 
 def get_ip_for_pc_device(mac_address, leases_file_path):
     """
@@ -153,9 +153,9 @@ def log_subprocess32_error_and_abort(err):
     Args:
         err (subprocess32.CalledProcessError): The exception
     """
-    logging.critical(str(err.cmd) + " failed with error code: " +
+    logger.critical(str(err.cmd) + " failed with error code: " +
                      str(err.returncode) + " and output: " + str(err.output))
-    logging.critical("Aborting")
+    logger.critical("Aborting")
     sys.exit(1)
 
 def make_directory(directory):
@@ -190,13 +190,13 @@ def verify_device_mode(ip, mode):
     try:
         sshout = ssh.remote_execute(ip, ["cat", "/proc/version"])
         if mode in sshout:
-            logging.info("Found device in " + mode + " mode.")
+            logger.info("Found device in " + mode + " mode.")
             return True
-        logging.info("Device is not in " + mode + " mode")
-        logging.debug("/cat/proc/version: " + str(sshout))
+        logger.info("Device is not in " + mode + " mode")
+        logger.debug("/cat/proc/version: " + str(sshout))
         return False
     except subprocess32.CalledProcessError as err:
-        logging.warning(
+        logger.warning(
             "Failed verifying the device mode with command: '" +
             str(err.cmd) + "' failed with error code: '" +
             str(err.returncode) + "' and output: '" +

@@ -21,12 +21,12 @@ points)
 """
 
 from time import sleep
-import logging
 import os
 import shutil
 import serial
 import subprocess32
 
+from aft.logger import Logger as logger
 from aft.device import Device
 import aft.config as config
 import aft.errors as errors
@@ -245,7 +245,7 @@ class BeagleBoneBlackDevice(Device):
         # will discard the current path string when encourtering an absolute
         # path
 
-        logging.info("Creating directories and copying image files")
+        logger.info("Creating directories and copying image files")
 
         common.make_directory(os.path.join(
             self.nfs_path,
@@ -266,12 +266,12 @@ class BeagleBoneBlackDevice(Device):
         # temporary hack - remove once CI scripts are updated
 
         if "tar.bz2" in root_tarball:
-            logging.info("Using command line arg for root tarball")
+            logger.info("Using command line arg for root tarball")
             shutil.copy(
                 os.path.join(root_tarball),
                 os.path.join(self.nfs_path, self.root_tarball[1:]))
         else:
-            logging.info("No tarball name passed - using default value")
+            logger.info("No tarball name passed - using default value")
             shutil.copy(
                 self.parameters["root_tarball"],
                 os.path.join(self.nfs_path, self.root_tarball[1:]))
@@ -306,7 +306,7 @@ class BeagleBoneBlackDevice(Device):
             mode
         """
 
-        logging.info(
+        logger.info(
             "Trying to enter service mode up to " +
             str(self._SERVICE_MODE_RETRY_ATTEMPTS) + " times.")
 
@@ -375,7 +375,7 @@ class BeagleBoneBlackDevice(Device):
                     self._verify_mode(self.parameters["service_mode"])):
                 return
             else:
-                logging.warning("Failed to enter service mode")
+                logger.warning("Failed to enter service mode")
 
         raise errors.AFTDeviceError("Could not set the device in service mode")
 
@@ -393,7 +393,7 @@ class BeagleBoneBlackDevice(Device):
         """
         # device by default boots from sd card, so if everything has gone well,
         # we can just power cycle to boot the testable image
-        logging.info("Entering test mode")
+        logger.info("Entering test mode")
         for _ in range(self._TEST_MODE_RETRY_ATTEMPTS):
             self._power_cycle()
             self.dev_ip = self._wait_for_responsive_ip()
@@ -402,7 +402,7 @@ class BeagleBoneBlackDevice(Device):
             if self.dev_ip and self._verify_mode(self.parameters["test_mode"]):
                 return
             else:
-                logging.warning("Failed to enter test mode")
+                logger.warning("Failed to enter test mode")
 
         raise errors.AFTDeviceError("Could not set the device in test mode")
 
@@ -432,10 +432,10 @@ class BeagleBoneBlackDevice(Device):
             None
         """
 
-        logging.info("Flashing image")
+        logger.info("Flashing image")
 
         if not self.dev_ip:
-            logging.warning(
+            logger.warning(
                 "Unable to get ip address for device " + self.dev_id)
 
             raise errors.AFTDeviceError(
@@ -453,9 +453,9 @@ class BeagleBoneBlackDevice(Device):
         Returns:
             None
         """
-        logging.info("Starting boot partition operations")
+        logger.info("Starting boot partition operations")
 
-        logging.info(
+        logger.info(
             "Creating DOS filesystem on " + self.parameters["boot_partition"])
 
         ssh.remote_execute(
@@ -467,7 +467,7 @@ class BeagleBoneBlackDevice(Device):
 
         self._mount(self.parameters["boot_partition"])
 
-        logging.info("Writing new boot partition")
+        logger.info("Writing new boot partition")
         self._write_boot_partition_files()
 
         self._unmount_over_ssh()
@@ -494,9 +494,9 @@ class BeagleBoneBlackDevice(Device):
         Return:
             None
         """
-        logging.info("Starting root partition operations")
+        logger.info("Starting root partition operations")
 
-        logging.info(
+        logger.info(
             "Creating ext4 filesystem on " + self.parameters["root_partition"])
 
         ssh.remote_execute(
@@ -508,7 +508,7 @@ class BeagleBoneBlackDevice(Device):
 
         self._mount(self.parameters["root_partition"])
 
-        logging.info("Writing new root partition")
+        logger.info("Writing new root partition")
         self._write_root_partition_files()
         self._add_ssh_key()
         self._unmount_over_ssh()
@@ -556,7 +556,7 @@ class BeagleBoneBlackDevice(Device):
             None
         """
 
-        logging.info("Injecting ssh-key.")
+        logger.info("Injecting ssh-key.")
 
 
         ssh_directory = os.path.join(self.mount_dir, "home", "root", ".ssh")
@@ -621,7 +621,7 @@ class BeagleBoneBlackDevice(Device):
             aft.errors.AFTNotImplementedError on invocation
         """
 
-        logging.info("Power on check skipped")
+        logger.info("Power on check skipped")
         raise errors.AFTNotImplementedError(
             "Skipped - Covered by connection test")
 
@@ -643,7 +643,7 @@ class BeagleBoneBlackDevice(Device):
         self._BOOT_TIMEOUT = 140
 
         self._enter_service_mode()
-        logging.info("Succesfully booted device into service mode")
+        logger.info("Succesfully booted device into service mode")
 
 
     # helper functions
@@ -721,7 +721,7 @@ class BeagleBoneBlackDevice(Device):
         Returns:
             None
         """
-        logging.info("Mounting " + device_file + " to " + self.mount_dir)
+        logger.info("Mounting " + device_file + " to " + self.mount_dir)
         try:
             ssh.remote_execute(
                 self.dev_ip,
@@ -737,7 +737,7 @@ class BeagleBoneBlackDevice(Device):
         Returns:
             None
         """
-        logging.info("Unmounting " + self.mount_dir)
+        logger.info("Unmounting " + self.mount_dir)
         try:
             ssh.remote_execute(self.dev_ip, ["umount", self.mount_dir])
         except subprocess32.CalledProcessError as err:

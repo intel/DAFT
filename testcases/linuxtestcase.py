@@ -16,8 +16,8 @@ Linux Test Case class.
 """
 
 import os
-import logging
 
+from aft.logger import Logger as logger
 from aft.testcases.unixtestcase import UnixTestCase
 
 
@@ -69,7 +69,7 @@ class LinuxTestCase(UnixTestCase):
                                   destination=self._DUT_TMP,
                                   user=user)
         if self.output != None:
-            logging.critical("Couldn't copy " + str(full_path_to_payload) + " to " +
+            logger.critical("Couldn't copy " + str(full_path_to_payload) + " to " +
                              str(self._DUT_TMP) + ".\n" + str(self.output)
                              .format(full_path_to_payload, self._DUT_TMP,
                                      self.output))
@@ -88,7 +88,7 @@ class LinuxTestCase(UnixTestCase):
         media_file = self.parameters
         if not self._deploy_file(payload=media_file, user=self.user,
                                  timeout=timeout, device=device):
-            logging.critical("Failed to deploy file: " + str(media_file))
+            logger.critical("Failed to deploy file: " + str(media_file))
             return False
         # Play the media with gstreamer
         self.output = device.execute(

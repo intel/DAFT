@@ -36,7 +36,6 @@ Currently has several assumptions on devices and file locations:
 """
 
 import os
-import logging
 from multiprocessing import Process, Queue
 from time import sleep
 import pprint
@@ -49,6 +48,7 @@ from ConfigParser import SafeConfigParser
 import aft.devices.common as common
 import aft.tools.ssh as ssh
 
+from aft.logger import Logger as logger
 from aft.cutters.clewarecutter import ClewareCutter
 from aft.cutters.usbrelay import Usbrelay
 from pem.main import main as pem_main
@@ -98,11 +98,11 @@ class TopologyBuilder(object):
             None
         """
 
-        logging.info("Starting topology building")
+        logger.info("Starting topology building")
         if self._dryrun:
             print("*** Dry run - no configurations will be stored ***")
             print("")
-            logging.info("Dry run - no configurations will be stored")
+            logger.info("Dry run - no configurations will be stored")
 
         if self._verbose:
             print("Aquiring cutters")
@@ -170,9 +170,9 @@ class TopologyBuilder(object):
 
         configuration.write(output)
 
-        logging.info("Finished topology building")
-        logging.info("Result:")
-        logging.info(output)
+        logger.info("Finished topology building")
+        logger.info("Result:")
+        logger.info(output.getvalue())
 
         if self._verbose or self._dryrun:
             print("Configuration result:")
@@ -180,7 +180,7 @@ class TopologyBuilder(object):
             print(output.getvalue())
 
         if not self._dryrun:
-            logging.info("Writing topology file")
+            logger.info("Writing topology file")
 
             if self._verbose:
                 print("Writing topology file")
@@ -429,7 +429,7 @@ class TopologyBuilder(object):
         if self._verbose:
             print("PEM thread - Finding active PEM ports")
 
-        logging.info("Finding active PEM ports")
+        logger.info("Finding active PEM ports")
         pem_finder.start()
         return pem_results
 
@@ -458,7 +458,7 @@ class TopologyBuilder(object):
         if self._verbose:
             print("Serial thread - Finding active serial ports")
 
-        logging.info("Finding active serial ports")
+        logger.info("Finding active serial ports")
         serial_finder.start()
 
         return serial_results
@@ -647,7 +647,7 @@ class TopologyBuilder(object):
 
         """
 
-        logging.info("Shutting down a cutter")
+        logger.info("Shutting down a cutter")
         if self._verbose:
             print("Disconnected cutter")
             pprint.pprint(cutter.get_cutter_config())
@@ -693,7 +693,7 @@ class TopologyBuilder(object):
             cutter (aft.Cutter): The cutter that was disconnected
         """
 
-        logging.info("Configuring device power cutter")
+        logger.info("Configuring device power cutter")
         cutter_config = cutter.get_cutter_config()
         for key in cutter_config:
             if key != "type":
@@ -715,7 +715,7 @@ class TopologyBuilder(object):
         """
 
         # slight delay for powering down
-        logging.info("Configuring device networking and type")
+        logger.info("Configuring device networking and type")
         sleep(5)
 
         if self._verbose:
@@ -770,12 +770,12 @@ class TopologyBuilder(object):
             if self._verbose:
                 print("Pinging " + ip)
 
-            logging.info("Pinging ip address " + ip)
+            logger.info("Pinging ip address " + ip)
             return os.system("ping -c 10 " + ip + " > /dev/null")
         else:
             if self._verbose:
                 print("Testing ssh connection for " + ip)
-            logging.info("Testing ssh connection for " + ip)
+            logger.info("Testing ssh connection for " + ip)
             if ssh.test_ssh_connectivity(ip):
                 return 0
             else:
@@ -796,7 +796,7 @@ class TopologyBuilder(object):
             None
         """
 
-        logging.info("Configuring PC device MAC and type")
+        logger.info("Configuring PC device MAC and type")
         device["id"] = net_config["mac"]
 
         for pc_device in self._config["pc_devices"]:
@@ -820,7 +820,7 @@ class TopologyBuilder(object):
         Returns:
             None
         """
-        logging.info("Configuring Edison USB networking ")
+        logger.info("Configuring Edison USB networking ")
         device["network_subnet"] = net_config["subnet"]
         device["edison_usb_port"] = net_config["usb_path"]
         # we do not need MAC for any networking operations for edisons, but it
@@ -843,7 +843,7 @@ class TopologyBuilder(object):
             serial_results (multiprocessing.Queue): Queue containing list of
                                                     active serial device files.
         """
-        logging.info("Configuring device serial settings")
+        logger.info("Configuring device serial settings")
         active_serial_ports = serial_results.get()
 
         dead_ports = list(
@@ -853,9 +853,9 @@ class TopologyBuilder(object):
             if self._verbose:
                 print("Too many usb devices disappeared - cannot configure "
                        "serial port")
-            logging.warning("Too many usb devices disappeared - cannot " +
+            logger.warning("Too many usb devices disappeared - cannot " +
                             "configure serial port")
-            logging.warning("Device dictionary: " + str(device))
+            logger.warning("Device dictionary: " + str(device))
         elif len(dead_ports) == 0:
             if self._verbose:
                 print("All USB devices still active - device seems to not to "
@@ -879,7 +879,7 @@ class TopologyBuilder(object):
             pem_results (multiprocessing.Queue): Queue containing list of active
                                                  PEM device files.
         """
-        logging.info("Configuring device PEM settings")
+        logger.info("Configuring device PEM settings")
         active_pem_ports = pem_results.get()
 
         dead_ports = list(set(self._pem_ports).difference(active_pem_ports))
@@ -887,9 +887,9 @@ class TopologyBuilder(object):
             if self._verbose:
                 print("Too many usb devices disappeared - cannot configure PEM"
                        "port")
-            logging.warning("Too many usb devices disappeared - cannot " +
+            logger.warning("Too many usb devices disappeared - cannot " +
                             "configure PEM port")
-            logging.warning("Device dictionary: " + str(device))
+            logger.warning("Device dictionary: " + str(device))
 
         elif len(dead_ports) == 0:
             if self._verbose:
@@ -912,7 +912,7 @@ class TopologyBuilder(object):
         Return:
             ConfigParser object containing the configurations
         """
-        logging.info("Creating configuration object")
+        logger.info("Creating configuration object")
         config = SafeConfigParser()
 
         device_ids = {}

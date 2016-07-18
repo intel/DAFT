@@ -17,8 +17,9 @@ Class representing a Test Case.
 """
 
 import datetime
-import logging
 import abc
+
+from aft.logger import Logger as logger
 
 VERSION = "0.1.0"
 
@@ -64,9 +65,9 @@ class TestCase(object):
                    format(self.name,
                           '1' if self.result else '0',
                           self.duration))
-        
+
         if not self.result:
-            logging.info("Failed test case " + self.name + ".")
+            logger.info("Failed test case " + self.name + ".")
         xml.append('</testcase>\n')
         self.xunit_section = "".join(xml)
 
@@ -75,11 +76,11 @@ class TestCase(object):
         Prepare and executes the test case, storing the results.
         """
         start_time = datetime.datetime.now()
-        logging.info("Test case start time: " + str(start_time))
+        logger.info("Test case start time: " + str(start_time))
         self._prepare()
         # Test cases are run using the Visitor pattern to allow last-minute
         # preparation of the device for the test.
         self.result = device.test(self)
         self.duration = datetime.datetime.now() - start_time
-        logging.info("Test Duration: " + str(self.duration))
+        logger.info("Test Duration: " + str(self.duration))
         self._build_xunit_section()

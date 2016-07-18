@@ -1,6 +1,7 @@
 # Copyright (c) 2013-2015 Intel, Inc.
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -15,9 +16,9 @@
 Tools for remote controlling a device over ssh.
 """
 
+from aft.logger import Logger as logger
 import aft.tools.misc as tools
 import os
-import logging
 import subprocess32
 
 def _get_proxy_settings():
@@ -41,7 +42,7 @@ def test_ssh_connectivity(remote_ip, timeout = 10):
         remote_execute(remote_ip, ["echo", "$?"], connect_timeout = timeout)
         return True
     except subprocess32.CalledProcessError as err:
-        logging.warning("Could not establish ssh-connection to " + remote_ip +
+        logger.warning("Could not establish ssh-connection to " + remote_ip +
                         ". SSH return code: " + str(err.returncode) + ".")
         return False
 
@@ -92,23 +93,6 @@ def pull(
         destination]
     return tools.local_execute(scp_args, timeout, ignore_return_codes)
 
-def init_log(logger_name, prefix):
-    """
-    Initialize ssh logger, if it has not been initialized yet
-    """
-    if not hasattr(init_log, "initialized"):
-        logger = logging.getLogger(logger_name)
-        formatter = logging.Formatter("%(asctime)s: %(message)s")
-        file_handler = logging.FileHandler("ssh.log", mode='w')
-        file_handler.setFormatter(formatter)
-        logger.setLevel(logging.INFO)
-        logger.addHandler(file_handler)
-        logger.propagate = False # Do not send events to parent loggers
-        init_log.initialized = True
-
-        logger.info("All commands have following prefix - not repeated due to its length: " + prefix)
-
-
 def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
                    user = "root", connect_timeout = 15):
     """
@@ -116,8 +100,6 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
     Returns combines stdout and stderr if there are no errors. On error raises
     subprocess32 errors.
     """
-    logger_name = "ssh_logger"
-
 
     ssh_args = ["ssh",
                 "-i", "".join([os.path.expanduser("~"), "/.ssh/id_rsa_testing_harness"]),
@@ -129,19 +111,14 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
                 user + "@" + str(remote_ip),
                 _get_proxy_settings(),]
 
-    # Todo: Figure out a better way to do this. While init_log does nothing
-    # after the first call, it's still a stupid way to do this
-    init_log(logger_name, " ".join(ssh_args))
-    logger = logging.getLogger(logger_name)
-
-    logger.info("Executing " + " ".join(command))
+    logger.info("Executing " + " ".join(command), filename="ssh.log")
 
     ret = ""
     try:
         ret = tools.local_execute(ssh_args + command, timeout, ignore_return_codes)
     except subprocess32.CalledProcessError as err:
-        logger.error("Command raised exception: " + str(err))
-        logger.error("Output: " + str(err.output))
+        logger.error("Command raised exception: " + str(err), filename="ssh.log")
+        logger.error("Output: " + str(err.output), filename="ssh.log")
         raise err
 
     return ret

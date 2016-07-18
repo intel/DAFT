@@ -15,12 +15,12 @@
 Class for running tests on a VirtualBox image
 """
 
-import logging
 import os
 import shutil
 import subprocess32
 
 from aft.device import Device
+from aft.logger import Logger as logger
 
 import aft.errors as errors
 import aft.tools.misc as misc
@@ -98,12 +98,12 @@ class VirtualBoxDevice(Device):
             self._find_mac_address()
             self._inject_ssh_key()
         except subprocess32.CalledProcessError as err:
-            logging.info("Error when executing '" + ' '.join(err.cmd) + "':\n" +
+            logger.info("Error when executing '" + ' '.join(err.cmd) + "':\n" +
                          err.output)
             self._unregister_vm()
             raise err
         except errors.AFTDeviceError as err:
-            logging.info(str(err))
+            logger.info(str(err))
             self._unregister_vm()
             raise err
 
@@ -113,7 +113,7 @@ class VirtualBoxDevice(Device):
         Set default VirtualBox directory and import the .ova appliance into
         VirtualBox as a VM
         """
-        logging.info("Importing VM appliance")
+        logger.info("Importing VM appliance")
         self._set_default_directory(
             os.path.join(
                 os.getcwd(),
@@ -178,8 +178,8 @@ class VirtualBoxDevice(Device):
                     self._vm_name = self._vm_name[:-1]
 
         if self._vhdd and self._vm_name:
-            logging.info("VM name: " + self._vm_name)
-            logging.info("VHDD name: " + self._vhdd)
+            logger.info("VM name: " + self._vm_name)
+            logger.info("VHDD name: " + self._vhdd)
             return
 
         raise errors.AFTDeviceError(
@@ -217,7 +217,7 @@ class VirtualBoxDevice(Device):
                 # Add colons after every two symbols
                 as_array = [self._mac_address[i:i+2] for i in range(0, len(self._mac_address), 2)]
                 self._mac_address = ":".join(as_array)
-                logging.info("Device mac address: " + self._mac_address)
+                logger.info("Device mac address: " + self._mac_address)
                 return
 
         raise errors.AFTDeviceError(
@@ -244,7 +244,7 @@ class VirtualBoxDevice(Device):
         path = os.path.join(
             self._VM_DIRECTORY, self._vm_name,
             self._vhdd);
-        logging.info("Mounting '" + path + "' with device '" + self._ROOTFS_DEVICE +
+        logger.info("Mounting '" + path + "' with device '" + self._ROOTFS_DEVICE +
             "' into '" + self._MOUNT_DIRECTORY + "' for ssh key injection")
 
         misc.local_execute(
@@ -255,7 +255,7 @@ class VirtualBoxDevice(Device):
         """
         Inject ssh key into the mounted virtual hard drive
         """
-        logging.info("Injecting ssh key")
+        logger.info("Injecting ssh key")
         source_file = os.path.join(self._MODULE_DATA_PATH,
                                    self._HARNESS_AUTHORIZED_KEYS_FILE)
 
@@ -265,7 +265,7 @@ class VirtualBoxDevice(Device):
 
         ssh_file = os.path.join(ssh_path, "authorized_keys")
 
-        logging.info("Injecting ssh key from '" + source_file + "' to '" +
+        logger.info("Injecting ssh key from '" + source_file + "' to '" +
                      ssh_file + "'")
 
         common.make_directory(ssh_path)
@@ -276,7 +276,7 @@ class VirtualBoxDevice(Device):
 
         sha1sum = sha1sum.split()[0] # discard the file path
 
-        logging.info("Adding IMA attribute to the ssh-key")
+        logger.info("Adding IMA attribute to the ssh-key")
 
         # The setfattr command requires root privileges to run, and in general
         # we would like to run AFT without root privileges. However, we can add
@@ -302,7 +302,7 @@ class VirtualBoxDevice(Device):
             ])
 
 
-        logging.info("Fixing ownership and permissions")
+        logger.info("Fixing ownership and permissions")
         # ensure .ssh directory and authorized key file is owned by root
         os.chown(ssh_path, 0, 0)
         os.chown(ssh_file, 0, 0)
@@ -314,7 +314,7 @@ class VirtualBoxDevice(Device):
 
 
     def _unmount_virtual_drive(self):
-        logging.info("Unmounting virtual hard drive")
+        logger.info("Unmounting virtual hard drive")
         """
         Unmount the VirtualBox virtual hard drive
         """
@@ -328,14 +328,14 @@ class VirtualBoxDevice(Device):
         try:
             self._enter_test_mode()
 
-            logging.info("Running test cases")
+            logger.info("Running test cases")
             result = test_case.run(self)
             return result
         except subprocess32.CalledProcessError as err:
-            logging.info("Error when executing '" + ' '.join(err.cmd) + "':\n" +
+            logger.info("Error when executing '" + ' '.join(err.cmd) + "':\n" +
                          err.output)
         except errors.AFTDeviceError as err:
-            logging.info(str(err))
+            logger.info(str(err))
         finally:
             self._stop_vm()
             self._unregister_vm()
@@ -343,7 +343,7 @@ class VirtualBoxDevice(Device):
         return False
 
     def _enter_test_mode(self):
-        logging.info("Entering test mode")
+        logger.info("Entering test mode")
         self._set_host_only_nic()
         self._start_vm()
         if self.get_ip() == None:
@@ -383,12 +383,12 @@ class VirtualBoxDevice(Device):
         if not self._is_powered_on:
             return
 
-        logging.info("Stopping the vm")
+        logger.info("Stopping the vm")
         misc.local_execute((
             "VBoxManage controlvm " + self._vm_name + " poweroff").split())
 
     def _unregister_vm(self):
-        logging.info("Unregistering the vm")
+        logger.info("Unregistering the vm")
         if self._vm_name == None:
             return
         misc.local_execute(("VBoxManage unregistervm " + self._vm_name).split())

@@ -15,11 +15,11 @@ Topology of PC-like devices and cutters connected to the host PC.
 
 import re
 import time
-import logging
 
 import aft.tools.ssh as Ssh
 import aft.cutter as Cutter
 from aft.devices.pcdevice import PCDevice
+from aft.logger import Logger as logger
 
 
 VERSION = "0.1.0"
@@ -80,9 +80,9 @@ class PCsTopology(DevicesTopology):
         """
         cls._cutter_class.disconnect_all_channels_of_type("Mains")
         cls._cutter_class.connect_all_channels_of_type("Mains")
-        logging.info("Waiting for device(s) to boot.")
+        logger.info("Waiting for device(s) to boot.")
         time.sleep(180)
-        logging.info("Wait completed.")
+        logger.info("Wait completed.")
         # Find all the visible devices that are in service mode
         devices = cls._list_devices()
         # Disconnect cutter channels in sequence
