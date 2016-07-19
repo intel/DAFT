@@ -16,8 +16,10 @@
 
 """Tool for managing collection of devices from the same host PC"""
 
-from aft.logger import Logger as logger
-import ConfigParser
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 import time
 import atexit
 import os
@@ -29,6 +31,7 @@ import aft.errors as errors
 import aft.config as config
 import aft.devicefactory as devicefactory
 import aft.devices.common as common
+from aft.logger import Logger as logger
 
 class DevicesManager(object):
     """Class handling devices connected to the same host PC"""
@@ -222,7 +225,7 @@ class DevicesManager(object):
                     # Using a locking database system could be a viable fix.
                     lockfile = os.fdopen(os.open(os.path.join(config.LOCK_FILE,
                                                                     "aft_" + device.dev_id),
-                                                       os.O_WRONLY | os.O_CREAT, 0660), "w")
+                                                       os.O_WRONLY | os.O_CREAT, 0o660), "w")
                     fcntl.flock(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
                     logger.info("Device acquired.")

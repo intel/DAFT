@@ -24,7 +24,10 @@ from time import sleep
 import os
 import shutil
 import serial
-import subprocess32
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 
 from aft.logger import Logger as logger
 from aft.device import Device
@@ -47,7 +50,7 @@ def serial_write(stream, text, sleep_time):
     Returns:
         None
     """
-    stream.write(text + "\n")
+    stream.write((text + "\n").encode())
     sleep(sleep_time)
 
 class BeagleBoneBlackDevice(Device):

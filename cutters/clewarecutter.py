@@ -17,7 +17,10 @@
 Tool for handling Cleware USB Cutter devices.
 """
 
-import subprocess32
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 import aft.tools.misc as misc
 import random
 from time import sleep

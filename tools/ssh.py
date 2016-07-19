@@ -19,7 +19,10 @@ Tools for remote controlling a device over ssh.
 from aft.logger import Logger as logger
 import aft.tools.misc as tools
 import os
-import subprocess32
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 
 def _get_proxy_settings():
     """

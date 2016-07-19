@@ -18,13 +18,13 @@ Base class for Cutter devices.
 """
 
 import abc
+from six import with_metaclass
 
-class Cutter(object):
+class Cutter(with_metaclass(abc.ABCMeta, object)):
     """
     Common abstract base class for all the makes of cutters.
     """
     DEFAULT_TIMEOUT = 5
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def connect(self):

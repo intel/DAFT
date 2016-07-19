@@ -14,7 +14,10 @@
 """
 Basic Test Case class.
 """
-import subprocess32
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 import re
 
 from aft.logger import Logger as logger

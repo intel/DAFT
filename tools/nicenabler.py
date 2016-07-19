@@ -15,7 +15,10 @@ Script to keep a Linux network interface attached to a USB-path available even
 if it disappears momentarily.
 """
 
-import subprocess32
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 import os
 import netifaces
 import time

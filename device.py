@@ -23,17 +23,17 @@ import abc
 
 from time import sleep
 from threading import current_thread
+from six import with_metaclass
 
 from aft.tools.thread_handler import Thread_handler as thread_handler
 import aft.tools.serialrecorder as serialrecorder
 import aft.errors as errors
 from aft.logger import Logger as logger
 
-class Device(object):
+class Device(with_metaclass(abc.ABCMeta, object)):
     """
     Abstract class representing a DUT.
     """
-    __metaclass__ = abc.ABCMeta
 
     _POWER_CYCLE_DELAY = 10
 

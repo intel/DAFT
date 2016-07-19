@@ -46,7 +46,7 @@ def record(serial_stream, output):
     read_buffer = ""
     while True:
         try:
-            read_buffer += serial_stream.read(4096)
+            read_buffer += serial_stream.read(4096).decode("utf-8")
         except serial.SerialException as err:
             # This is a hacky way to fix random, frequent, read errors.
             # May catch more than intended.

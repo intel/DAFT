@@ -15,7 +15,10 @@
 Convenience functions for (unix) command execution
 """
 
-import subprocess32
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 import time
 
 def local_execute(command, timeout = 60, ignore_return_codes = None):
@@ -39,7 +42,7 @@ def local_execute(command, timeout = 60, ignore_return_codes = None):
                 output += process.communicate(timeout = 1)[0]
             except subprocess32.TimeoutExpired:
                 pass
-    
+
     if return_code == None:
         # Time ran out but the process didn't end.
         raise subprocess32.TimeoutExpired(cmd = command, output = output,

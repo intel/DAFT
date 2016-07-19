@@ -17,7 +17,10 @@ Class for running tests on a VirtualBox image
 
 import os
 import shutil
-import subprocess32
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 
 from aft.device import Device
 from aft.logger import Logger as logger
@@ -308,9 +311,8 @@ class VirtualBoxDevice(Device):
         os.chown(ssh_file, 0, 0)
 
         # and ensure the permissions are correct
-        # Note: incompatibility with Python 3 in chmod octal numbers
-        os.chmod(ssh_path, 0700)
-        os.chmod(ssh_file, 0600)
+        os.chmod(ssh_path, 0o700)
+        os.chmod(ssh_file, 0o600)
 
 
     def _unmount_virtual_drive(self):

@@ -17,10 +17,14 @@ Module for device configuration check functionality.
 """
 import os
 import copy
-from Queue import Queue
 from threading import Thread
 from multiprocessing import Process
 from multiprocessing import Queue as multiprocessing_queue
+from functools import reduce
+try:
+    from Queue import Queue
+except ImportError:
+    from queue import Queue
 
 import aft.config as config
 import aft.errors as errors
@@ -276,7 +280,7 @@ def check(args):
         msg = "Device " + args.device + " failed health test - blacklisting"
         logger.info(msg)
         if args.verbose:
-            print msg
+            print(msg)
 
     return results
 

@@ -17,7 +17,10 @@
 Tool for handling Usbrelay USB Cutter devices.
 """
 
-import subprocess32
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 import os
 
 from aft.cutter import Cutter

@@ -24,7 +24,10 @@ DEVICE_BLACKLIST="/etc/aft/blacklist"
 KNOWN_GOOD_IMAGE_FOLDER = "/home/tester/good_test_images"
 
 import sys
-import ConfigParser
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 
 def parse():
     """

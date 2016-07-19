@@ -378,9 +378,8 @@ class PCDevice(Device):
 
         layout_file = open(layout_file_name, "r")
         disk_layout = json.load(layout_file)
-        # Convert Unicode -> ASCII
         rootfs_partition = next(
-            partition for partition in disk_layout.values() \
+            partition for partition in list(disk_layout.values()) \
             if isinstance(partition, dict) and \
             partition["name"] == "rootfs")
         return os.path.join(

@@ -20,9 +20,12 @@ the Device base class.
 """
 
 import os
-import subprocess32
 import time
 import sys
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 
 from aft.logger import Logger as logger
 import aft.config as config
@@ -52,7 +55,7 @@ def wait_for_responsive_ip_for_pc_device(
     logger.debug("Timeout: " + str(timeout))
     logger.debug("Polling interval: " + str(polling_interval))
 
-    for _ in range(timeout / polling_interval):
+    for _ in range(timeout // polling_interval):
         responsive_ip = get_ip_for_pc_device(mac_address, leases_file_path)
 
         if not responsive_ip:
