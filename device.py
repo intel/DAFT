@@ -18,13 +18,14 @@
 Class representing a DUT.
 """
 
-import os
-import atexit
-import subprocess32
+import threading
 import abc
 
 from time import sleep
+from threading import current_thread
 
+from aft.tools.thread_handler import Thread_handler as thread_handler
+import aft.tools.serialrecorder as serialrecorder
 import aft.errors as errors
 from aft.logger import Logger as logger
 
@@ -61,14 +62,14 @@ class Device(object):
                                                self.name + " doesn't include " +
                                                "serial_port and/or serial_bauds.")
 
-        recorder = subprocess32.Popen(["python",
-                                       os.path.join(os.path.dirname(__file__), "tools",
-                                                    "serialrecorder.py"),
-                                       self.parameters["serial_port"],
-                                       self.parameters["serial_log_name"],
-                                       "--rate",
-                                       self.parameters["serial_bauds"]])
-        atexit.register(misc.subprocess_killer, recorder)
+        recorder = threading.Thread(target=serialrecorder.main,
+                                args=(self.parameters["serial_port"],
+                                self.parameters["serial_bauds"],
+                                self.parameters["serial_log_name"]),
+                                name=(current_thread().name + "recorder"))
+
+        recorder.start()
+        thread_handler.add_thread(recorder)
 
 
     def test(self, test_case):

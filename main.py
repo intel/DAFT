@@ -27,6 +27,7 @@ import aft.config as config
 import aft.tools.device_configuration_checker as device_config
 from aft.logger import Logger as logger
 import aft.devices.common as common
+from aft.tools.thread_handler import Thread_handler as thread_handler
 from aft.tools.topology_builder import TopologyBuilder
 from aft.tools.edison_recovery_flasher import recover_edisons
 from aft.devicesmanager import DevicesManager
@@ -139,10 +140,16 @@ def main(argv=None):
         print("Keyboard interrupt, stopping aft")
         logger.error("Keyboard interrupt, stopping aft.")
         sys.exit(0)
+
     except:
         _err = sys.exc_info()
         logger.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
         raise
+
+    finally:
+        thread_handler.set_flag(thread_handler.RECORDERS_STOP)
+        for thread in thread_handler.get_threads():
+            thread.join(5)
 
 def try_flash_specific(args, device_manager):
     '''
