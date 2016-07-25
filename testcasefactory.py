@@ -18,12 +18,14 @@ import aft.testcases.linuxtestcase
 import aft.testcases.basictestcase
 import aft.testcases.qatestcase
 import aft.testcases.unixtestcase
+import aft.testcases.gtestcase
 
 _TEST_CASES = {
     "qatestcase" : aft.testcases.qatestcase.QATestCase,
     "unixtestcase" : aft.testcases.unixtestcase.UnixTestCase,
     "basictestcase" : aft.testcases.basictestcase.BasicTestCase,
     "linuxtestcase" : aft.testcases.linuxtestcase.LinuxTestCase,
+    "gtestcase" : aft.testcases.gtestcase.GTestCase,
 }
 
 def build_test_case(parameters):

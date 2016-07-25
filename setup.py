@@ -21,7 +21,7 @@ from setuptools import setup
 DEVICE_FILES = ["default_config/devices/platform.cfg",
                 "default_config/devices/catalog.cfg",
                 "default_config/devices/topology.cfg"]
-TEST_PLANS = ["default_config/test_plan/iot_qatest.cfg"]
+TEST_PLANS = ["default_config/test_plan/iot_qatest.cfg", "default_config/test_plan/iot_gtest.cfg"]
 CONFIG_FILES = ["default_config/aft.cfg", "default_config/topology_builder.json"]
 BLACKLIST_FILES = ["default_config/blacklist"]
 

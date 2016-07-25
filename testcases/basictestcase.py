@@ -45,6 +45,9 @@ class BasicTestCase(TestCase):
                                      stderr=subprocess32.STDOUT,
                                      stdout=subprocess32.PIPE)
         self.output = process.communicate()[0]
+        logger.debug("Output return code in basictestcase.run_local_command():" + str(process.returncode))
+        logger.debug("And output: " + self.output)
+
 
         if process.returncode == 124 or process.returncode == 128 + 9:
             raise errors.AFTTimeoutError("Test cases failed to complete in " + str(timeout) + " seconds")
