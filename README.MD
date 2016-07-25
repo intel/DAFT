@@ -35,3 +35,7 @@ AFT can be both installed and updated the same way: By cloning this repository o
   $ sudo python setup.py install
 ```
 
+Documentation
+-------------
+
+For documentation, see [documentation.tex](documentation/documentation.tex) or [documentation.pdf](documentation/documentation.pdf). Note that the pdf file is updated less often than the tex file. It is recommended that you use LaTeX to produce a new pdf file based on the tex file.  
