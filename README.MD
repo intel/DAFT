@@ -24,3 +24,14 @@ device becomes available, flashes the image.
 
 If the image deploys successfully and can also boot the device, the
 system will run the requested test plan.
+
+Installing and updating AFT
+---------------------------
+AFT can be both installed and updated the same way: By cloning this repository or pulling in the latest changes and executing build and install subcommands with the setup.py installer:
+
+```
+  $ git clone <this repo> OR git pull  
+  $ python setup.py build  
+  $ sudo python setup.py install
+```
+
