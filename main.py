@@ -19,13 +19,15 @@ Main entry point for aft.
 """
 
 import sys
+import os.path
 import argparse
 import logging
 
 import aft.config as config
-import aft.errors as errors
 import aft.tools.device_configuration_checker as device_config
 from aft.logger import Logger as logger
+import aft.devices.common as common
+from aft.tools.thread_handler import Thread_handler as thread_handler
 from aft.tools.topology_builder import TopologyBuilder
 from aft.tools.edison_recovery_flasher import recover_edisons
 from aft.devicesmanager import DevicesManager
@@ -37,21 +39,21 @@ def main(argv=None):
     Entry point for library-like use.
     """
 
-    logger.init_root_logger()
-    logger.init_thread()
-
-    config.parse()
-
-    if argv != None:
-        backup_argv = sys.argv
-        sys.argv = argv
-
-    args = parse_args()
-
-    if args.debug:
-        logger.level(logging.DEBUG)
-
     try:
+        logger.init_root_logger()
+        logger.init_thread()
+
+        config.parse()
+
+        if argv != None:
+            backup_argv = sys.argv
+            sys.argv = argv
+
+        args = parse_args()
+
+        if args.debug:
+            logger.level(logging.DEBUG)
+
         if args.configure:
             builder = TopologyBuilder(args)
             builder.build_topology()
@@ -104,22 +106,24 @@ def main(argv=None):
             recover_edisons(device_manager, args.verbose)
             return 0
 
-        if not args.machine or not args.file_name:
+        if not args.machine:
             print("Both machine and image must be specified")
             return 1
 
-        try:
-            device = device_manager.reserve_specific(args.machine)
-        except errors.AFTConfigurationError:
-            device = device_manager.reserve()
-        tester = Tester(device)
-
-        if args.record:
-            device.record_serial()
-
         if not args.noflash:
-            print("Flashing " + str(device.name) + ".")
-            device.write_image(args.file_name)
+            if not args.file_name:
+                print("Both machine and image must be specified")
+                return 1
+
+            if not os.path.isfile(args.file_name):
+                print("Didn't find image: " + args.file_name)
+                logger.error("Didn't find image: " + args.file_name)
+                return 1
+
+        if args.device:
+            device, tester = try_flash_specific(args, device_manager)
+        else:
+            device, tester = try_flash_model(args, device_manager)
 
         if not args.notest:
             print("Testing " + str(device.name) + ".")
@@ -128,14 +132,119 @@ def main(argv=None):
         if not args.nopoweroff:
             device.detach()
 
+        device_manager.release(device)
+
         if "backup_argv" in locals():
             sys.argv = backup_argv
         return 0
+
+    except KeyboardInterrupt:
+        print("Keyboard interrupt, stopping aft")
+        logger.error("Keyboard interrupt, stopping aft.")
+        sys.exit(0)
 
     except:
         _err = sys.exc_info()
         logger.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
         raise
+
+    finally:
+        thread_handler.set_flag(thread_handler.RECORDERS_STOP)
+        for thread in thread_handler.get_threads():
+            thread.join(5)
+
+def try_flash_specific(args, device_manager):
+    '''
+    Reserve and flash specific device.
+
+    Args:
+        args: AFT arguments
+        device_manager: Device manager object
+
+    Returns:
+        device, tester: Reserved machine and tester handles.
+    '''
+    device = device_manager.reserve_specific(args.device, model=args.machine)
+    tester = Tester(device)
+
+    if args.record:
+        device.record_serial()
+
+    if not args.noflash:
+        print("Flashing " + str(device.name) + ".")
+        device.write_image(args.file_name)
+        print("Flashing successful.")
+
+    return device, tester
+
+def try_flash_model(args, device_manager):
+    '''
+    Reserve and flash a machine. By default it tries to flash 2 times with 2
+    different machines. If flashing fails machine will be blacklisted.
+
+    Args:
+        args: AFT arguments
+        device_manager: Device manager object
+
+    Returns:
+        device, tester: Reserved machine and tester handles.
+    '''
+    machine_attempt = 0
+    machine_retries = args.machine_retries
+
+    while machine_attempt < machine_retries:
+        machine_attempt += 1
+
+        device = device_manager.reserve()
+        tester = Tester(device)
+
+        if args.record:
+            device.record_serial()
+
+        if args.noflash:
+            return device, tester
+
+        flash_attempt = 0
+        flash_retries = args.flash_retries
+
+        while flash_attempt < flash_retries:
+            flash_attempt += 1
+
+            try:
+                print("Flashing " + str(device.name) + ", attempt " +
+                    str(flash_attempt) + " of " + str(flash_retries) + ".")
+                device.write_image(args.file_name)
+                print("Flashing successful.")
+                return device, tester
+
+            except KeyboardInterrupt:
+                raise
+
+            except:
+                _err = sys.exc_info()
+                _err = str(_err[0]).split("'")[1] + ": " + str(_err[1])
+                logger.error(_err)
+                print(_err)
+
+                if (flash_retries - flash_attempt) == 0:
+                    msg = "Flashing failed " + str(flash_attempt) + " times"
+                    print(msg + ", blacklisting " + str(device.name))
+                    logger.info(msg + ", blacklisting " + str(device.name))
+                    common.blacklist_device(device.dev_id, device.name, msg)
+                    device_manager.release(device)
+
+                    if machine_attempt < machine_retries:
+                        print("Attempting flashing another machine")
+
+                    else:
+                        raise
+
+                elif (flash_retries - flash_attempt) == 1:
+                    print("Flashing failed, trying again one more time")
+
+                elif (flash_retries - flash_attempt) > 1:
+                    print("Flashing failed, trying again " +
+                        str(flash_retries - flash_attempt) + " more times")
 
 def parse_args():
     """
@@ -176,6 +285,22 @@ def parse_args():
         action="store",
         default="",
         help="Specify the individual physical device by name.")
+
+    parser.add_argument(
+        "--machine_retries",
+        type=int,
+        nargs="?",
+        action="store",
+        default="2",
+        help="Specify how many machines will be tried if flashing fails.")
+
+    parser.add_argument(
+        "--flash_retries",
+        type=int,
+        nargs="?",
+        action="store",
+        default="2",
+        help="Specify how many time flashing one machine will be tried.")
 
     parser.add_argument(
         "--record",

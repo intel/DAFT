@@ -2,6 +2,7 @@
 # Copyright (c) 2013-15 Intel, Inc.
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -17,44 +18,23 @@ A script to record serial output from a tty-device.
 """
 
 import serial
-import argparse
-import signal
 import time
 import aft.tools.ansiparser as ansiparser
+from aft.tools.thread_handler import Thread_handler as thread_handler
 
-TERMINATE_FLAG = False
-# pylint: disable=unused-argument
-def signal_handler(sig, frame):
-    """
-    Terminate signal handler
-    """
-    # pylint: disable=global-statement
-    global TERMINATE_FLAG
-    # pylint: enable=global-statement
-    print("Terminating serial recorder.")
-    TERMINATE_FLAG = True
-# pylint: enable=unused-argument
-
-def main():
+def main(port, rate, output):
     """
     Initialization.
     """
-    signal.signal(signal.SIGTERM, signal_handler)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("port", type=str, help="Serial port to read from (e.g. /dev/ttyUSB0)")
-    parser.add_argument("--rate", type=int, default=115200, help="Baud rate of the serial port")
-    parser.add_argument("output", type=str, help="Output file name")
-    args = parser.parse_args()
+    serial_stream = serial.Serial(port, rate, timeout=0.01, xonxoff=True)
+    output_file = open(output, "w")
 
-    serial_stream = serial.Serial(args.port, args.rate, timeout=0.01, xonxoff=True)
-    output_file = open(args.output, "w")
-
-    print("Starting recording from " + str(args.port) + " to " + str(args.output) + ".")
+    print("Starting recording from " + str(port) + " to " + str(output) + ".")
     record(serial_stream, output_file)
 
     print("Parsing output")
-    ansiparser.parse_file(args.output)
+    ansiparser.parse_file(output)
 
     serial_stream.close()
     output_file.close()
@@ -68,14 +48,14 @@ def record(serial_stream, output):
         try:
             read_buffer += serial_stream.read(4096)
         except serial.SerialException as err:
-            # This is a hacky way to fix random, frequent, read errors. May catch more than
-            # intended.
+            # This is a hacky way to fix random, frequent, read errors.
+            # May catch more than intended.
             serial_stream.close()
             serial_stream.open()
             continue
 
         last_newline = read_buffer.rfind("\n")
-        if last_newline == -1 and not TERMINATE_FLAG:
+        if last_newline == -1 and not thread_handler.get_flag(thread_handler.RECORDERS_STOP):
             continue
 
         text_batch = read_buffer[0:last_newline + 1]
@@ -86,7 +66,7 @@ def record(serial_stream, output):
         timed_batch = text_batch.replace("\n", "\n[" + str(time_now) + "] ")
         output.write(timed_batch)
         output.flush()
-        if TERMINATE_FLAG:
+        if thread_handler.get_flag(thread_handler.RECORDERS_STOP):
             # Write out the remaining buffer.
             if read_buffer:
                 output.write(read_buffer)
@@ -94,4 +74,6 @@ def record(serial_stream, output):
             return
 
 if __name__ == '__main__':
-    main()
+    import sys
+    args = sys.argv
+    main(args[0],args[1],args[2])
