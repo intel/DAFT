@@ -65,6 +65,112 @@ The absolutely mandatory steps to take for a simplest working system with just M
 	\item Configure AFT using the instructions from appendix \ref{app:aft}.
 \end{enumerate}
 
+\subsection{Simple device configuration}
+
+Adding devices to the testing setup is a common scenario. This section serves as a tutorial on how to add a Minnowboard MAX to an existing CI setup. The following assumes that the testing harness has already been configured.
+
+Please refer to \ref{app:aft} for a more thorough explanation of the various values seen here (as well as for values used with other devices)
+
+\begin{enumerate}
+
+\item If there are no other PC-like devices such as Galileos in use, we need to modify \cmd{platform.cfg} file under \cmd{/etc/aft/devices/} to add an entry for PC devices.
+
+\begin{lstlisting}
+[PC]
+leases_file_name = /var/lib/misc/dnsmasq.leases
+config_check_keystrokes = /home/tester/kbsequences/empty
+\end{lstlisting}
+
+\cmd{leases\_file\_name} contains the path to \cmd{dnsmasq.leases} file. This file is used to determine device IP address.
+
+\cmd{config\_check\_keystrokes} contains the path to the keyboard sequence that will be used during configuration check to verify that the keyboard emulator is functional.
+
+\item If this is the first Minnowboard that is being added, we need to create an entry for Minnowboards in \cmd{catalog.cfg} file under \cmd{/etc/aft/devices/}.
+
+\begin{lstlisting}
+[MinnowboardMAX]
+platform = PC
+cutter_type = ClewareCutter
+test_plan = iot_qatest
+target_device = /dev/mmcblk0
+root_partition = /dev/mmcblk0p2
+service_mode = Debian
+test_mode = yocto
+service_mode_keystrokes = /home/tester/kbsequences/minnowboard/minnowboarddebian
+test_mode_keystrokes = /home/tester/kbsequences/empty
+serial_bauds = 115200
+\end{lstlisting}
+
+The \cmd{platform}-key here points to an existing entry in \cmd{platform.cfg} file. This is case sensitive.
+
+\cmd{cutter\_type} determines the type of the power cutter that will be used. In this particular case, ClewareCutter will be used.
+
+\cmd{test\_plan} determines the test plan manifest that will be used (stored under \cmd{/etc/aft/test\_plan/})
+
+\cmd{target\_device} determines the block device where the testable image will be stored.
+
+\cmd{root\_partition} determines the default root partition that will be used for ssh key injection, if <image-name>-disk-layout.json file has not been provided.
+
+\cmd{service\_mode} defines a string that must be present in \cmd{/proc/version/} of the support image. This is used to check that the device booted into the service mode instead of the test mode.
+
+\cmd{test\_mode} defines a string that works like as described with \cmd{service\_mode}, but successful test mode boot is verified instead.
+
+\cmd{service\_mode\_keystrokes} contains the path to keystroke file that will be used to boot the device into the service mode.
+
+\cmd{test\_mode\_keystrokes} is used as above, but to boot into the test mode instead.
+
+\cmd{serial\_bauds} determines the baud rate of the serial connection.
+
+\item Finally, the device specific details, such as power cutter and serial connection details, need to be added to \cmd{topology.cfg} under \cmd{/etc/aft/devices/}
+
+\begin{lstlisting}
+
+[MINNOWBOARD_1]
+model = MinnowboardMAX
+id = 00:08:a2:09:ba:01
+cutter = 650348
+channel = 3
+pem_interface = serialconnection
+pem_port = /dev/ttyUSB1
+serial_port = /dev/ttyUSB0
+
+\end{lstlisting}
+The \cmd{model} here points to an entry in \cmd{catalog.cfg}. This is again case sensitive.
+
+The \cmd{id} value must be the device MAC address.
+
+In this particular example, it is assumed that Cleware cutters are being used (as specified in catalog.cfg). \cmd{cutter} and \cmd{channel} values determine the cutter  and the physical socket that will be used.
+
+
+\cmd{pem\_port} and \cmd{serial\_port} determine the PEM (the keyboard emulator) and serial ports that will be used. Currently the only supported \cmd{pem\_interface} is the \cmd{serialconnection}.
+
+PEM and serial ports can be determined by plugging in the cables and then reading the actual /dev/ttyUSBx entry from \cmd{dmesg}. An example output when plugging in serial cable:
+
+\begin{lstlisting}
+[602722.139098] usb 2-1.4.3: new full-speed USB device number 48 using ehci-pci
+[602722.238434] usb 2-1.4.3: New USB device found, idVendor=0403, idProduct=6001
+[602722.238444] usb 2-1.4.3: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[602722.238450] usb 2-1.4.3: Product: TTL232R-3V3
+[602722.238454] usb 2-1.4.3: Manufacturer: FTDI
+[602722.238458] usb 2-1.4.3: SerialNumber: FTFRNFUI
+[602722.241004] ftdi_sio 2-1.4.3:1.0: FTDI USB Serial Device converter detected
+[602722.241089] usb 2-1.4.3: Detected FT232RL
+[602722.241718] usb 2-1.4.3: FTDI USB Serial Device converter now attached to ttyUSB0
+\end{lstlisting}
+In this case, the serial port is /dev/ttyUSB0, as determined by the final line.
+
+The device MAC address can be found by, for example, booting the device once and observing the device MAC address from the \cmd{dnsmasq.conf} file:
+
+\begin{lstlisting}
+1469690381 00:08:a2:09:ba:02 192.168.30.144 intel-corei7-64 01:00:08:a2:09:ba:02
+\end{lstlisting}
+
+The MAC address in this case is \cmd{00:08:a2:09:ba:02}
+
+\end{enumerate}
+
+
+
 \subsection{Testing automation USB-stick}
 In this document there are multiple references to a testing automation USB-stick. This stick is intended to contain programs and other tools required for maintaining a complete testing automation system.
 
@@ -1504,7 +1610,15 @@ For \emph{Beaglebone Blacks}, \cmd{serial\_port} is mandatory (see below for mor
 
 For \emph{Edisons} the mandatory options are as follows:
 \begin{itemize}
-\item \cmd{edison\_usb\_port}: The USB-bus and -port to which the USB-cable to Edison is attached. \note Not the usbrelay but the cable.
+\item \cmd{edison\_usb\_port}: The USB-bus and -port to which the USB-cable to Edison is attached. This can be found for example from \cmd{dmesg} output when the device powers on:
+
+\begin{lstlisting}
+[239158.679601] usb 2-1.1.4.1.4: Product: Edison
+\end{lstlisting}
+
+The required value in this case is 2-1.1.4.1.4
+
+\note Do not confuse the usb relay with the actual data cable; we are interested in the data cable values.
 
 \item \cmd{network\_subnet}: A *.*.*.*/30 subnet dedicated for this specific Edison device.
 \end{itemize}
@@ -1652,13 +1766,13 @@ This allows the desired user to invoke the script without root password with roo
 \subsection*{Configuring VirtualBox}
 \label{virtualboxnoroot}
 
-By default, VirtualBox requires root privileges to access certain VirtualBox specific files (files are owned by root:vboxusers). User must be added into \cmd{vboxusers}-group to remove this requirement. This can be done with \cmd{zypper}
+By default, VirtualBox requires root privileges to access certain VirtualBox specific files (files are owned by root:vboxusers). User must be added into \cmd{vboxusers}-group to remove this requirement. This can be done with \cmd{yast}
 
 \subsection*{Configuring \cmd{setfattr}}
 \label{virtualboxsetfattr}
 The problem with setfattr is similar to the \cmd{ifconfig}. The operations it is used for always require root privileges. This is solved similarily than the \cmd{ifconfig} case; a script \cmd{setfattr\_script.sh} exists under \cmd{tools}-directory that encapsulates setfattr calls. Much like the ifconfig script, this script limits the usage of the command to bare minimum in order to reduce security footprint.
 
-This script can be executed with root privileges by adding it tu sudoers list:
+This script can be executed with root privileges by adding it to sudoers list:
 
 \begin{lstlisting}
 <user name> ALL=(ALL) NOPASSWD: /full/path/to/the/setfattr_script.sh
