@@ -1,6 +1,7 @@
 # coding=utf8
 # Copyright (c) 2016 Intel, Inc.
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -17,9 +18,8 @@ Module for the topology builder class, which builds device topology file
 
 Currently has several assumptions on devices and file locations:
 
--Dmesg log is cleared during topology building
 -Edison registration shows up in dmesg log, in a certain form
--USB relay cutters must be entered manually as currently they are not detected
+-USB relay cutters' vendor and model id have to be entered to topology config
 -Assumes that topology builder config file is /etc/aft/topology_builder.json
 -Assumes that topology config file is /etc/aft/devices/topology.cfg
 -Assumes DHCP-leases are stored in /var/lib/misc/dnsmasq.leases
@@ -67,6 +67,7 @@ class TopologyBuilder(object):
         _pem_ports (List(str)): List of available PEM device ports.
         _serial_ports (List(str)): List of available serial device ports.
         _devices (List(Dictionary)): List of devices that have been configured
+        _timestamp (int): Timestamp from dmesg before turning devices on
         _config (Dictionary): Configuration parameters for topology builder
 
     """
@@ -85,6 +86,7 @@ class TopologyBuilder(object):
         self._pem_ports = []
         self._serial_ports = []
         self._devices = []
+        self._timestamp = 0
         with open("/etc/aft/topology_builder.json") as f:
             self._config = json.load(f)
 
@@ -206,9 +208,7 @@ class TopologyBuilder(object):
                 cutter = ClewareCutter(param)
                 cutters.append(cutter)
 
-        for port in self._config["edison"]["power_cutters"]:
-            config = {"cutter": port}
-            cutters.append(Usbrelay(config))
+        cutters = cutters + self._get_usb_cutters()
 
         if self._verbose:
             print("Acquired cutters:")
@@ -217,11 +217,48 @@ class TopologyBuilder(object):
                 pprint.pprint(c.get_cutter_config())
             print("")
 
-
-
-
         return cutters
 
+    def _get_usb_cutters(self):
+        '''
+        Returns a list of usb cutters connected to the testing harness.
+        '''
+        # Make list of possible usb cutter paths using vendor and model id
+        # from topology_builder.json file
+        usb_path_list = []
+        for dev in local_execute(["ls", "/dev"]).split("\n"):
+            if "ttyUSB" in dev:
+                dev_path = os.path.join(os.sep, "dev", dev)
+                info = local_execute(["udevadm", "info", dev_path])
+                for cutter in self._config["edison"]["power_cutters"]:
+                    if cutter["vendor"] and cutter["model"] in info:
+                        usb_path_list.append(dev_path)
+
+        # Make possible cutters <Cutter> class
+        possible_cutters = []
+        for path in usb_path_list:
+            config = {"cutter": path}
+            possible_cutters.append(Usbrelay(config))
+
+        # Disconnect every possible cutter
+        for cutter in possible_cutters:
+            cutter.disconnect()
+
+        sleep(5)
+
+        # Try to turn possible cutters on one by one to see if an Edison turns
+        # on. If one does, we will know its an usb cutter.
+        usb_cutters = []
+        for cutter in possible_cutters:
+            timestamp = self._dmesg_newest_timestamp()
+            cutter.connect()
+            sleep(5)
+            for line in local_execute("dmesg").split("\n"):
+                if self._dmesg_line_timestamp(line) > timestamp:
+                    if "idVendor=8086" and "idProduct=e005" in line:
+                        usb_cutters.append(cutter)
+
+        return usb_cutters
 
     def _power_cycle_cutters(self, cutters):
         if self._verbose:
@@ -231,23 +268,38 @@ class TopologyBuilder(object):
             cutter.disconnect()
 
         sleep(5)
-        # stops old edison messages from interfering with ip aquiring later on
-        self._clear_dmesg()
 
         if self._verbose:
             print("Connecting all cutters")
 
+        self._timestamp = self._dmesg_newest_timestamp()
+
         for cutter in cutters:
             cutter.connect()
 
-    def _clear_dmesg(self):
-        """
-        Clears kernel message ring buffer
+    def _dmesg_newest_timestamp(self):
+        '''
+        Returns the newest timestamp in seconds from dmesg.
+        '''
+        dmesg_lines = local_execute("dmesg").split("\n")
+        for line in reversed(dmesg_lines):
+            if len(line) > 0:
+                return self._dmesg_line_timestamp(line)
 
-        Used before reading edison related information from the buffer to make
-        sure any old Edison related messages do not disrupt configuration.
-        """
-        local_execute(["dmesg", "-C"])
+    def _dmesg_line_timestamp(self, line):
+        '''
+        Returns the timestamp in seconds from a dmesg line. If line is empty
+        returns -1. Example:
+            line:
+                [328860.109597] usb 2-1.4.1.2: Product: Edison
+            returns:
+                328860
+        '''
+        if len(line) == 0:
+            return -1
+
+        return int(line.split(".")[0].split("[")[1])
+
 
     def _get_network_configs(self):
         """
@@ -368,7 +420,12 @@ class TopologyBuilder(object):
 
         # Makes assumptions regarding dmesg message format. Might be fragile
         dmesg_lines = local_execute("dmesg").split("\n")
-        edison_lines = [line for line in dmesg_lines if "Edison" in line]
+        # Get all edison dmesg lines which came after rebooting devices
+        edison_lines = []
+        for line in dmesg_lines:
+            if "Edison" in line:
+                if self._dmesg_line_timestamp(line) > self._timestamp:
+                    edison_lines.append(line)
 
         ip_addresses = []
         ip_queue = Queue()
