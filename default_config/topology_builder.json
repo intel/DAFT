@@ -28,12 +28,15 @@
         "model": "Edison",
         "subnet_prefix": "192.168.31.",
         "ip_start": "136",
-        "power_cutters": ["/dev/ttyUSB7"]
+        "power_cutters": [
+          {
+            "vendor":"ID_VENDOR_ID=0b00",
+            "model":"ID_MODEL_ID=3070"
+          },
+          {
+            "vendor":"ID_VENDOR_ID=10c4",
+            "model":"ID_MODEL_ID=ea60"
+          }
+        ]
     }
 }
-
-
-
-usb 2-1.4.1: FTDI USB Serial Device converter now attached to ttyUSB21
-usb 2-1.2.1: FTDI USB Serial Device converter now attached to ttyUSB22
-usb 2-1.1.4.2: FTDI USB Serial Device converter now attached to ttyUSB23
