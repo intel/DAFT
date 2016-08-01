@@ -14,7 +14,7 @@
 """
 AFT installation module
 """
-
+import sys
 import os
 from setuptools import setup
 
@@ -33,6 +33,13 @@ TEST_PLANS = [filename for filename in TEST_PLANS if CONFIG_FILTER(filename)]
 CONFIG_FILES =  [filename for filename in CONFIG_FILES if CONFIG_FILTER(filename)]
 BLACKLIST_FILES = [filename for filename in BLACKLIST_FILES if CONFIG_FILTER(filename)]
 
+#Depending on python version, dependencies will differ
+if sys.version_info[0] == 2:
+    dependencies = ["netifaces", "subprocess32", "unittest-xml-reporting",
+                    "pyserial>=3"]
+elif sys.version_info[0] == 3:
+    dependencies = ["netifaces", "unittest-xml-reporting", "pyserial>=3"]
+
 setup(
     name = "aft",
     version = "1.0.0",
@@ -47,7 +54,7 @@ setup(
                              "testcases/*.py",
                              "tools/*.py",
                              "tools/*.sh"]},
-    install_requires = ["netifaces", "subprocess32", "unittest-xml-reporting"],
+    install_requires = dependencies,
     entry_points = { "console_scripts" : ["aft=aft.main:main"] },
     data_files = [("/etc/aft/devices/", DEVICE_FILES),
                   ("/etc/aft/test_plan/", TEST_PLANS),

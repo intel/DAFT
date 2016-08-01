@@ -42,8 +42,12 @@ import pprint
 import serial
 import uuid
 import json
-import StringIO
-from ConfigParser import SafeConfigParser
+try:
+    from ConfigParser import SafeConfigParser
+    from StringIO import StringIO
+except ImportError:
+    from configparser import SafeConfigParser
+    from io import StringIO
 
 import aft.devices.common as common
 import aft.tools.ssh as ssh
@@ -166,7 +170,7 @@ class TopologyBuilder(object):
 
         configuration = self._create_configuration()
 
-        output = StringIO.StringIO()
+        output = StringIO()
 
         configuration.write(output)
 
@@ -576,10 +580,10 @@ class TopologyBuilder(object):
                 None
             """
             text = "Hello world!"
-            s.write(text)
+            s.write(text.encode())
             # we don't really want to get everything back, as long as we get
             # something back.
-            for _ in range(len(text)/2):
+            for _ in range(len(text)//2):
                 s.read()
 
 

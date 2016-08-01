@@ -51,7 +51,7 @@ def parse_file(input_file_name):
     raw_input_file_name = "raw_" + input_file_name
     temp_name = "temp_" + input_file_name
 
-    with open(input_file_name, "r") as input_file:
+    with open(input_file_name, "rb") as input_file:
         with open(temp_name, "w") as output_file:
             do_parse(input_file, output_file)
 
@@ -288,8 +288,8 @@ def parse_cursor_move(code):
 
     # filter any non-numeric characters
     filter_function = lambda x: x.isdigit()
-    row = filter(filter_function, row)
-    column = filter(filter_function, column)
+    row = list(filter(filter_function, row))
+    column = list(filter(filter_function, column))
 
     if row == "":
         row = "1"
@@ -298,8 +298,8 @@ def parse_cursor_move(code):
 
     # row\column use one based indexing, but screen buffer
     # uses zero based indexing.
-    row = int(row) - 1
-    column = int(column) - 1
+    row = int(row[0]) - 1
+    column = int(column[0]) - 1
     return [Token.MOVE_CURSOR, row, column]
 
 
@@ -334,7 +334,7 @@ def write_and_clear_buffer(output_file, screen_buffer, last_row, width):
             if char == '\n':
                 continue
 
-            line += char
+            line += char.decode("utf-8")
 
         print(line, file=output_file)
 
@@ -356,7 +356,7 @@ def get_line_length(row, screen_buffer, width):
     Returns:
         Line length: Line length, up to width
     """
-    for column in reversed(range(width)):
+    for column in reversed(list(range(width))):
         if screen_buffer[row][column] != '\0':
             return column + 1
     return 0

@@ -17,7 +17,10 @@ Script to list attached USB-powercutters/usbrelays
 
 import fnmatch
 import os
-import subprocess32
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 
 ACCEPTED_DEVICES = [("0b00", "3070"), ("10c4", "ea60")]
 

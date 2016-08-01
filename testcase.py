@@ -18,16 +18,16 @@ Class representing a Test Case.
 
 import datetime
 import abc
+from six import with_metaclass
 
 from aft.logger import Logger as logger
 
 VERSION = "0.1.0"
 
-class TestCase(object):
+class TestCase(with_metaclass(abc.ABCMeta, object)):
     """
     Class providing the foundations for a Test Case.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, config):
         self.name = config["name"]

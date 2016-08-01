@@ -18,7 +18,10 @@ Class implementing a Tester interface.
 
 import os
 import time
-import ConfigParser
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 
 from aft.logger import Logger as logger
 import aft.errors as errors

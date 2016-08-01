@@ -18,12 +18,15 @@ can get an IP-address.
 
 import os
 import sys
-import subprocess32
 import time
 import netifaces
 import shutil
 import random
 import atexit
+try:
+    import subprocess32
+except ImportError:
+    import subprocess as subprocess32
 
 from aft.logger import Logger as logger
 from aft.device import Device
@@ -310,9 +313,8 @@ class EdisonDevice(Device):
         shutil.copy(source_file, authorized_keys_file)
         os.chown(ssh_directory, 0, 0)
         os.chown(authorized_keys_file, 0, 0)
-        # Note: incompatibility with Python 3 in chmod octal numbers
-        os.chmod(ssh_directory, 0700)
-        os.chmod(authorized_keys_file, 0600)
+        os.chmod(ssh_directory, 0o700)
+        os.chmod(authorized_keys_file, 0o600)
 
     def _unmount_local(self):
         """
@@ -603,7 +605,7 @@ class EdisonDevice(Device):
         while time.time() - start < timeout:
             output = subprocess32.check_output(
                 ["dfu-util", "-l", "-d", self._EDISON_DEV_ID])
-            output_lines = output.split("\n")
+            output_lines = output.decode().split("\n")
 
             fitting_lines = [
                 line for line in output_lines
