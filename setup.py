@@ -31,6 +31,7 @@ CONFIG_FILTER = lambda filename : not os.path.isfile(os.path.join("/etc/aft",
 DEVICE_FILES = [filename for filename in DEVICE_FILES if CONFIG_FILTER(filename)]
 TEST_PLANS = [filename for filename in TEST_PLANS if CONFIG_FILTER(filename)]
 CONFIG_FILES =  [filename for filename in CONFIG_FILES if CONFIG_FILTER(filename)]
+BLACKLIST_FILES = [filename for filename in BLACKLIST_FILES if CONFIG_FILTER(filename)]
 
 setup(
     name = "aft",
