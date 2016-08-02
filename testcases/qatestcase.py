@@ -45,6 +45,12 @@ class QATestCase(BasicTestCase):
                                                     "iottest/testplan/minnowmax.iottest.manifest",
                           "generic_64".lower(): " --machine intel-corei7-64 " +
                                                     "--test-manifest " +
+                                                    "iottest/testplan/minnowmax.iottest.manifest",
+                          "bxtc".lower(): " --machine intel-corei7-64 " +
+                                                    "--test-manifest " +
+                                                    "iottest/testplan/minnowmax.iottest.manifest",
+                          "bxks".lower(): " --machine intel-corei7-64 " +
+                                                    "--test-manifest " +
                                                     "iottest/testplan/minnowmax.iottest.manifest"
                           }
 
