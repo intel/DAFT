@@ -25,6 +25,7 @@ Used to parse the files created by serial recorder
 
 from __future__ import print_function
 import os
+import sys
 
 class Token(object):
     """Class that stores the constants for code tokens"""
@@ -98,6 +99,8 @@ def do_parse(input_file, output_file):
 
     while True:
         char = input_file.read(1)
+        if sys.version_info[0] == 3:
+            char = char.decode("ISO-8859-1")
         if not char:
             break
         elif char == '\n':
@@ -195,6 +198,8 @@ def parse_token(input_file):
     # note - we really would like to use peek() here, but python standard
     # file api does not provide such function
     char = input_file.read(1)
+    if sys.version_info[0] == 3:
+        char = char.decode("ISO-8859-1")
 
     # not ANSI control code
     if char != '[':
@@ -207,6 +212,8 @@ def parse_token(input_file):
     # keep reading until we find upper or lower case ascii letter or [
     while True:
         char = input_file.read(1)
+        if sys.version_info[0] == 3:
+            char = char.decode("ISO-8859-1")
         # unexpected EOF - return none
         if not char:
             return None
@@ -288,8 +295,8 @@ def parse_cursor_move(code):
 
     # filter any non-numeric characters
     filter_function = lambda x: x.isdigit()
-    row = list(filter(filter_function, row))
-    column = list(filter(filter_function, column))
+    row = "".join(list(filter(filter_function, row)))
+    column = "".join(list(filter(filter_function, column)))
 
     if row == "":
         row = "1"
@@ -298,8 +305,8 @@ def parse_cursor_move(code):
 
     # row\column use one based indexing, but screen buffer
     # uses zero based indexing.
-    row = int(row[0]) - 1
-    column = int(column[0]) - 1
+    row = int(row) - 1
+    column = int(column) - 1
     return [Token.MOVE_CURSOR, row, column]
 
 
@@ -333,8 +340,7 @@ def write_and_clear_buffer(output_file, screen_buffer, last_row, width):
             # skip newline symbols to make output prettier
             if char == '\n':
                 continue
-
-            line += char.decode("utf-8")
+            line += char
 
         print(line, file=output_file)
 
