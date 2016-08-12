@@ -17,6 +17,7 @@
 A script to record serial output from a tty-device.
 """
 
+import sys
 import serial
 import time
 import aft.tools.ansiparser as ansiparser
@@ -46,7 +47,10 @@ def record(serial_stream, output):
     read_buffer = ""
     while True:
         try:
-            read_buffer += serial_stream.read(4096).decode("utf-8")
+            if sys.version_info[0] == 2:
+                read_buffer += serial_stream.read(4096)
+            else:
+                read_buffer += serial_stream.read(4096).decode("ISO-8859-1")
         except serial.SerialException as err:
             # This is a hacky way to fix random, frequent, read errors.
             # May catch more than intended.
