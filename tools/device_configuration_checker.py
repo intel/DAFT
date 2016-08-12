@@ -252,11 +252,7 @@ def check(args):
         print("Device " + args.device + " acquired, running checks")
 
     try:
-        sanity_results = _run_sanity_tests(args, device)
-        image_test_results = (True, "Image Test result: Not run")
-        # only run image test if sanity test passed
-        if sanity_results[0] == True:
-            image_test_results = _run_tests_on_know_good_image(args, device)
+        image_test_results = _run_tests_on_know_good_image(args, device)
 
     finally:
         if args.verbose:
@@ -267,10 +263,7 @@ def check(args):
 
         manager.release(device)
 
-    results = (
-        sanity_results[0] and image_test_results[0],
-        sanity_results[1] + "\n" + image_test_results[1]
-        )
+    results = (image_test_results[0], image_test_results[1])
 
     if not results[0]:
         common.blacklist_device(
@@ -283,138 +276,6 @@ def check(args):
             print(msg)
 
     return results
-
-def _run_sanity_tests(args, device):
-    """
-    Run basic sanity tests on the device and return the result
-
-    Args:
-        args (configuration object): Program command line arguments
-        device (aft.Device) : The device that is being tested
-
-    Returns:
-        Dictionary containing test result tuples(Bool, String). Boolean value
-        indicates if test was successful or not (True/False), string contains
-        explanation.
-    """
-    if args.record:
-        if args.verbose:
-            print("Serial recording enabled on " + args.device)
-
-        device.parameters["serial_log_name"] = args.device + "_serial.log"
-        device.record_serial()
-    else:
-        if args.verbose:
-            print("Serial recording disabled on " + args.device)
-
-
-    poweron_status = (True, "Ok")
-    connection_status = (True, "Ok")
-    poweroff_status = (True, "Ok")
-    serial_status = (True, "Ok")
-
-    try:
-        if args.verbose:
-            print("Running power on test on " + args.device)
-        device.check_poweron()
-    except KeyboardInterrupt:
-        raise
-    except errors.AFTNotImplementedError as error:
-        poweron_status = (True, str(error))
-    except Exception as error:
-        poweron_status = (False, str(error))
-
-    try:
-        if args.verbose:
-            print("Running connection test on " + args.device)
-        device.check_connection()
-    except KeyboardInterrupt:
-        raise
-    except errors.AFTNotImplementedError as error:
-        connection_status = (True, str(error))
-    except Exception as error:
-        connection_status = (False, str(error))
-
-    try:
-        if args.verbose:
-            print("Running power off test on " + args.device)
-        device.check_poweroff()
-    except KeyboardInterrupt:
-        raise
-    except errors.AFTNotImplementedError as error:
-        poweroff_status = (True, str(error))
-    except Exception as error:
-        poweroff_status = (False, str(error))
-
-    return _format_sanity_test_result(args, device, {
-        "poweron_status": poweron_status,
-        "connection_status": connection_status,
-        "poweroff_status": poweroff_status,
-        "serial_status": serial_status
-    })
-
-def _format_sanity_test_result(args, device, test_results):
-    """
-
-    Args:
-        args (configuration object): Program command line arguments
-        device (aft.Device): The device that is being tested
-        test_results (dictionary): The test results of the individual tests
-
-    Returns:
-        Tuple(Bool, String) containing the overall status of the tests. Boolean
-        value indicates if there were failures (False if test or tests failed).
-        String contains the overall test result string
-    """
-    poweron_status = test_results["poweron_status"]
-    connection_status = test_results["connection_status"]
-    poweroff_status = test_results["poweroff_status"]
-    serial_status = test_results["serial_status"]
-
-    if args.record:
-        if not os.path.isfile(device.parameters["serial_log_name"]):
-            serial_status = (False, "No serial log file was generated")
-        else:
-            stats = os.stat(device.parameters["serial_log_name"])
-            # this is mostly a heuristic approach to eliminate few newlines
-            # and other whitespace characters
-            # TODO\FIXME: Actually open log file and strip
-            # whitespace to get more accurate file size
-            if stats.st_size < 5:
-                serial_status = (False, "Serial log file seems to be empty")
-    else:
-        serial_status = (True, "Skipped - serial recording is off")
-
-
-    result = "Configuration test result: "
-    result += "\n\tPower on test: " + poweron_status[1]
-    result += "\n\tConnection test: " + connection_status[1]
-    result += "\n\tPower off test: " + poweroff_status[1]
-    result += "\n\tSerial test: " + serial_status[1]
-
-
-    if poweron_status[0] == True and poweroff_status[0] == False:
-        result += ("\n\n\tNote: Power on test succeeding and power off test "
-                   "failing might indicate that power cutter settings are "
-                   "incorrect (for example: Two devices may have power cutter "
-                   "settings inverted)")
-    elif connection_status[0] == True and poweroff_status[0] == False:
-        result += ("\n\n\tNote: Connection test succeeding and power off test "
-                   "failing might indicate that power cutter settings are "
-                   "incorrect (for example: Two devices may have power cutter "
-                   "settings inverted)")
-
-    if poweron_status[0] == False and poweroff_status[0] == True:
-        result += ("\n\n\tNote: Power off test status might be invalid as "
-                   "the device failed the power on test (device may have been"
-                   " off the whole time)")
-
-
-    success = poweron_status[0] and connection_status[0] and \
-              poweroff_status[0] and serial_status[0]
-
-    return (success, result)
-
 
 def _run_tests_on_know_good_image(args, device):
 
