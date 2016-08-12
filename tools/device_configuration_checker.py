@@ -247,6 +247,12 @@ def check(args):
 
     manager = DevicesManager(args)
     device = manager.reserve_specific(args.device)
+    if args.record:
+        if args.verbose:
+            print("Serial recording enabled on " + args.device)
+
+        device.parameters["serial_log_name"] = args.device + "_serial.log"
+        device.record_serial()
 
     if args.verbose:
         print("Device " + args.device + " acquired, running checks")
