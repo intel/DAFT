@@ -22,7 +22,7 @@ import threading
 import abc
 
 from time import sleep
-from threading import current_thread
+import os
 from six import with_metaclass
 
 from aft.tools.thread_handler import Thread_handler as thread_handler
@@ -66,7 +66,7 @@ class Device(with_metaclass(abc.ABCMeta, object)):
                                 args=(self.parameters["serial_port"],
                                 self.parameters["serial_bauds"],
                                 self.parameters["serial_log_name"]),
-                                name=(current_thread().name + "recorder"))
+                                name=(str(os.getpid()) + "recorder"))
 
         recorder.start()
         thread_handler.add_thread(recorder)

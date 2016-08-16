@@ -17,14 +17,9 @@ Module for device configuration check functionality.
 """
 import os
 import copy
-from threading import Thread
 from multiprocessing import Process
 from multiprocessing import Queue as multiprocessing_queue
 from functools import reduce
-try:
-    from Queue import Queue
-except ImportError:
-    from queue import Queue
 
 import aft.config as config
 import aft.errors as errors
@@ -86,9 +81,9 @@ def check_all_parallel(args, configs):
     if args.verbose:
         print("Running parallel configuration check on all devices")
 
-    threads = []
+    processes = []
 
-    return_values = Queue()
+    return_values = multiprocessing_queue()
 
     def check_wrapper(args, queue):
         """
@@ -112,14 +107,14 @@ def check_all_parallel(args, configs):
     for dev_config in configs:
         device_args = _get_device_args(args, dev_config)
 
-        thread = Thread(
+        process = Process(
             target=check_wrapper,
             args=(device_args, return_values))
-        thread.start()
-        threads.append(thread)
+        process.start()
+        processes.append(process)
 
-    for thread in threads:
-        thread.join()
+    for process in processes:
+        process.join()
 
 
     success = True
@@ -243,6 +238,9 @@ def check(args):
     if args.checkall:
         logger.init_thread(args.device + "_")
 
+    # Initialize ssh.log so it logs to the right directory
+    logger.info("Logger initialized for ssh", filename="ssh.log")
+
     logger.info("Running configuration check on " + args.device)
 
     manager = DevicesManager(args)
@@ -251,7 +249,8 @@ def check(args):
         if args.verbose:
             print("Serial recording enabled on " + args.device)
 
-        device.parameters["serial_log_name"] = args.device + "_serial.log"
+        device.parameters["serial_log_name"] = os.path.join(os.getcwd(),
+                                                (args.device + "_serial.log"))
         device.record_serial()
 
     if args.verbose:
@@ -317,44 +316,40 @@ def _run_tests_on_know_good_image(args, device):
     logger.info("Image file: " + str(image))
 
     try:
+        working_dir = os.getcwd()
+        os.chdir(os.path.join(image_directory_path, "iottest"))
+        # nuke test logs
+        for f in os.listdir("."):
+            if "ssh_target_log" in f:
+                os.remove(f)
 
-        results_queue = multiprocessing_queue()
-
-        def worker(results):
-
-            os.chdir(os.path.join(image_directory_path, "iottest"))
-            # nuke test logs
-            for f in os.listdir("."):
-                if "ssh_target_log" in f:
-                    os.remove(f)
-
-            os.chdir(image_directory_path)
-            ## Remove all log and xml files from previous run to prevent clutter
-            #for f in os.listdir("."):
-            #    if f.endswith(".log") or f.endswith(".xml"):
-            #        os.remove(f)
+        os.chdir(image_directory_path)
+        ## Remove all log and xml files from previous run to prevent clutter
+        #for f in os.listdir("."):
+        #    if f.endswith(".log") or f.endswith(".xml"):
+        #        os.remove(f)
 
 
-            device.write_image(image)
+        device.write_image(image)
 
-            tester = Tester(device)
-            tester.execute()
-            results.put((tester.get_results(), tester.get_results_str()))
+        tester = Tester(device)
+        tester.execute()
+        results = (tester.get_results(), tester.get_results_str())
 
-        # Run this in a separate process, so that we can change its working
-        # directory, without changing the working directory for the rest of
-        # the program
-        process = Process(
-            target=worker,
-            args=(results_queue,))
+        '''
+        #Move all ssh.log and serial.log files to the directory which started aft
+        files = os.listdir(os.getcwd())
+        for _file in files:
+            if "ssh.log" in _file or "serial.log" in _file:
+                os.rename(os.path.abspath(_file),
+                          os.path.join(working_dir, _file))
+        '''
 
-        process.start()
-        process.join()
+        os.chdir(working_dir)
 
-        if results_queue.empty():
+        if not results:
             raise errors.AFTDeviceError("No results from test run")
 
-        results = results_queue.get()
         result = reduce(lambda x, y: x and y, results[0])
 
         result_str = "Image test result: "

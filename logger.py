@@ -23,8 +23,8 @@ specific. Using init_thread() function, prefix to threads filenames can be
 added/changed.
 '''
 
+import os
 import logging
-from threading import current_thread
 import aft.config as config
 
 class Logger(object):
@@ -67,7 +67,7 @@ class Logger(object):
         Args:
             log_prefix: String for filename prefix
         '''
-        Logger.THREADS[current_thread().name] = log_prefix
+        Logger.THREADS[str(os.getpid())] = log_prefix
 
     @staticmethod
     def get_logger(filename):
@@ -77,7 +77,7 @@ class Logger(object):
         Args:
             filename: String for filename/logger suffix, default is aft.log
         '''
-        logger = logging.getLogger(current_thread().name + filename)
+        logger = logging.getLogger(str(os.getpid()) + filename)
         if not logger.handlers:
             Logger._make(filename)
 
@@ -125,16 +125,16 @@ class Logger(object):
             file_mode: Logger handlers file mode, default 'w' = write
         '''
 
-        logger = logging.getLogger(current_thread().name + filename)
+        logger = logging.getLogger(str(os.getpid()) + filename)
         logger.setLevel(Logger.LOGGING_LEVEL)
 
         # If thread_init() hasn't been used before making new logger, prefix
         # will be threads name so every threads log filename will be different
-        if not current_thread().name in Logger.THREADS:
-            Logger.THREADS[current_thread().name] = current_thread().name
+        if not str(os.getpid()) in Logger.THREADS:
+            Logger.THREADS[str(os.getpid())] = str(os.getpid())
             print("Threads logger hasn't been initialized with thread_init.")
 
-        filename = Logger.THREADS[current_thread().name] + filename
+        filename = Logger.THREADS[str(os.getpid())] + filename
         handler = logging.FileHandler(filename, mode=file_mode)
         handler.setLevel(Logger.LOGGING_LEVEL)
         _format = ('%(asctime)s - %(levelname)s - %(message)s')
