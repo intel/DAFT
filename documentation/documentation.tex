@@ -10,6 +10,7 @@
 %Magic to fix underscores and then to turn dashes to actual dashes
 %instead of minus signs inside listing environment.
 \usepackage{listings}
+\usepackage{titlesec}
 \makeatletter
 \def\lst@filenamerpl{_\textunderscore}
 \lst@CCPutMacro\lst@ProcessOther {"2D}{\lst@ttfamily{-{}}{-{}}}
@@ -21,6 +22,16 @@
 \newcommand{\note}{\textbf{Note: }}
 \newcommand{\cmd}[1]{\texttt{#1}}
 \newcommand{\bl}{\textbackslash}
+
+% Modify the way paragraph command is formatted, so that it can be used to simulate
+% subsubsubsection
+\setcounter{secnumdepth}{4}
+
+\titleformat{\paragraph}
+{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+\titlespacing*{\paragraph}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
 \begin{document}
 
 \definecolor{lightgray}{RGB}{200,200,200}
@@ -320,6 +331,8 @@ If at some point the DHCP-exchange has to be debugged, stop the Systemd-service 
 systemctl stop dnsmasq.service
 dnsmasq --no-daemon
 \end{lstlisting}
+
+The dnsmasq IP leases can be found (by default) from \cmd{/var/lib/misc/dnsmasq.leases}
 
 \subsection*{Network File System}
 Network file system (NFS) is used to share the images and other files used in flashing for PC-devices. By convention the whole \cmd{/home/tester} is shared.
@@ -1844,7 +1857,7 @@ The resulting binary can now be used as combined EFI bootloader and kernel.
 
 \subsection*{Support image based on Ostro\texttrademark}
 
-An alternative for Debian support OS is Ostro-based support OS. As Ostro already has support for all its target systems, it might make sense to use a modified Ostro image as the support image for the devices. This requires some modifications to the existing image. These modifications can be added into local.conf when building an image, although creating a separate .bb image recipe file is recommended for repeatability. 
+An alternative for Debian support OS is Ostro-based support OS. As Ostro already has support for all its target systems, it might make sense to use a modified Ostro image as the support image for the devices. 
 
 \note Ostro is still under active development, and as such the below instructions may be out of date. Ostro in general is unstable base at best for the support OS, so this should only be done if Debian base images for some reason are not acceptable.
 
@@ -1852,7 +1865,7 @@ An alternative for Debian support OS is Ostro-based support OS. As Ostro already
 
 \item The support image requires nfs-utils, parted, bmaptool and python runtime for flashing the image on the device. Connman, openssh and attr are also required and may not be installed, depending on the base recipe that ends up being used. It is best to explicitly request them to be installed.
 
-\item Various security features interfere with the flashing. These need to be configured correctly or outright removed.
+\item Various security features interfere with the flashing process. These need to be configured correctly or outright removed.
 
 \item Linux nfs kernel module needs to be enabled
 
@@ -1866,7 +1879,7 @@ An alternative for Debian support OS is Ostro-based support OS. As Ostro already
 
 \subsubsection*{Image recipe}
 
-Create a new recipe under \cmd{recipes-image/images} and add the following lines to it.
+Create a new recipe under \cmd{meta-ostro/recipes-image/images} and add the following lines to it.
 
 \begin{lstlisting}
 
@@ -1924,7 +1937,6 @@ bmaptool binary and license file need to be placed under files-directory. The bi
 
 The recipe can now be added to the \cmd{OSTRO\_IMAGE\_CI\_SUPPORT\_EXTRA\_INSTALL} variable
 
-
 \subsubsection*{Removing security features}
 
 Ostro uses \cmd{IMA} and \cmd{SMACK} based security features as well as \cmd{iptables} firewall. These interfere with the flashing tools and NFS mounting. While they could be configured to fix these issues, it is easier to just disable these features. The support image is intended to be used in a closed local area network so this security downgrade should not matter.
@@ -1966,14 +1978,21 @@ The default value is defined in meta-ostro/classes/image-dsk.bbclass file. Check
 
 \subsubsection*{Kernel name}
 
-AFT checks the kernel name to see it booted into correct mode. When using Ostro as the support image, the name will contain 'yocto-standard' for both support image and testable image, which makes this verification impossible.
+AFT checks the kernel name to verify it booted into correct mode. When using Ostro as the support image, by default the name will contain 'yocto-standard' for both support image and testable image, which makes this verification impossible. This means the kernel name must be changed for the support image.
 
-The kernel name is controlled by 
+The kernel name is controlled by \cmd{LINUX\_VERSION\_EXTENSION} variable located in \cmd{meta/recipes-kernel/linux/linux-yocto.inc}. At the time of writing this declaration consists of
+
+\begin{lstlisting}
+LINUX_KERNEL_TYPE ?= "standard"
+LINUX_VERSION_EXTENSION ?= "-yocto-${LINUX_KERNEL_TYPE}"
+\end{lstlisting}
+
+Replacing the \cmd{LINUX\_VERSION\_EXTENSIONS} with something else (like "ci-test-image" or similar) fixes the naming issue.
 
 
 \subsubsection*{Optional - remove unnecessary software}
 
-Ununsed software may be removed to shorten build times. The following can be added *AFTER* \cmd{inherit ostro-image} to remove some of the features that take long time to build. Note that this list is by no means exhaustive. Feel free to remove additional packages.
+Ununsed software may be removed to shorten the build times. The following can be added *AFTER* \cmd{inherit ostro-image} to remove some of the features that take long time to build. Note that this list is by no means exhaustive. Feel free to remove additional packages.
 
 \begin{lstlisting}
 IMAGE_FEATURES_remove = " java-jdk iotivity node-runtime nodejs-runtime-tools soletta soletta-tools"
@@ -1981,16 +2000,40 @@ IMAGE_FEATURES_remove = " java-jdk iotivity node-runtime nodejs-runtime-tools so
 
 \subsubsection*{Post-build configuration}
 
-Under construction
+After the image has been successfully created, some post-build changes, like adding the testing harness SSH key, are required. To do this, you first need to mount the image
+
 \begin{lstlisting}
-*SSH authorized key
-*nfs mount into /etc/fstab. May require nfsvers=4 as one of the parameters
-
-192.168.30.1:/home/tester /mnt/img_data_nfs nfs rsize=8192,wsize=8192,timeo=14,intr,nolock,auto,nfsvers=4
-
-*Recipes may need to be added to the supported-recipes list 
-* Connman may need to be installed separately
-* openssh may need to be installed
-* Create /mnt/target_root on the device
+losetup -f -P image_file_name_here
+mount /dev/loop0p3 mount_dir
 \end{lstlisting}
+
+After you are done, you can unmount the image by executing the following commands
+
+\begin{lstlisting}
+umount mount_dir
+losetup -D
+\end{lstlisting}
+
+The above assumes that you have no other loop devices currently in use, and that the third partition is the root partition.
+
+\paragraph*{Add the testing harness SSH key}
+
+The testing harness ssh key must be added to the root user, so that the testing harness can access the system without password. After mounting the image, you can simply add the public key into into \cmd{mount\_dir/home/root/.ssh/authorized\_keys} file.
+
+\paragraph*{NFS mount settings}
+
+On a PC-like devices, the support OS accesses the target image by mounting the testing harness directory (by default \cmd{/home/tester}) over NFS. This means NFS must also be configured before the image can be used.
+
+This can easily be done by adding the following line into \cmd{mount\_dir/etc/fstab}
+
+\begin{lstlisting}
+192.168.30.1:/home/tester /mnt/img_data_nfs nfs rsize=8192,wsize=8192,timeo=14,intr,nolock,auto,nfsvers=4
+\end{lstlisting}
+
+Where \cmd{192.168.30.1} is the testing harness ip address, \cmd{/home/tester} is the directory that is shared over NFS and {/mnt/img\_data\_nfs} is the mount directory.
+
+The mount directory must also be created on the image.
+
+\note The \cmd{nfsvers} argument, which defines the NFS protocol version, has caused some issues in the past. In case of NFS issues and after you have verified that the command has no typos or extra spaces anywhere, try tweaking the version or removing the argument completely
+
 \end{document}
