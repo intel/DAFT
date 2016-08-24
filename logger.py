@@ -17,25 +17,25 @@ every machine gets its own [machine]_aft.log and [machine]_ssh.log instead
 of every machines logging to aft.log and ssh.log. When 'aft --checkall accurate'
 is used, logging messages will be written to same aft.log and ssh.log files.
 
-If new logger is needed, Logger.info/debug/warning... makes new
-one automatically when called with 'filename=' argument. Loggers are made thread
-specific. Using init_thread() function, prefix to threads filenames can be
-added/changed.
+If new logger is needed, Logger.info()/.debug()/.warning()... makes new
+one automatically when called with 'filename=' argument. Loggers are made
+process specific. Using init_process() function, prefix to processes filenames
+can be added/changed.
 '''
 
+import os
 import logging
-from threading import current_thread
 import aft.config as config
 
 class Logger(object):
     '''
     Logger class for holding logging methods and variables
 
-    THREADS: Dictionary with threads filename prefixes
+    PROCESSES: Dictionary with processes filename prefixes
     LOGGING_LEVEL: Logging level threshold for new loggers
     '''
 
-    THREADS = {}
+    PROCESSES = {}
     LOGGING_LEVEL = logging.INFO
 
     @staticmethod
@@ -60,14 +60,14 @@ class Logger(object):
                             format='%(asctime)s - %(levelname)s - %(message)s')
 
     @staticmethod
-    def init_thread(log_prefix=""):
+    def init_process(log_prefix=""):
         '''
-        Add/change threads filename prefix to dictionary
+        Add/change process's filename prefix to dictionary
 
         Args:
             log_prefix: String for filename prefix
         '''
-        Logger.THREADS[current_thread().name] = log_prefix
+        Logger.PROCESSES[str(os.getpid())] = log_prefix
 
     @staticmethod
     def get_logger(filename):
@@ -77,7 +77,7 @@ class Logger(object):
         Args:
             filename: String for filename/logger suffix, default is aft.log
         '''
-        logger = logging.getLogger(current_thread().name + filename)
+        logger = logging.getLogger(str(os.getpid()) + filename)
         if not logger.handlers:
             Logger._make(filename)
 
@@ -117,24 +117,25 @@ class Logger(object):
     def _make(filename, file_mode="w"):
         '''
         Makes new logger. Logs name will be [prefix]+[filename]. Prefix will be
-        taken from THREADS dictionary. Adding threads prefix to dictionary
-        is done with init_thread('prefix=').
+        taken from PROCESSES dictionary. Adding PROCESS'S prefix to dictionary
+        is done with init_process('prefix=').
 
         Args:
             filename: String for filename suffix
             file_mode: Logger handlers file mode, default 'w' = write
         '''
 
-        logger = logging.getLogger(current_thread().name + filename)
+        logger = logging.getLogger(str(os.getpid()) + filename)
         logger.setLevel(Logger.LOGGING_LEVEL)
 
-        # If thread_init() hasn't been used before making new logger, prefix
-        # will be threads name so every threads log filename will be different
-        if not current_thread().name in Logger.THREADS:
-            Logger.THREADS[current_thread().name] = current_thread().name
-            print("Threads logger hasn't been initialized with thread_init.")
+        # If init_process() hasn't been used before making new logger, prefix
+        # will be process's name so every process's' log filename will be
+        # different
+        if not str(os.getpid()) in Logger.PROCESSES:
+            Logger.PROCESSES[str(os.getpid())] = str(os.getpid())
+            print("Process's logger hasn't been initialized with init_process.")
 
-        filename = Logger.THREADS[current_thread().name] + filename
+        filename = Logger.PROCESSES[str(os.getpid())] + filename
         handler = logging.FileHandler(filename, mode=file_mode)
         handler.setLevel(Logger.LOGGING_LEVEL)
         _format = ('%(asctime)s - %(levelname)s - %(message)s')
