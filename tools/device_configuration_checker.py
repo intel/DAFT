@@ -236,7 +236,7 @@ def check(args):
         print("Running configuration check on " + args.device)
 
     if args.checkall:
-        logger.init_thread(args.device + "_")
+        logger.init_process(args.device + "_")
 
     # Initialize ssh.log so it logs to the right directory
     logger.info("Logger initialized for ssh", filename="ssh.log")
@@ -318,32 +318,14 @@ def _run_tests_on_know_good_image(args, device):
     try:
         working_dir = os.getcwd()
         os.chdir(os.path.join(image_directory_path, "iottest"))
-        # nuke test logs
-        for f in os.listdir("."):
-            if "ssh_target_log" in f:
-                os.remove(f)
 
         os.chdir(image_directory_path)
-        ## Remove all log and xml files from previous run to prevent clutter
-        #for f in os.listdir("."):
-        #    if f.endswith(".log") or f.endswith(".xml"):
-        #        os.remove(f)
-
 
         device.write_image(image)
 
         tester = Tester(device)
         tester.execute()
         results = (tester.get_results(), tester.get_results_str())
-
-        '''
-        #Move all ssh.log and serial.log files to the directory which started aft
-        files = os.listdir(os.getcwd())
-        for _file in files:
-            if "ssh.log" in _file or "serial.log" in _file:
-                os.rename(os.path.abspath(_file),
-                          os.path.join(working_dir, _file))
-        '''
 
         os.chdir(working_dir)
 
