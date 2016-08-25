@@ -20,6 +20,8 @@ import copy
 from multiprocessing import Process
 from multiprocessing import Queue as multiprocessing_queue
 from functools import reduce
+import shutil
+
 
 import aft.config as config
 import aft.errors as errors
@@ -296,46 +298,37 @@ def _run_tests_on_know_good_image(args, device):
         config.KNOWN_GOOD_IMAGE_FOLDER,
         device.model.lower())
 
-
-    image = None
-    if device.model.lower() == "beagleboneblack":
-        image = image_directory_path
-    elif device.model.lower() == "edison":
-        image = os.path.join(
-            image_directory_path,
-            "ostro-image-edison.ext4")
-    else:
-        image = os.path.join(
-            image_directory_path,
-            "good-image.dsk")
-
     if args.verbose:
-        print("Image file: " + str(image))
         print("Flashing " + str(device.name))
 
-    logger.info("Image file: " + str(image))
+    work_dir = device.name
 
     try:
-        working_dir = os.getcwd()
-        os.chdir(os.path.join(image_directory_path, "iottest"))
+        # delete the previous working directory, if present
+        if os.path.exists(work_dir):
+            shutil.rmtree(work_dir)
 
-        os.chdir(image_directory_path)
+        files = get_file_list(image_directory_path)
+
+        create_work_directory(work_dir)
+        os.chdir(work_dir)
+
+        image = populate_work_directory(work_dir, image_directory_path, files)
+
+        if args.verbose:
+            print("Image file: " + image)
+        logger.info("Image file: " + image)
 
         device.write_image(image)
 
         tester = Tester(device)
         tester.execute()
+
         results = (tester.get_results(), tester.get_results_str())
-
-        os.chdir(working_dir)
-
-        if not results:
-            raise errors.AFTDeviceError("No results from test run")
 
         result = reduce(lambda x, y: x and y, results[0])
 
         result_str = "Image test result: "
-
 
         if result:
             result_str += "Ok"
@@ -345,4 +338,204 @@ def _run_tests_on_know_good_image(args, device):
         return (result, result_str)
 
     except Exception as error:
+        import traceback
+        traceback.print_exc()
+        logger.error(traceback.format_exc())
         return (False, "Image Test result: " + str(error))
+
+
+# Enum for file flags
+class FileFlag(object):
+    COPY = 1
+    LINK = 2
+    IMAGE = 4
+
+class ImageFile(object):
+    def __init__(self, name, flags):
+        self.name = name
+        self.flags = flags
+
+def get_file_list(image_directory_path):
+    """
+    Open and parse list of files that need to be copied or linked to working
+    directory
+
+    Args:
+        image_directory_path (str): Path to the directory where image files
+        are stored.
+
+    Returns:
+        None
+    """
+
+    flags = {
+        "copy": FileFlag.COPY,
+        "link": FileFlag.LINK,
+        "image": FileFlag.LINK | FileFlag.IMAGE
+    }
+
+    files = []
+    name = os.path.join(image_directory_path, "file_list")
+    with open(name) as file_list:
+        for f in file_list:
+            f = f.strip()
+            if f == "":
+                continue
+
+            values = f.split()
+
+            if len(values) != 2:
+                raise errors.AFTConfigurationError("Invalid line: " + f)
+
+            name = values[0]
+            flag = values[1]
+
+            if flag not in flags:
+                raise errors.AFTConfigurationError(
+                    "No such flag: '" + flag + "'")
+            files.append(ImageFile(name, flags[flag]))
+
+    return files
+
+
+
+
+def create_work_directory(directory):
+    """
+    Create working directory for test run
+
+    Args:
+        directory (str): Name of the working directory
+
+    Returns:
+        None
+    """
+    logger.info("Creating working directory " + directory)
+    os.makedirs(directory)
+
+def populate_work_directory(directory, image_directory_path, files):
+    """
+    Populate working directory with required files
+
+    Args:
+        directory (str):
+            Working directory
+        image_directory_path (str):
+            Path to directory containing the image files that will be used to
+            populate the working directory
+        files (list(ImageFile)): list of files that need to be copied or linked
+
+    Returns (str):
+        The actual image file that gets used during flashing
+
+    Raises:
+        aft.AFTConfigurationError if no image file has been provided for flashing
+    """
+
+    logger.info("Populating working directory from " + image_directory_path)
+
+    image_file = None
+    for file in files:
+        file_path = os.path.join(image_directory_path, file.name)
+
+        if not os.path.exists(file_path):
+            raise errors.AFTConfigurationError(
+                "File " + file_path + " does not exist")
+
+        if file.flags & FileFlag.COPY:
+            copy_file_or_directory(file_path, file)
+        elif file.flags & FileFlag.LINK:
+            link_file(file_path, file)
+
+        if file.flags & FileFlag.IMAGE:
+            image_file = get_image_file(image_file, file)
+
+    if not image_file:
+        raise aft.AFTConfigurationError("No image file specified for flashing")
+
+    return image_file
+
+
+def copy_file_or_directory(file_path, file):
+    """
+    Copy given image or directory to working directory
+
+    Args:
+        file_path (str): Path to the file in the good image directory
+        file (ImageFile): ImageFile object which contains the file name
+
+    Returns:
+        None
+    """
+
+    if os.path.isdir(file_path):
+        shutil.copytree(file_path, file.name)
+    else:
+        # If we are copying single files, ensure that the parent directories
+        # will be created
+        create_missing_directories(file.name)
+        shutil.copy(file_path, file.name)
+
+
+def link_file(file_path, file):
+    """
+    Create hard link to the given file in the working directory. Hard links
+    are used as symlinks do not work when accessed over nfs.
+
+    Args:
+        file_path (str): Path to the file in the good image directory
+        file (ImageFile): ImageFile object which contains the file name
+
+    Returns:
+        None
+
+    Raises:
+        errors.AFTConfigurationError if file_path points to a directory
+    """
+    if os.path.isdir(file_path):
+        raise errors.AFTConfigurationError(
+            "Cannot create hard link to " + file_path + " as it is a " +
+            "directory")
+
+    create_missing_directories(file.name)
+    os.link(file_path, file.name)
+
+
+def get_image_file(image_file, file):
+    """
+    Return the image file name, or raise an exception if the image file has
+    already been set
+
+    image_file (str or None): Name of the current image file or None
+    file: Current image file candidate
+
+    Returns (str):
+        image file name
+
+    Raises:
+        errors.AFTConfigurationError if image name has already been set
+    """
+    if not image_file:
+        return file.name
+    else:
+        raise errors.AFTConfigurationError(
+            "Multiple image file definitions: " + image_file +
+            " already specified but attempting to specify " +
+            file.name + " as well")
+
+def create_missing_directories(path):
+    """
+    Create missing directories from given path
+
+    Args:
+        path (str): Path that is used to create the directories
+    """
+
+    path = os.path.dirname(path)
+    path = path.strip()
+    if path == "":
+        return
+
+    if not os.path.exists(path):
+        os.makedirs(path)
+
