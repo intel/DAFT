@@ -49,8 +49,8 @@ def parse_file(input_file_name):
           renamed to original_file after the original file has been backed up
 
     """
-    raw_input_file_name = "raw_" + input_file_name
-    temp_name = "temp_" + input_file_name
+    raw_input_file_name = input_file_name + ".raw"
+    temp_name = input_file_name + ".temp"
 
     with open(input_file_name, "rb") as input_file:
         with open(temp_name, "w") as output_file:
