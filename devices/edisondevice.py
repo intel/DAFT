@@ -97,8 +97,7 @@ class EdisonDevice(Device):
             kb_emulator (aft.kb_emulators.kb_emulator): Keyboard emulator object
         """
         super(EdisonDevice, self).__init__(device_descriptor=parameters,
-                                           channel=channel,
-                                           kb_emulator=kb_emulator)
+                                           channel=channel, kb_emulator=kb_emulator)
         self._configuration = parameters
         self._FLASHER_OUTPUT_LOG = "flash_" + self._configuration["name"] + ".log"
         self._usb_path = self._configuration["edison_usb_port"]
