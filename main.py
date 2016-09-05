@@ -40,7 +40,6 @@ def main(argv=None):
     """
 
     try:
-        logger.init_root_logger()
         logger.init_process()
 
         config.parse()

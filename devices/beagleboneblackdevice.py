@@ -132,13 +132,14 @@ class BeagleBoneBlackDevice(Device):
     _TEST_MODE_RETRY_ATTEMPTS = 4
 
 
-    def __init__(self, parameters, channel):
+    def __init__(self, parameters, channel, kb_emulator):
         """
         Constructor
 
         Args:
             parameters (Dictionary): Device configuration parameters
             channel (aft.Cutter): The power cutter object
+            kb_emulator (aft.kb_emulators.kb_emulator): Keyboard emulator object
 
         Returns:
             None
@@ -146,7 +147,8 @@ class BeagleBoneBlackDevice(Device):
 
         super(BeagleBoneBlackDevice, self).__init__(
             device_descriptor=parameters,
-            channel=channel)
+            channel=channel,
+            kb_emulator=kb_emulator)
 
 
 

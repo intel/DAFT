@@ -66,7 +66,7 @@ class VirtualBoxDevice(Device):
     _MODULE_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data')
     _HARNESS_AUTHORIZED_KEYS_FILE = "authorized_keys"
 
-    def __init__(self, parameters, channel):
+    def __init__(self, parameters, channel, kb_emulator):
         """
         Constructor
 
@@ -75,7 +75,8 @@ class VirtualBoxDevice(Device):
             channel (nil): Power cutter. Unused as the tests are run in a VM
         """
         super(VirtualBoxDevice, self).__init__(device_descriptor=parameters,
-                                               channel=channel)
+                                               channel=channel,
+                                               kb_emulator=kb_emulator)
         # virtual hard drive file name - used when mounting the hard drive
         self._vhdd = None
         # virtual machine name - used when interfacing with the machine through
