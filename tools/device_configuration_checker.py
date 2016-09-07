@@ -429,7 +429,7 @@ def populate_work_directory(directory, image_directory_path, files):
         The actual image file that gets used during flashing
 
     Raises:
-        aft.AFTConfigurationError if no image file has been provided for flashing
+        errors.AFTConfigurationError if no image file has been provided for flashing
     """
 
     logger.info("Populating working directory from " + image_directory_path)
@@ -451,7 +451,7 @@ def populate_work_directory(directory, image_directory_path, files):
             image_file = get_image_file(image_file, file)
 
     if not image_file:
-        raise aft.AFTConfigurationError("No image file specified for flashing")
+        raise errors.AFTConfigurationError("No image file specified for flashing")
 
     return image_file
 
@@ -538,4 +538,3 @@ def create_missing_directories(path):
 
     if not os.path.exists(path):
         os.makedirs(path)
-
