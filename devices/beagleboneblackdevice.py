@@ -611,49 +611,6 @@ class BeagleBoneBlackDevice(Device):
             self.dev_id,
             self.parameters["leases_file_name"])
 
-    def check_poweron(self):
-        """
-        Device configuration test that checks if device powers on correctly.
-
-        Not implemented, as the feasible way to detect if device has powered on
-        is to check if it can be connected over network, which is redundant
-        with the connectivity test
-
-        Returns:
-            None
-
-        Raises:
-            aft.errors.AFTNotImplementedError on invocation
-        """
-
-        logger.info("Power on check skipped")
-        raise errors.AFTNotImplementedError(
-            "Skipped - Covered by connection test")
-
-    def check_connection(self):
-        """
-        Boots into service mode, and checks if ssh connection can be established
-
-        Returns:
-            None
-
-        Raises:
-            The exceptions that _enter_service_mode raises.
-        """
-
-
-        # Reduce boot timeout a bit, so that we don't spend so much time
-        # here waiting for a failing device
-        self._SERVICE_MODE_RETRY_ATTEMPTS = 3
-        self._BOOT_TIMEOUT = 140
-
-        self._enter_service_mode()
-        logger.info("Succesfully booted device into service mode")
-
-
-    # helper functions
-    # NOTE: SSH related methods might be better suited for the ssh.py module
-    # Consider moving these
 
     def _make_directory_over_ssh(self, directory):
         """
