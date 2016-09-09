@@ -15,7 +15,7 @@
 Mock cutter. Does nothing
 """
 
-from aft.cutter import Cutter
+from aft.cutters.cutter import Cutter
 
 
 class Mockcutter(Cutter):

@@ -29,7 +29,7 @@ except ImportError:
     import subprocess as subprocess32
 
 from aft.logger import Logger as logger
-from aft.device import Device
+from aft.devices.device import Device
 import aft.errors as errors
 import aft.tools.misc as misc
 import aft.tools.ssh as ssh
