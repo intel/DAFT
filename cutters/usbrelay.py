@@ -23,7 +23,7 @@ except ImportError:
     import subprocess as subprocess32
 import os
 
-from aft.cutter import Cutter
+from aft.cutters.cutter import Cutter
 
 
 class Usbrelay(Cutter):

@@ -23,7 +23,7 @@ from multiprocessing import Process, Queue
 
 from aft.logger import Logger as logger
 import aft.config as config
-from aft.device import Device
+from aft.devices.device import Device
 import aft.errors as errors
 import aft.tools.ssh as ssh
 import aft.devices.common as common

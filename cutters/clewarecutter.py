@@ -25,7 +25,7 @@ import aft.tools.misc as misc
 import random
 from time import sleep
 
-from aft.cutter import Cutter
+from aft.cutters.cutter import Cutter
 
 
 class ClewareCutter(Cutter):

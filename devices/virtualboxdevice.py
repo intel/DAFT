@@ -22,7 +22,7 @@ try:
 except ImportError:
     import subprocess as subprocess32
 
-from aft.device import Device
+from aft.devices.device import Device
 from aft.logger import Logger as logger
 
 import aft.errors as errors
