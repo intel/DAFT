@@ -63,9 +63,6 @@ columns=fullflexible, numbers=left, numberstyle=\tiny\color{lightgray}, frame=si
 \subsection{Simple setup}
 The absolutely mandatory steps to take for a simplest working system with just MinnowBoard MAX platform are as follows:
 \begin{enumerate}
-	\item Copy the content of Testing automation USB-stick from ta-usb-stick branch in the AFT git repository to a suitable USB-stick.
-
-\note{At the time of writing, the location is temporary and doesn't include pre-made Debian images due to their size.}
 	\item Setup a Testing harness as instructed in section \ref{testingharness}
 	\item Pick a Cleware powercutter and using the instructions on section \ref{clewarecutters}, install the associated software.
 	\item Setup AFT as instructed in section \ref{aft}
@@ -180,19 +177,7 @@ The MAC address in this case is \cmd{00:08:a2:09:ba:02}
 
 \end{enumerate}
 
-
-
-\subsection{Testing automation USB-stick}
-In this document there are multiple references to a testing automation USB-stick. This stick is intended to contain programs and other tools required for maintaining a complete testing automation system.
-
-\note{At the time of writing, the location is temporary and doesn't include pre-made Debian images due to their size.}
-
-The content can be downloaded from ta-usb-stick branch in the AFT git repository and copied to any suitably large USB-stick.
-
-The content was bundled together during the creation of this document, in December 2015. Therefore the programs may be out of date.
-
-\subsection{SSH-keys}
-In the testing automation system SSH-keys are used extensively for authentication. A default SSH-key is included in the testing automation USB-key in folders \cmd{gigabyte} and \cmd{minnowboard}. Additionally, the SSH-key is added to the \cmd{\/root\/.ssh} folder in each pre-made Debian image. \textbf{It is highly recommended that these SSH-keys are replaced with your own ones!} Leaving the default keys in place may expose your system to attacks.
+\pagebreak
 
 \subsection{Foreword}
 This document was originally written by Topi Kuutela over November and December 2015 to relay information regarding testing automation setup in an embedded Linux project. The document was then expanded by Erkka Kääriä to include Beaglebone Black integration. The level of detail is intentionally high to allow the next operator to understand all details of the system. 
@@ -201,9 +186,11 @@ This document covers the configuration and construction instructions only for th
 
 In the first section the configuration and installation of the testing harness, the testing server, is covered. In the second and third sections the usage of the most important pieces of software are detailed. In section 5 the different kinds of power cutter devices are explained and their associated software is explained. In sections 6-10 the individual testing platforms are described. Finally, in the appendices, the AFT implementation details and privilege reduction options are explained.
 
+\pagebreak
+
 \section{Testing harness}
 \label{testingharness}
-The testing server is, in this document, called testing harness. The testing harness is responsible of fetching the images from the source and executing AFT to flash the images on various target devices. The system has been tested using \emph{OpenSUSE 13.2}.
+The testing server is, in this document, called testing harness. The testing harness is responsible of fetching the images from the source and executing AFT to flash the images on various target devices. The system has been tested using \emph{OpenSUSE 13.2} and \emph{OpenSUSE 42.1}.
 
 The testing harness acts to the testable devices as a network file system server, and as a DHCP-server. It is highly recommended that the devices are put in an isolated network.
 
@@ -230,6 +217,20 @@ The secondary local area network is used for the flashing of PC-devices  \ref{pc
 Enable \cmd{wheel} group as passwordless sudoers. Using \cmd{visudo} add to the end of the \cmd{/etc/sudoers} file:
 \begin{lstlisting}
 %wheel	ALL=(ALL)	NOPASSWD: ALL
+\end{lstlisting}
+
+\subsection*{SSH-keys}
+\label{sshkeys}
+
+Testing harness SSH-keys shouldn't have a passphrase and the keys should be named as \cmd{id\_rsa\_testing\_harness} and \cmd{id\_rsa\_testing\_harness.pub}. Commands for setting up SSH-keys:
+
+\begin{lstlisting}
+ssh-keygen -t rsa
+/root/.ssh/id_rsa_testing_harness
+<Press ENTER>
+<Press ENTER>
+echo "host * " >> ~/.ssh/config
+echo "  IdentityFile ~/.ssh/id_rsa_testing_harness" >> ~/.ssh/config
 \end{lstlisting}
 
 \subsection*{DFU-util}
@@ -384,6 +385,8 @@ udevadm trigger
 
 \note Setting the rules using this method allows unplugging and re-plugging USB-cables to the same port, or rebooting the testing harness without re-configuring AFT. Otherwise the ttyUSB-device may change!
 
+\pagebreak
+
 \section{AFT - Automated Flasher Tester}
 \label{aft}
 
@@ -421,21 +424,13 @@ The BIOS settings are modified using PEM, an Arduino UNO device with a keyboard 
 
 The biggest hurdle with PC-devices is usually the creation of a support image. The distribution used on this guide is Debian 8.2 because it supports out of the box a wide range of architectures and is generally known to be compatible with many kinds of devices. In simple cases the support image creation is just a matter of installing the operating system to a USB stick. In worse cases, e.g. with Galileo Gen 2, it requires the creation of custom kernel with board specific \textit{Board Support Package} (BSP).
 
-Support images for all currently supported devices are provided on the testing automation USB-stick.
-
 By using a support image to also modify the target image, AFT can be run without root privileges. \cmd{Mount}-command for modifying images and mount points always requires root privileges, but this is executed only on the support image. Unfortunately gadget-devices require the modification of the image on the testing harness, so this is not viable in the general case.
 
 PC-devices usually use some kind of a power supply which is connected to the mains powerlines. Therefore a natural place for a power cutter is in between the mains and the PSU.
 
 Another option would be to strip the positive line between the PSU and the device, and install a power cutter in between. This is considered a worse solution because it requires more customization of the hardware.
 
-The PC-devices described in this document include Gigabyte \ref{gigabyte}, MinnowBoard MAX \ref{minnowboard} and Galileo Gen 2 \ref{galileo}. 
-
-A support image is provided on the Testing automation USB-stick for each platform in the folder \cmd{debian-images}. These can be copied to another USB-stick using e.g.
-\begin{lstlisting}
-dd if=<USB-root>/debian-images/minnowUSB.image of=/dev/sdX bs=8M
-\end{lstlisting}
-where the \cmd{sdX} refers to the block device you want to copy the image to.
+The PC-devices described in this document include Gigabyte \ref{gigabyte}, MinnowBoard MAX \ref{minnowboard} and Galileo Gen 2 \ref{galileo}.
 
 \subsection{Gadget-devices}
 
@@ -452,6 +447,8 @@ The only gadget-device in this document is the Intel Edison \ref{edison}, which 
 
 For the purposes of the document, Beaglebone Black is a hybrid gadget/PC device. It is an ARM device, it does not have a BIOS and it uses u-boot as its bootloader. However like PC devices, it requires support image to bypass its unfortunate flashing protocol which requires manual steps from the operator. 
 
+\pagebreak
+
 \section{PEM - Peripheral EMulator}
 \label{pem}
 
@@ -467,11 +464,10 @@ The Atmega 16U2 is converted from its original USB-to-serial mode to an actual 6
 
 PEM can be installed by issuing the following commands:
 \begin{lstlisting}
-git clone https://github.com/01org-AutomatedFlasherTester/pem.git
+git clone https://github.com/01org/pem
 cd pem
 sudo python setup.py install
 \end{lstlisting}
-\note{PEM installation files are also included in the Testing automation USB-stick in the \cmd{installationfiles} folder.}
 
 \subsection{Creation of a PEM-Arduino}
 \label{pemarduino}
@@ -497,11 +493,12 @@ The programs required are the Arduino IDE 1.6.5: (\url{https://www.arduino.cc/en
 sudo dfu-programmer atmega16u2 dump
 \end{lstlisting}
 
-\item The firmware for the 16U2 is included in the testing automation USB-stick but it can also be downloaded from \url{http://hunt.net.nz/users/darran/weblog/b3029/Arduino_UNO_Keyboard_HID_version_03.html}. To flash the firmware, in the testing automation USB stick folder \cmd{arduinokb}, issue the following command:
+\item The firmware for the 16U2 (Arduino-keyboard-0.3.hex) can be downloaded from \url{http://hunt.net.nz/users/darran/weblog/b3029/Arduino_UNO_Keyboard_HID_version_03.html}. To flash the firmware issue following commands in the same directory as the firmware file:
 \begin{lstlisting}
-sudo sh flash.sh
+/usr/local/bin/dfu-programmer atmega16u2 erase
+/usr/local/bin/dfu-programmer atmega16u2 flash Arduino-keyboard-0.3.hex
+/usr/local/bin/dfu-programmer atmega16u2 reset
 \end{lstlisting}
-This script first erases the 16U2, then flashes the firmware and then resets the chip.
 
 \item To verify that the system works, see the usage instructions in the following subsection.
 \end{enumerate}
@@ -521,12 +518,12 @@ sudo pem --interface serialconnection --record <target_file> --port </dev/ttyUSB
 
 In the recording interface, to start recording a sequence, press the \cmd{Start} button. After that, each key press sent to the PEM UI gets sent to the target device. To stop recording and to save the last recording to the file given in the command line arguments, press the  \cmd{Stop} button.
 
-To clean up the keyboard sequence, a LibreOffice Calc spreadsheet is provided on the testing automation USB-stick at \cmd{<USB-root>/arduinokb/sequence-editor.ods}.
-
 To execute a keyboard sequence, use the following command
 \begin{lstlisting}
 sudo pem --interface serialconnection --playback <playback_file> --port </dev/ttyUSBX>
 \end{lstlisting}
+
+\pagebreak
 
 \section{Power cutters}
 \label{powercutters}
@@ -558,6 +555,8 @@ echo "0b00 3070" > /sys/bus/usb-serial/drivers/cp210x/new_id
 \end{lstlisting}
 The device ID can be found with the help of e.g. \cmd{lsusb}. If the driver is not loaded, it can be loaded manually using \cmd{modprobe}.
 
+\pagebreak
+
 \section{Gigabyte GB-BXBT-3825}
 \label{gigabyte}
 
@@ -576,12 +575,6 @@ The BIOS of Gigabyte has basic settings for boot option priorities and overridin
 Gigabyte supports only 12V DC input and requires a 2.5 A powersupply. The DC-plug has a positive center.
 
 \subsection{CI-integration}
-Gigabyte is a PC-like device, similar to Galileo Gen 2 and MinnowBoard MAX. A Debian support image is created on a USB-stick. It is recommended that the support image is created with a legacy (non-EFI) bootloader. The BIOS settings are controlled with PEM-Arduino. The internal hard drive is used for the target image.
-
-The internal ethernet adapter is used for networking.
-
-The PEM keyboard sequence should select the support image from \cmd{Save \& Exit => Boot Override} menu. The image boot options should (automatically) be the top options in the boot option priorities so the keyboard sequence for testing should be empty.
-
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=0.7\linewidth]{gigabytewiring.png}
@@ -589,18 +582,54 @@ The PEM keyboard sequence should select the support image from \cmd{Save \& Exit
 	\label{fig:gigabytewiring}
 \end{figure}
 
+Gigabyte is a PC-like device, similar to Galileo Gen 2 and MinnowBoard MAX. A Debian support image is created on a USB-stick. It is recommended that the support image is created with a legacy (non-EFI) bootloader. The BIOS settings are controlled with PEM-Arduino. The internal hard drive is used for the target image.
+
+The internal ethernet adapter is used for networking.
+
+The PEM keyboard sequence should select the support image from \cmd{Save \& Exit => Boot Override} menu. The image boot options should (automatically) be the top options in the boot option priorities so the keyboard sequence for testing should be empty.
+
+\subsection{Flashing the BIOS on Gigabyte}
+Out of the box, Gigabyte comes with a 32-bit BIOS. This means that the EFI-stub also has to be 32-bit (which, still, can load a 64-bit OS). This can be fixed by updating the BIOS to a 64-bit version.
+
+Newest BIOS can be downloaded from \url{http://b2b.gigabyte.com/products/product-page.aspx?pid=5269#bios}. There are 32-bit and 64-bit BIOS versions. Download them both if you are upgrading from 32-bit BIOS because the \cmd{fpt} file from 32-bit BIOS package will be needed to upgrade 32-bit BIOS to 64-bit.
+
+The following instructions assume that you have extracted and copied the latest BIOS version to a USB-stick and also the \cmd{fpt} file.
+
+\begin{enumerate}
+
+\item Plug the USB-stick to the Gigabyte. Reboot the device, enter BIOS and first determine the BIOS version. If you see X64 anywhere on the line that begins with \cmd{Core Version}, your BIOS is 64-bit. Otherwise your BIOS is 32-bit.
+
+\item Set the \#1 boot option from \cmd{Boot} tab to \cmd{UEFI: Built-in EFI Shell}. Save the configuration and exit. Gigabyte will now boot to EFI Shell. In EFI Shell, first select the correct device from the Device mapping table. The most likely candidate for the USB-key is \cmd{fs0}:
+\begin{lstlisting}
+fs0:
+\end{lstlisting}
+\note the keyboard uses the US-layout.
+
+\item Execute the flashing. If the \textit{current} BIOS is 32-bit use \cmd{fpt}, or if the current BIOS is 64-bit use \cmd{fpt64}. The BIOS file is the file that looks something like \cmd{BAYAD.F3} and is 8.4MB in size.
+
+\begin{lstlisting}
+fpt -f <BIOS FILE>
+\end{lstlisting}
+
+\item After the flashing is completed, reboot the device by issuing:
+\begin{lstlisting}
+reset
+\end{lstlisting}
+\note flashing the BIOS resets the BIOS settings. Remember to disable secure boot and set the device to power on after AC power loss.
+
+\end{enumerate}
+
 \subsection{Debian on Gigabyte}
 These instructions are for creating a bootable Debian USB-stick for Gigabyte with MBR and persistent storage.
 
 \begin{enumerate}
 \item Make sure the internal hard drive doesn't have a bootloader, or nuke the hard drive: 
 
-\item Update the BIOS
-
-
 \begin{lstlisting}
 dd if=/dev/zero of=/dev/sda bs=8M count=500
 \end{lstlisting}
+
+\item Update the BIOS
 
 \item In the BIOS disable Secure boot and set the
 
@@ -633,15 +662,37 @@ dd if=debian-8.2.0-amd64-DVD-1.iso of=/dev/sdX bs=8M; sync
 
 \item When prompted for software selection, the spacebar enables and disables options. Disable Debian desktop environment and print server, but enable SSH server. Enter to continue.
 
-\item Once the installation is finished, remove the installation media, set the remaining USB-stick as the primary legacy boot option and boot the newly installed Debian.
+\item Once the installation is finished, remove the installation media, set the remaining USB-stick as the primary legacy boot option and boot the newly installed Debian. Once booted, log in as \cmd{root}.
 
-\item Once booted, log in as \cmd{root}, plug in the test automation USB-stick and execute:
+\item Copy the SSH-keys\ref{sshkeys} from testing harness' \cmd{/root/.ssh/} to Gigabyte Debians \cmd{/root/.ssh/} with \cmd{scp} or using a USB-stick.
+
+\item Download realtek drivers from \url{https://packages.debian.org/jessie/all/firmware-realtek/download} and install them to the Debian with:
 
 \begin{lstlisting}
-mkdir temp; mount /dev/sdc1 temp; cd temp/gigabyte; ./installgigabyte; cd; umount temp; rm -r temp
+dpkg -i <FIRMWARE FILE>
 \end{lstlisting}
 
-See the comments on the test automation USB-stick \cmd{gigabyte/installgigabyte} script for details of the post installation configuration.
+\item Lastly execute the following commands as \cmd{root}:
+
+\begin{lstlisting}
+cp ~/.ssh/id_rsa_testing_harness.pub ~/.ssh/authorized_keys
+echo "host * " >> ~/.ssh/config
+echo "  IdentityFile ~/.ssh/id_rsa_testing_harness" >> ~/.ssh/config
+echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+echo "UsePAM no" >> /etc/ssh/sshd_config
+echo "192.168.30.1:/home/tester /mnt/img_data_nfs nfs	rsize=8192,wsize=8192,timeo=14,intr,nolock,auto" >> /etc/fstab
+mkdir -p /mnt/img_data_nfs
+mkdir -p /mnt/super_target_root
+mkdir -p /mnt/target_root
+echo -e "auto eth0\nallow-hotplug eth0\niface eth0 inet dhcp" >> /etc/network/interfaces
+ifdown eth0
+ifup eth0
+echo "deb ftp.de.debian.org/debian jessie main" > /etc/apt/sources.list
+echo "deb-src ftp.de.debian.org/debian/ jessie main" >> /etc/apt/sources.list
+apt-get update
+apt-get install nfs-common nfs-server bmap-tools openssh-server vim python python-pip vim bash-completion nano initramfs-tools net-tools ntp locales parted attr tree
+\end{lstlisting}
+
 
 \item Reboot the device and from the BIOS menu, boot the Debian image.
 
@@ -650,43 +701,7 @@ See the comments on the test automation USB-stick \cmd{gigabyte/installgigabyte}
 \item Reboot the device, adjust the boot priorities so that the primary options are from the testable image.
 \end{enumerate}
 
-\subsection{Flashing the BIOS on Gigabyte}
-Out of the box, Gigabyte comes with a 32-bit BIOS. This means that the EFI-stub also has to be 32-bit (which, still, can load a 64-bit OS). This can be fixed by updating the BIOS to a 64-bit version, which is supplied by Intel.
-
-The testing automation USB-stick contains all the files required to update the BIOS to version \cmd{F2a x64} in the folder gigabytebios. The official instructions are available at \url{https://wiki.ith.intel.com/display/TME/ODM+Gateway+BIOS+Files}.
-
-The following instructions assume that you have copied the latest version to the USB-stick.
-
-\begin{enumerate}
-
-\item Plug the USB-stick to the Gigabyte. Reboot the device, enter BIOS and set the first boot device to UEFI: Built-in EFI Shell.
-
-\item In EFI Shell, first select the correct device from the Device mapping table. The most likely candidate for the USB-key is \cmd{fs0}:
-\begin{lstlisting}
-fs0:
-\end{lstlisting}
-\note the keyboard uses the US-layout.
-
-\item go to the \cmd{gigabytebios} folder:
-
-\begin{lstlisting}
-cd gigabytebios
-\end{lstlisting}
-
-\item Execute the flashing. If the \textit{current} BIOS is 32-bit use \cmd{fpt}, or if the current BIOS is 64-bit use \cmd{fpt64}.
-
-\begin{lstlisting}
-fpt64 -f BAYADx64.F2a
-\end{lstlisting}
-
-\item After the flashing is completed, reboot the device by issuing:
-\begin{lstlisting}
-reset
-\end{lstlisting}
-\note flashing the BIOS resets the BIOS settings. Remember to disable secure boot and set the device to power on after AC power loss.
-
-\end{enumerate}
-
+\pagebreak
 
 \section{MinnowBoard MAX and MinnowBoard Turbot}
 \label{minnowboard}
@@ -718,10 +733,12 @@ The microSD-card is used for the target image with MinnowBoard MAX.
 
 \subsection{Flashing the BIOS on MinnowBoard MAX}
 
-MinnowBoard MAX supports both 32- and 64-bit firmwares. The official firmware site is \url{https://firmware.intel.com/projects/minnowboard-max} but the firmware version \cmd{0.83} has been added to the testing automation USB-stick with both 32- and 64-bit flashing utilities. The following instructions explain how to flash the firmware using the testing automation USB-stick.
+MinnowBoard MAX supports both 32- and 64-bit firmwares. The official firmware site is \url{https://firmware.intel.com/projects/minnowboard-max}. The following instructions explain how to flash the firmware using the \cmd{0.83} firmware version. The firmware page also has release notes for specific version with the instructions on updating the BIOS.
 
 \begin{enumerate}
-\item Attach the testing automation USB-stick to MinnowBoard MAX along with a keyboard and a monitor.
+\item First download the \cmd{0.83} firmware from \url{https://firmware.intel.com/content/minnowboard-maxturbot-release-archives}. Download both the 32-bit and 64-bit zip files. Extract the files to a same folder and copy it to a USB-stick.
+
+\item Attach the USB-stick to MinnowBoard MAX along with a keyboard and a monitor.
 
 \item Reboot the device and enter the BIOS menu. Determine the architecture of current BIOS from the third line in the header. For example, \textit{MNW2MAX1.\textbf{X64}.0083.R01.1509181113}.
 
@@ -776,29 +793,59 @@ Select \cmd{X} to match the SD-card device on your machine with the help of e.g.
 
 \item Create a user, use user name: \cmd{user}, real name: \cmd{user} and password \cmd{user}.
 
-\item Adding a network package source is not necessary, it is added by a post-install script.
+\item Adding a network package source is not necessary, it will be added later.
 
 \item When prompted for software selection, the spacebar enables and disables options. Disable Debian desktop environment and print server, but enable SSH server. Enter to continue.
 
 \item After the installation is finished, eject the microSD-card, select \cmd{debian} as the boot device in the BIOS \cmd{Boot Manager} and login to the Debian.
 
-\item Format the microSD-card and from the testing automation USB-stick, copy the contents of the contents of \cmd{minnowboard} folder to the card.
+\item Format the microSD-card.
 
-\item Plug the SD-card in the MinnowBoard MAX, execute the following:
+\item Copy the SSH-keys\ref{sshkeys} from testing harness' \cmd{/root/.ssh/} to Gigabyte Debians \cmd{/root/.ssh/} with \cmd{scp} or using the microSD-card.
+
+\item Download realtek drivers from \url{https://packages.debian.org/jessie/all/firmware-realtek/download} and install them to the Debian with:
+
 \begin{lstlisting}
-cd; mkdir temp; mount /dev/mmcblk0p1 templs; cd temp; chmod +x installminnow; ./installminnow; cd; umount /dev/mmcblk0p1; rm -r temp
+dpkg -i <FIRMWARE FILE>
 \end{lstlisting}
 
-See the comments on the test automation USB-stick \cmd{minnowboard/installminnow} script for details of the post installation configuration.
+\item Lastly execute the following commands as \cmd{root}:
+
+\begin{lstlisting}
+# Restructure the boot partition to match the EFI specification default. This assumes that the boot 
+# partition is mounted in /boot/efi (default location in 64-bit Debian 8.2 on 23.11.2015)
+mkdir -p /boot/efi/EFI/BOOT
+cp /boot/efi/EFI/debian/grubx64.efi /boot/efi/EFI/BOOT/bootx64.efi
+rm -rf /boot/efi/debian
+
+cp ~/.ssh/id_rsa_testing_harness.pub ~/.ssh/authorized_keys
+echo "host * " >> ~/.ssh/config
+echo "  IdentityFile ~/.ssh/id_rsa_testing_harness" >> ~/.ssh/config
+echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+echo "UsePAM no" >> /etc/ssh/sshd_config
+echo "192.168.30.1:/home/tester /mnt/img_data_nfs nfs	rsize=8192,wsize=8192,timeo=14,intr,nolock,auto" >> /etc/fstab
+mkdir -p /mnt/img_data_nfs
+mkdir -p /mnt/super_target_root
+mkdir -p /mnt/target_root
+echo -e "auto eth0\nallow-hotplug eth0\niface eth0 inet dhcp" >> /etc/network/interfaces
+ifdown eth0
+ifup eth0
+echo "deb ftp.de.debian.org/debian jessie main" > /etc/apt/sources.list
+echo "deb-src ftp.de.debian.org/debian/ jessie main" >> /etc/apt/sources.list
+apt-get update
+apt-get install nfs-common nfs-server bmap-tools openssh-server vim python python-pip vim bash-completion nano initramfs-tools net-tools ntp locales parted attr tree
+\end{lstlisting}
 
 \item Reboot the device using \cmd{reboot} and from BIOS menu select the EFI USB Device as the boot device.
 
-\item manually flash the microSD-card with a current testable image.
+\item Manually flash the microSD-card with a current testable image.
 
 \item Reboot the device and enter BIOS menu.
 
 \item In \cmd{Boot Maintenance Manager} delete the \cmd{debian} boot entry. Then adjust the boot option order so that the previously flashed image is the primary boot device.
 \end{enumerate}
+
+\pagebreak
 
 \section{Galileo Gen 2}
 \label{galileo}
@@ -1058,6 +1105,8 @@ sudo dd if=shared/galileoimage.img of=/dev/sdX bs=8M
 \note modify the X to correspond your USB-stick device which can be found using eg. \cmd{lsblk}.
 \end{enumerate}
 
+\pagebreak
+
 \section{Intel Edison}
 \label{edison}
 
@@ -1123,6 +1172,7 @@ The USB-serial interface can be used for boot console recording at 115200 bauds.
 \end{figure}
 
 \newpage
+
 \section{Beaglebone Black}
 Beaglebone Black is an open-source hardware development board with a 32-bit 1GHz Cortex-A8 ARM CPU and 512 MB ram. The board also has two 200MHz 32-bit microcontrollers, which can be used to offload tasks from the main CPU. Depending on revision, it has either 2 gigabytes (rev B) or 4 gigabytes (rev C) of internal storage. It has microSD slot, A-type and mini USB ports, microHDMI connector for video and audio, 100 megabit ethernet and a 6-pin serial output. It can be powered through either mini-usb port or 5.5mm 5V jack.
 
@@ -1176,7 +1226,7 @@ This writes 40 megabytes worth of zeros into the eMMC, which should be more than
 
 \note If you have SD card connected, the eMMC should be \cmd{/dev/mmcblk1} instead of \cmd{/dev/mmcblk0}. It's best not to connect SD card at this point to avoid confusion
 
-\item Copy bootloader files, \cmd{MLO} and \cmd{u-boot.img}, into the SD card boot partition, or flash the SD card with an functioning image. The test automation USB stick should have the necessary bootloader files, but any valid bootloader should do. See \ref{part_sd} on how to partition the SD card correctly.
+\item Copy bootloader files, \cmd{MLO} and \cmd{u-boot.img}, into the SD card boot partition, or flash the SD card with an functioning image. Any valid bootloader should do. For example default Debian image for Beaglebone should have \cmd{MLO} and \cmd{u-boot.img} in \cmd{/opt/backup/uboot} folder. See \ref{part_sd} on how to partition the SD card correctly.
 
 \end{enumerate}
 
@@ -1405,6 +1455,8 @@ bootz 0x81000000 - 0x80000000
 \note 0x81000000 and 0x80000000 are the memory locations where the kernel and device tree binaries are downloaded. It is important that these do not overlap (e.g. 0x80000000 + device tree binary size must be smaller than 0x81000000). The memory addresses themselves are somewhat arbitrary, but they have been tested to work.
 
 \end{enumerate}
+
+\pagebreak
 
 \section{VirtualBox}
 
@@ -1706,6 +1758,8 @@ The device modules and their associated topology-generation modules.
 \subsubsection*{cutters}
 Power cutter modules.
 
+\pagebreak
+
 \section{AFT without root privileges}
 \label{app:noroot}
 
@@ -1790,6 +1844,8 @@ This script can be executed with root privileges by adding it to sudoers list:
 \begin{lstlisting}
 <user name> ALL=(ALL) NOPASSWD: /full/path/to/the/setfattr_script.sh
 \end{lstlisting}
+
+\pagebreak
 
 \section{Creating support images for hardware with limited support}
 
@@ -2032,7 +2088,13 @@ This can easily be done by adding the following line into \cmd{mount\_dir/etc/fs
 
 Where \cmd{192.168.30.1} is the testing harness ip address, \cmd{/home/tester} is the directory that is shared over NFS and {/mnt/img\_data\_nfs} is the mount directory.
 
-The mount directory must also be created on the image.
+The mount directory and some other directories for mounting files must also be made:
+
+\begin{lstlisting}
+mkdir -p /mnt/img_data_nfs
+mkdir /mnt/super_target_root
+mkdir /mnt/target_root
+\end{lstlisting}
 
 \note The \cmd{nfsvers} argument, which defines the NFS protocol version, has caused some issues in the past. In case of NFS issues and after you have verified that the command has no typos or extra spaces anywhere, try tweaking the version or removing the argument completely
 
