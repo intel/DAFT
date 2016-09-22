@@ -50,6 +50,7 @@ setup(
     packages = ["aft"],
     package_dir = {"aft" : "."},
     package_data = {"aft" : ["cutters/*.py",
+                             "kb_emulators/*.py",
                              "devices/*.py", "devices/data/*",
                              "testcases/*.py",
                              "tools/*.py",

@@ -23,6 +23,7 @@ import aft.devices.virtualboxdevice
 import aft.cutters.clewarecutter
 import aft.cutters.usbrelay
 import aft.cutters.mockcutter
+import aft.kb_emulators.arduinokeyboard
 
 _DEVICE_CLASSES = {
     "beagleboneblack" : aft.devices.beagleboneblackdevice.BeagleBoneBlackDevice,
@@ -35,7 +36,20 @@ _CUTTER_CLASSES = {
     "usbrelay" : aft.cutters.usbrelay.Usbrelay,
     "mockcutter" : aft.cutters.mockcutter.Mockcutter
 }
+_KB_EMULATOR_CLASSES = {
+    "arduinokeyboard" : aft.kb_emulators.arduinokeyboard.ArduinoKeyboard,
+}
 
+def build_kb_emulator(config):
+    """
+    Construct a keyboard emulator instance of type config["keyboard_emulator"]
+    """
+    if "keyboard_emulator" in config.keys():
+        kb_emulator_class = _KB_EMULATOR_CLASSES[
+                                        config["keyboard_emulator"].lower()]
+        return kb_emulator_class(config)
+    else:
+        return None
 
 def build_cutter(config):
     """
@@ -44,9 +58,9 @@ def build_cutter(config):
     cutter_class = _CUTTER_CLASSES[config["cutter_type"].lower()]
     return cutter_class(config)
 
-def build_device(config, cutter):
+def build_device(config, cutter, kb_emulator=None):
     """
     Construct a device instance of type config["platform"]
     """
     device_class = _DEVICE_CLASSES[config["platform"].lower()]
-    return device_class(config, cutter)
+    return device_class(config, cutter, kb_emulator)

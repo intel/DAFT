@@ -174,7 +174,11 @@ class DevicesManager(object):
         for device_config in self.device_configs:
             if device_config["model"].lower() == self._args.machine.lower():
                 cutter = devicefactory.build_cutter(device_config["settings"])
-                device = devicefactory.build_device(device_config["settings"], cutter)
+                kb_emulator = devicefactory.build_kb_emulator(
+                                                    device_config["settings"])
+                device = devicefactory.build_device(device_config["settings"],
+                                                    cutter,
+                                                    kb_emulator)
                 devices.append(device)
 
         devices = self._remove_blacklisted_devices(devices)
@@ -194,7 +198,11 @@ class DevicesManager(object):
         for device_config in self.device_configs:
             if device_config["name"].lower() == machine_name.lower():
                 cutter = devicefactory.build_cutter(device_config["settings"])
-                device = devicefactory.build_device(device_config["settings"], cutter)
+                kb_emulator = devicefactory.build_kb_emulator(
+                                                    device_config["settings"])
+                device = devicefactory.build_device(device_config["settings"],
+                                                    cutter,
+                                                    kb_emulator)
                 devices.append(device)
                 break
 

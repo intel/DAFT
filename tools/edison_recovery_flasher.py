@@ -208,7 +208,7 @@ def _get_blacklisted_edison_devices(device_manager, blacklisted_edison_names):
                 cutter = devicefactory.build_cutter(conf["settings"])
                 device = devicefactory.build_device(
                     conf["settings"],
-                    cutter)
+                    cutter, None)
                 blacklisted_edisons.append(device)
 
     return blacklisted_edisons

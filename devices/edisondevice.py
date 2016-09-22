@@ -128,16 +128,18 @@ class EdisonDevice(Device):
     IFWI_DFU_FILE = "edison_ifwi-dbg"
     _NIC_FILESYSTEM_LOCATION = "/sys/class/net"
 
-    def __init__(self, parameters, channel):
+    def __init__(self, parameters, channel, kb_emulator):
         """
         Constructor
 
         Args:
             parameters (dictionary): Device configuration parameters
             channel (aft.Cutter): The power cutter object
+            kb_emulator (aft.kb_emulators.kb_emulator): Keyboard emulator object
         """
         super(EdisonDevice, self).__init__(device_descriptor=parameters,
-                                           channel=channel)
+                                           channel=channel,
+                                           kb_emulator=kb_emulator)
         self._configuration = parameters
 
         self._FLASHER_OUTPUT_LOG = "flash_" + self._configuration["name"] + ".log"

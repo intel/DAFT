@@ -37,13 +37,14 @@ class Device(with_metaclass(abc.ABCMeta, object)):
 
     _POWER_CYCLE_DELAY = 10
 
-    def __init__(self, device_descriptor, channel):
+    def __init__(self, device_descriptor, channel, kb_emulator=None):
         self.name = device_descriptor["name"]
         self.model = device_descriptor["model"]
         self.dev_id = device_descriptor["id"]
         self.test_plan = device_descriptor["test_plan"]
         self.parameters = device_descriptor
         self.channel = channel
+        self.kb_emulator = kb_emulator
 
     @abc.abstractmethod
     def write_image(self, file_name):

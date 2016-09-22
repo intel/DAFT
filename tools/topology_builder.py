@@ -55,7 +55,6 @@ import aft.tools.ssh as ssh
 from aft.logger import Logger as logger
 from aft.cutters.clewarecutter import ClewareCutter
 from aft.cutters.usbrelay import Usbrelay
-from pem.main import main as pem_main
 from aft.tools.misc import local_execute
 from aft.devices.edisondevice import EdisonDevice
 
@@ -409,7 +408,7 @@ class TopologyBuilder(object):
 
             args["edison_usb_port"] = usb_port
 
-            dev = EdisonDevice(args, None)
+            dev = EdisonDevice(args, None, None)
             dev.open_interface()
 
             # we do something slightly different here when compared to the
@@ -548,7 +547,7 @@ class TopologyBuilder(object):
             None
 
         """
-
+        from pem.main import main as pem_main
         # give devices some time to boot\shutdown (mostly shutdown)
         #
         # failure to wait can lead to false positives, eg. port was incorrectly
