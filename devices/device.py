@@ -118,48 +118,6 @@ class Device(with_metaclass(abc.ABCMeta, object)):
         pass
 
 
-    def check_poweron(self):
-        """
-        Checks that device has been powered on
-
-        This is device specific and device classes must implement this
-        """
-        raise errors.AFTNotImplementedError("Skipped - not implemented")
-
-    def check_connection(self):
-        """
-        Checks that testing harness can connect the device.
-
-        This is device specific and device classes must implement this
-        """
-        raise errors.AFTNotImplementedError("Skipped - not implemented")
-
-    def check_poweroff(self):
-        """
-        Checks that device has been powered off by checking that ip no longer
-        can be acquired
-        """
-
-        # Note that this test assumes that the device ip is not available when
-        # the device is powered off. This is not valid assumption, for example,
-        # for Edison.
-
-        sleep_delay = 30
-
-        logger.info("Powering down the device and waiting for " +
-            str(sleep_delay) + " seconds")
-        self.detach()
-
-        sleep(30)
-
-        logger.info("Attempting to acquire ip")
-        ip = self.get_ip()
-        if ip:
-            raise errors.AFTConfigurationError("Failed to power off device")
-
-        logger.info("No ip could be acquired - device seems to be powered off")
-
-
     def detach(self):
         """
         Open the associated cutter channel.
