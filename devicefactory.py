@@ -24,6 +24,7 @@ import aft.cutters.clewarecutter
 import aft.cutters.usbrelay
 import aft.cutters.mockcutter
 import aft.cutters.netbootercutter
+import aft.cutters.gpiocutter
 import aft.kb_emulators.arduinokeyboard
 import aft.kb_emulators.km232keyboard
 import aft.kb_emulators.gadgetkeyboard
@@ -38,6 +39,7 @@ _CUTTER_CLASSES = {
     "clewarecutter" : aft.cutters.clewarecutter.ClewareCutter,
     "usbrelay" : aft.cutters.usbrelay.Usbrelay,
     "netbootercutter" : aft.cutters.netbootercutter.NetBooterCutter,
+    "gpiocutter"    : aft.cutters.gpiocutter.GpioCutter,
     "mockcutter"    : aft.cutters.mockcutter.Mockcutter
 }
 
