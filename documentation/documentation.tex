@@ -42,7 +42,8 @@ columns=fullflexible, numbers=left, numberstyle=\tiny\color{lightgray}, frame=si
 \title{Testing Automation in an Embedded Linux Project}
 \author{
 	Topi Kuutela\\
-	Erkka Kääriä
+	Erkka Kääriä\\
+	Simo Kuusela
 }
 \maketitle
 
@@ -481,12 +482,18 @@ The creation of a PEM-Arduino requires
 \item USB A to mini/microUSB (depending on the USB-to-serial adapter)
 \end{itemize}
 
-The programs required are the Arduino IDE 1.6.5: (\url{https://www.arduino.cc/en/Main/OldSoftwareReleases}) and dfu-programmer 0.62: (\url{https://dfu-programmer.github.io/}).
+The programs required are the Arduino IDE 1.6.5: (\url{https://www.arduino.cc/en/Main/OldSoftwareReleases}) and dfu-programmer 0.62: (\url{https://dfu-programmer.github.io/}). Optionally instead of using Arduino IDE you can flash already compiled hex file to Arduino using AVRDUDE which is included with Arduino IDE installation. It should also be found using a Linux package manager.
 
 \begin{enumerate}
 \item Plug the Arduino UNO to your computer using the USB-B to USB-A connector.
 
-\item Start the Arduino IDE. Select the correct port in the \cmd{Tools->Port} menu. Open the \cmd{<PEM git repository>/src/pem\_Arduino/pem\_Arduino.ino}. Flash the sketch in the Arduino. Close the IDE.
+\item Start the Arduino IDE. Select the correct port in the \cmd{Tools->Port} menu. Open the \cmd{<PEM git repository>/arduino/src/pem\_Arduino.ino}. Use \cmd{Sketch->Verify/Compile} and \cmd{Sketch->Upload} to flash the sketch in the Arduino. Close the IDE.
+
+Other way is to use AVRDUDE to flash ready made hex file to Arduino. Go to \cmd{<PEM git repository>/arduino/binary/} folder and issue following command:
+\begin{lstlisting}
+sudo avrdude -patmega328p -carduino -P/dev/ttyACM0 -b115200 -D -Uflash:w:pem_Arduino.hex:i
+\end{lstlisting}
+\note Change \cmd{/dev/ttyACM0} with the Arduinos path if you have other device on \cmd{/dev/ttyACM0}
 
 \item With the Arduino connected to computer (and powered), connect briefly using a jumper or a piece of wire the two pins closest to the Arduino's USB-B port. This resets the Atmega 16U2. Now you should be able to get (scrambled) output by issuing:
 \begin{lstlisting}
