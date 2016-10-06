@@ -222,7 +222,8 @@ class DevicesManager(object):
         if len(devices) == 0:
             raise errors.AFTConfigurationError(
                 "No device configurations when reserving " + name +
-                " - check that given machine type or name is correct")
+                " - check that given machine type or name is correct " +
+                "and not blacklisted in /etc/aft/blacklist")
 
         start = time.time()
         while time.time() - start < timeout:
