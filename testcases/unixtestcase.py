@@ -32,6 +32,6 @@ class UnixTestCase(BasicTestCase):
         """
         self.output = device.execute(
             command=('ps', 'auxf', '|', 'grep', '-E', '"/' +
-                     self["parameters"] + ' "', '|', 'grep', '-v', 'grep'),
+                     self.parameters + ' "', '|', 'grep', '-v', 'grep'),
             timeout=self._PROCESS_TEST_TIMEOUT, )
         return self._check_for_success()

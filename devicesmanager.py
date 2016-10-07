@@ -51,11 +51,9 @@ class DevicesManager(object):
             args (argparse namespace argument object):
                 Command line arguments, as parsed by argparse
         """
-
         self._args = args
         self._lockfiles = []
         self.device_configs = self._construct_configs()
-
 
     def _construct_configs(self):
         """
@@ -77,7 +75,6 @@ class DevicesManager(object):
         Note:
             catalog\platform entries are not device specific, but these are
             duplicated for each device for ease of access.
-
         """
         platform_config_file = self.__PLATFORM_FILE_NAME
         catalog_config_file = self._args.catalog
@@ -119,13 +116,11 @@ class DevicesManager(object):
             device_param["settings"] = settings
             configs.append(device_param)
 
-
         if len(configs) == 0:
             raise errors.AFTConfigurationError(
                 "Zero device configurations built - is this really correct? " +
                 "Check that paths for topology, catalog and platform files "
                 "are correct and that the files have some settings inside")
-
 
         logger.info("Built configuration sets for " + str(len(configs)) +
                      " devices")
@@ -168,7 +163,6 @@ class DevicesManager(object):
         """
         Reserve and lock a device and return it
         """
-
         devices = []
 
         for device_config in self.device_configs:
@@ -182,9 +176,7 @@ class DevicesManager(object):
                 devices.append(device)
 
         devices = self._remove_blacklisted_devices(devices)
-
         return self._do_reserve(devices, self._args.machine, timeout)
-
 
     def reserve_specific(self, machine_name, timeout = 3600, model=None):
         """
@@ -214,7 +206,6 @@ class DevicesManager(object):
 
         return self._do_reserve(devices, machine_name, timeout)
 
-
     def _do_reserve(self, devices, name, timeout):
         """
         Try to reserve and lock a device from devices list.
@@ -222,7 +213,8 @@ class DevicesManager(object):
         if len(devices) == 0:
             raise errors.AFTConfigurationError(
                 "No device configurations when reserving " + name +
-                " - check that given machine type or name is correct")
+                " - check that given machine type or name is correct " +
+                "and not blacklisted in /etc/aft/blacklist")
 
         start = time.time()
         while time.time() - start < timeout:
@@ -240,7 +232,6 @@ class DevicesManager(object):
 
                     self._lockfiles.append((device.dev_id, lockfile))
 
-
                     atexit.register(self.release, device)
                     return device
                 except IOError as err:
@@ -254,7 +245,6 @@ class DevicesManager(object):
         raise errors.AFTTimeoutError("Could not reserve " + name +
                                      " in " + str(timeout) + " seconds.")
 
-
     def _remove_blacklisted_devices(self, devices):
         """
         Remove blacklisted devices from the device list
@@ -266,16 +256,13 @@ class DevicesManager(object):
             Filtered list of devices
         """
         _device_blacklist = self._construct_blacklist()
-
         filtered_devices = []
-
         for device in devices:
             for blacklisted_device in _device_blacklist:
                 if blacklisted_device["id"] == device.dev_id:
                     msg = ("Removed blacklisted device " +
                             blacklisted_device["name"] + " from device pool " +
                             "(Reason: " + blacklisted_device["reason"] + ")")
-
                     logger.info(msg)
                     print(msg)
                     break
@@ -284,14 +271,11 @@ class DevicesManager(object):
 
         return filtered_devices
 
-
     def release(self, reserved_device):
         """
         Put the reserved device back to the pool. It will happen anyway when
         the process dies, but this removes the stale lockfile.
         """
-
-        lockfile = None
         for i in self._lockfiles:
             if i[0] == reserved_device.dev_id:
                 i[1].close()
@@ -306,7 +290,6 @@ class DevicesManager(object):
             if os.path.isfile(path):
                 os.unlink(path)
 
-
     def get_configs(self):
         return self.device_configs
 
@@ -320,13 +303,12 @@ class DevicesManager(object):
         """
         dev_id = None
 
-        for config in self.device_configs:
-            if config["name"].lower() == device.lower():
-                dev_id = config["settings"]["id"]
+        for _config in self.device_configs:
+            if _config["name"].lower() == device.lower():
+                dev_id = _config["settings"]["id"]
                 break
 
         common.blacklist_device(dev_id, device, reason)
-
 
     def unblacklist_device(self, device):
         """
@@ -337,9 +319,9 @@ class DevicesManager(object):
         """
         dev_id = None
 
-        for config in self.device_configs:
-            if config["name"].lower() == device.lower():
-                dev_id = config["settings"]["id"]
+        for _config in self.device_configs:
+            if _config["name"].lower() == device.lower():
+                dev_id = _config["settings"]["id"]
                 break
 
         common.unblacklist_device(dev_id)

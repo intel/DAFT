@@ -32,11 +32,11 @@ def _get_nth_parent_dir(path, parent):
         return path
     return _get_nth_parent_dir(os.path.dirname(path), parent - 1)
 
-_NIC_FILESYSTEM_LOCATION = "/sys/class/net"
 def find_nic_with_usb_path(usb_path):
     """
     Search and return the name of a network interface attached to 'usb_path' USB-path
     """
+    _NIC_FILESYSTEM_LOCATION = "/sys/class/net"
     interfaces = netifaces.interfaces()
     for interface in interfaces:
         nic_path = os.path.realpath(os.path.join(_NIC_FILESYSTEM_LOCATION, interface))
@@ -57,13 +57,11 @@ def wait_and_enable_nic(usb_path, ip_address):
             time.sleep(1)
             continue
 
-
         # assumes the script is present in the same directory
         interface_script = os.path.join(os.path.dirname(__file__), "interface_script.sh")
 
         subprocess32.check_call(["sudo", interface_script, nic, ip_address])
         return
-
 
 def main():
     """

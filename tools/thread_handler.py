@@ -56,7 +56,7 @@ class Thread_handler(object):
     @staticmethod
     def get_flag(flag):
         '''
-        Return flags value from FLAGS dictionary, if one isn't found return 0
+        Return flags value from FLAGS dictionary, if one isn't found return None
         '''
         try:
             return Thread_handler.FLAGS[flag]

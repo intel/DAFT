@@ -27,12 +27,6 @@ import aft.errors as errors
 import aft.tools.ssh as ssh
 import aft.devices.common as common
 
-
-VERSION = "0.1.0"
-
-# pylint: disable=too-many-instance-attributes
-
-
 class PCDevice(Device):
     """
     Class representing a PC-like device.
@@ -41,29 +35,20 @@ class PCDevice(Device):
         _RETRY_ATTEMPTS (integer):
             How many times the device attempts to enter the requested mode
             (testing/service) before givingup
-
         _BOOT_TIMEOUT (integer):
             The device boot timeout. Used when waiting for responsive ip address
-
         _POLLING_INTERVAL (integer):
             The polling interval used when waiting for responsive ip address
-
         _SSH_IMAGE_WRITING_TIMEOUT (integer):
             The timeout for flashing the image.
-
         _IMG_NFS_MOUNT_POINT (str):
             The location where the service OS mounts the nfs filesystem so that
             it can access the image file etc.
-
         _ROOT_PARTITION_MOUNT_POINT (str):
             The location where the service OS mounts the image root filesystem
             for SSH key injection.
-
         _SUPER_ROOT_MOUNT_POINT (str):
             Mount location used when having to mount two layers
-
-
-
     """
     _RETRY_ATTEMPTS = 4
     _BOOT_TIMEOUT = 240
@@ -72,7 +57,6 @@ class PCDevice(Device):
     _IMG_NFS_MOUNT_POINT = "/mnt/img_data_nfs"
     _ROOT_PARTITION_MOUNT_POINT = "/mnt/target_root/"
     _SUPER_ROOT_MOUNT_POINT = "/mnt/super_target_root/"
-
 
     def __init__(self, parameters, channel, kb_emulator):
         """
@@ -83,19 +67,14 @@ class PCDevice(Device):
             channel (aft.Cutter): Power cutter object
             kb_emulator (aft.kb_emulators.kb_emulator): Keyboard emulator object
         """
-
         super(PCDevice, self).__init__(device_descriptor=parameters,
                                        channel=channel,
                                        kb_emulator=kb_emulator)
-
-
-        self.retry_attempts = 4
 
         self._leases_file_name = parameters["leases_file_name"]
         self.default_root_patition = parameters["root_partition"]
         self._service_mode_name = parameters["service_mode"]
         self._test_mode_name = parameters["test_mode"]
-
         self._test_mode = {
             "name": self._test_mode_name,
             "sequence": parameters["test_mode_keystrokes"]}
@@ -104,17 +83,8 @@ class PCDevice(Device):
             "sequence": parameters["service_mode_keystrokes"]}
         self._target_device = \
             parameters["target_device"]
-
-
-        self._config_check_keystrokes = parameters["config_check_keystrokes"]
-
         self.dev_ip = None
         self._uses_hddimg = None
-
-# pylint: disable=no-self-use
-
-
-# pylint: enable=no-self-use
 
     def write_image(self, file_name):
         """
@@ -183,10 +153,8 @@ class PCDevice(Device):
         Raises:
             aft.errors.AFTDeviceError if device fails to enter the mode or if
             keyboard emulator fails to connect
-
         """
         # Sometimes booting to a mode fails.
-
         logger.info(
             "Trying to enter " + mode["name"] + " mode up to " +
             str(self._RETRY_ATTEMPTS) + " times.")
@@ -218,7 +186,6 @@ class PCDevice(Device):
         raise errors.AFTDeviceError(
             "Could not set the device in mode " + mode["name"])
 
-
     def _wait_for_responsive_ip(self):
         """
         For a limited amount of time, try to assess if the device
@@ -228,7 +195,6 @@ class PCDevice(Device):
             (str or None):
                 The device ip, or None if no active ip address was found
         """
-
         self.dev_ip = common.wait_for_responsive_ip_for_pc_device(
             self.dev_id,
             self.parameters["leases_file_name"],
@@ -296,7 +262,6 @@ class PCDevice(Device):
         Returns:
             None
         """
-
         logger.info("Mount one layer.")
         ssh.remote_execute(
             self.dev_ip,
@@ -304,7 +269,6 @@ class PCDevice(Device):
                 "mount",
                 self.get_root_partition_path(image_file_name),
                 self._ROOT_PARTITION_MOUNT_POINT])
-
 
     def get_root_partition_path(self, image_file_name):
         """
@@ -318,7 +282,6 @@ class PCDevice(Device):
         Returns:
             (str): path to the disk pseudo file
         """
-
         layout_file_name = self.get_layout_file_name(image_file_name)
 
         if not os.path.isfile(layout_file_name):
@@ -337,7 +300,6 @@ class PCDevice(Device):
             "disk",
             "by-partuuid",
             rootfs_partition["uuid"])
-
 
     def get_layout_file_name(self, image_file_name):
         return image_file_name.split(".")[0] + "-disk-layout.json"
@@ -460,7 +422,6 @@ class PCDevice(Device):
 
         logger.info("Flushing.")
         ssh.remote_execute(self.dev_ip, ["sync"])
-
         logger.info("Unmounting.")
         ssh.remote_execute(
             self.dev_ip, ["umount", self._ROOT_PARTITION_MOUNT_POINT])

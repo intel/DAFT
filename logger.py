@@ -19,8 +19,8 @@ is used, logging messages will be written to same aft.log and ssh.log files.
 
 If new logger is needed, Logger.info()/.debug()/.warning()... makes new
 one automatically when called with 'filename=' argument. Loggers are made
-process specific. Using init_process() function, prefix to processes filenames
-can be added/changed.
+process specific. Using set_process_prefix() function, prefix to processes
+filenames can be added/changed.
 '''
 
 import os
@@ -49,10 +49,10 @@ class Logger(object):
         Logger.LOGGING_LEVEL = logging_level
 
     @staticmethod
-    def init_root_logger():
+    def set_root_logger_settings():
         '''
         Initialize root logger settings. At the time of writing, only PEM is
-        using root logger (logging.info, logging.warning etc.)
+        using root logger (logging.info(), logging.warning() etc.)
         '''
         logging.basicConfig(filename="pem_" + config.AFT_LOG_NAME,
                             level=Logger.LOGGING_LEVEL,
@@ -60,7 +60,7 @@ class Logger(object):
                             format='%(asctime)s - %(levelname)s - %(message)s')
 
     @staticmethod
-    def init_process(log_prefix=""):
+    def set_process_prefix(log_prefix=""):
         '''
         Add/change process's filename prefix to dictionary
 
@@ -82,7 +82,6 @@ class Logger(object):
             Logger._make(filename)
 
         return logger
-
 
     '''
     Methods for logging to log files. On default methods log to aft.log file.
@@ -112,13 +111,12 @@ class Logger(object):
         Logger.get_logger(filename).error(log_message)
 
 
-
     @staticmethod
     def _make(filename, file_mode="w"):
         '''
         Makes new logger. Logs name will be [prefix]+[filename]. Prefix will be
         taken from PROCESSES dictionary. Adding PROCESS'S prefix to dictionary
-        is done with init_process('prefix=').
+        is done with set_process_prefix(log_prefix='').
 
         Args:
             filename: String for filename suffix
@@ -128,12 +126,12 @@ class Logger(object):
         logger = logging.getLogger(str(os.getpid()) + filename)
         logger.setLevel(Logger.LOGGING_LEVEL)
 
-        # If init_process() hasn't been used before making new logger, prefix
-        # will be process's name so every process's' log filename will be
+        # If set_process_prefix() hasn't been used before making new logger,
+        # prefix will be process's name so every process's' log filename will be
         # different
         if not str(os.getpid()) in Logger.PROCESSES:
             Logger.PROCESSES[str(os.getpid())] = str(os.getpid())
-            print("Process's logger hasn't been initialized with init_process.")
+            print("Process's logger hasn't been initialized with set_process_prefix.")
 
         filename = Logger.PROCESSES[str(os.getpid())] + filename
         handler = logging.FileHandler(filename, mode=file_mode)

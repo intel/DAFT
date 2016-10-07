@@ -22,13 +22,10 @@ from six import with_metaclass
 
 from aft.logger import Logger as logger
 
-VERSION = "0.1.0"
-
 class TestCase(with_metaclass(abc.ABCMeta, object)):
     """
     Class providing the foundations for a Test Case.
     """
-
     def __init__(self, config):
         self.name = config["name"]
         self.test_case = config["test_case"]

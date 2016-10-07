@@ -95,13 +95,11 @@ class Tester(object):
         xml.append('</testsuite>\n')
         return "".join(xml)
 
-# pylint: disable=no-self-use
     def get_results_location(self):
         """
         Returns the file path of the results xml-file.
         """
         return os.path.join(os.getcwd(), "results.xml")
-#pylint: enable=no-self-use
 
     def _save_test_results(self):
         """

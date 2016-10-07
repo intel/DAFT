@@ -29,7 +29,6 @@ import aft.errors as errors
 import aft.tools.misc as misc
 import aft.devices.common as common
 
-
 class VirtualBoxDevice(Device):
 
     """
@@ -54,15 +53,11 @@ class VirtualBoxDevice(Device):
         _POLLING_INTERVAL (integer):
             The polling interval used when waiting for responsive ip address
     """
-
     _VM_DIRECTORY = "vm"
     _MOUNT_DIRECTORY = "mount_directory"
-    # First virtual hard drive, third partition
-    _ROOTFS_DEVICE = "/dev/sda3"
-
+    _ROOTFS_DEVICE = "/dev/sda3" # First virtual hard drive, third partition
     _BOOT_TIMEOUT = 240
     _POLLING_INTERVAL = 10
-
     _MODULE_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data')
     _HARNESS_AUTHORIZED_KEYS_FILE = "authorized_keys"
 
@@ -82,9 +77,7 @@ class VirtualBoxDevice(Device):
         # virtual machine name - used when interfacing with the machine through
         # VBoxManage
         self._vm_name = None
-        # VM mac address
-        self._mac_address = None
-
+        self._mac_address = None # VM mac address
         self._is_powered_on = False
 
     def write_image(self, ova_appliance):
@@ -111,7 +104,6 @@ class VirtualBoxDevice(Device):
             self._unregister_vm()
             raise err
 
-
     def _import_vm(self, ova_appliance):
         """
         Set default VirtualBox directory and import the .ova appliance into
@@ -131,7 +123,6 @@ class VirtualBoxDevice(Device):
 
         Args:
             directory: The new default VirtualBox VM directory
-
         """
         misc.local_execute(
             ("VBoxManage setproperty machinefolder " + directory + "").split())
@@ -152,7 +143,6 @@ class VirtualBoxDevice(Device):
             aft.errors.AFTDeviceError:
                 If hard drive name or vm name were not set
         """
-
         output = misc.local_execute(
             ("VBoxManage import " + ova_appliance + "").split())
 
@@ -189,7 +179,6 @@ class VirtualBoxDevice(Device):
         raise errors.AFTDeviceError(
             "Failed to find the VM name or virtual hard drive path. Has the " +
             "VirtualBox output format changed?")
-
 
     def _find_mac_address(self):
         """
@@ -244,13 +233,11 @@ class VirtualBoxDevice(Device):
         """
         # create mount folder
         common.make_directory(self._MOUNT_DIRECTORY)
-
         path = os.path.join(
             self._VM_DIRECTORY, self._vm_name,
-            self._vhdd);
+            self._vhdd)
         logger.info("Mounting '" + path + "' with device '" + self._ROOTFS_DEVICE +
             "' into '" + self._MOUNT_DIRECTORY + "' for ssh key injection")
-
         misc.local_execute(
             ("guestmount -a " + path +" -m " + self._ROOTFS_DEVICE + " " +
              self._MOUNT_DIRECTORY + " -o allow_other").split())
@@ -262,24 +249,17 @@ class VirtualBoxDevice(Device):
         logger.info("Injecting ssh key")
         source_file = os.path.join(self._MODULE_DATA_PATH,
                                    self._HARNESS_AUTHORIZED_KEYS_FILE)
-
         ssh_path = os.path.join(
             os.curdir,
             self._MOUNT_DIRECTORY, "home", "root", ".ssh")
-
         ssh_file = os.path.join(ssh_path, "authorized_keys")
-
         logger.info("Injecting ssh key from '" + source_file + "' to '" +
                      ssh_file + "'")
-
         common.make_directory(ssh_path)
         shutil.copy(source_file, ssh_file)
-
         sha1sum = misc.local_execute(("sha1sum " +
                 ssh_file).split())
-
         sha1sum = sha1sum.split()[0] # discard the file path
-
         logger.info("Adding IMA attribute to the ssh-key")
 
         # The setfattr command requires root privileges to run, and in general
@@ -296,7 +276,6 @@ class VirtualBoxDevice(Device):
         # script is under aft/tools
         setfattr_script = os.path.join(os.path.dirname(__file__), os.path.pardir,
                                      "tools", "setfattr_script.sh")
-
         misc.local_execute(
             [
                 "sudo",
@@ -304,7 +283,6 @@ class VirtualBoxDevice(Device):
                 "0x01" + sha1sum + " ",
                 ssh_file
             ])
-
 
         logger.info("Fixing ownership and permissions")
         # ensure .ssh directory and authorized key file is owned by root
@@ -315,14 +293,12 @@ class VirtualBoxDevice(Device):
         os.chmod(ssh_path, 0o700)
         os.chmod(ssh_file, 0o600)
 
-
     def _unmount_virtual_drive(self):
         logger.info("Unmounting virtual hard drive")
         """
         Unmount the VirtualBox virtual hard drive
         """
         misc.local_execute(("guestunmount " + self._MOUNT_DIRECTORY).split())
-
 
     def _run_tests(self, test_case):
         """
@@ -351,7 +327,6 @@ class VirtualBoxDevice(Device):
         self._start_vm()
         if self.get_ip() == None:
             raise errors.AFTDeviceError("Failed to get responsive ip")
-
 
     def _set_host_only_nic(self):
         """

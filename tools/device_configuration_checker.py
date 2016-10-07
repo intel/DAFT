@@ -48,7 +48,6 @@ def check_all(args):
     Returns:
         None
     """
-
     if not args.topology:
         raise errors.AFTConfigurationError("Topology file must be specified")
 
@@ -62,7 +61,6 @@ def check_all(args):
     else:
         raise errors.AFTConfigurationError("Invalid option " + args.checkall)
 
-
 def check_all_parallel(args, configs):
     """
     Checks all the devices in parallel
@@ -72,19 +70,15 @@ def check_all_parallel(args, configs):
 
         configs (dictionary): Device configurations
 
-
     Return:
         Success status (tuple(Boolean, String)):
             Tuple containing the test status. First value is boolean value
             signifying whether tests were run succesfully or not (True/False ->
             Success/Failure). Second parameter contains the result string.
     """
-
     if args.verbose:
         print("Running parallel configuration check on all devices")
-
     processes = []
-
     return_values = multiprocessing_queue()
 
     def check_wrapper(args, queue):
@@ -101,11 +95,6 @@ def check_all_parallel(args, configs):
         ret = check(args)
         queue.put((ret, args.device))
 
-
-    # IMPORTANT NOTE:
-    # Currently (at the time of writing), serial recorder is run in a separate
-    # python process, and killed with atexit-handler. These handlers are not
-    # called when Process is joined, so Threads must be used instead
     for dev_config in configs:
         device_args = _get_device_args(args, dev_config)
 
@@ -117,7 +106,6 @@ def check_all_parallel(args, configs):
 
     for process in processes:
         process.join()
-
 
     success = True
     result = ""
@@ -132,7 +120,6 @@ def check_all_parallel(args, configs):
 
     return (success, result)
 
-
 def check_all_serial(args, configs):
     """
     Checks all the devices in serial
@@ -141,7 +128,6 @@ def check_all_serial(args, configs):
         args (configuration object): Program command line arguments
 
         configs (dictionary): Device configurations
-
 
     Return:
         Success status (tuple(Boolean, String)):
@@ -178,7 +164,6 @@ def _get_device_args(args, dev_config):
         args (configuration object) containing command line parameters, updated
         to match current device.
     """
-
     device_args = copy.deepcopy(args)
     device_args.device = dev_config["name"]
     # if device has serial_port specified -> record it
@@ -196,25 +181,18 @@ def _handle_result(check_result, device, success_status, result_string):
     Args:
         check_result (Tuple(Bool, String)):
             The device test result status and string
-
         device (string): Name of the device that was tested
-
         success_status (Bool): Current overall success status of the tests
-
         result_string (String): Current overall result message string
 
     Returns:
         Tuple (Bool, String) containing current success status and the
         result string.
-
-
     """
-
     success_status = success_status and check_result[0]
     result_string += "\nResults for device " + device + ":\n"
     result_string += check_result[1]
     result_string += "\n\n"
-
     return (success_status, result_string)
 
 def check(args):
@@ -229,7 +207,6 @@ def check(args):
         indicates tests passed succesfully, false indicates that there were
         failures
     """
-
     if not args.device:
         raise errors.AFTConfigurationError(
             "You must specify the device that will be checked")
@@ -238,11 +215,10 @@ def check(args):
         print("Running configuration check on " + args.device)
 
     if args.checkall:
-        logger.init_process(args.device + "_")
+        logger.set_process_prefix(args.device + "_")
 
     # Initialize ssh.log so it logs to the right directory
     logger.info("Logger initialized for ssh", filename="ssh.log")
-
     logger.info("Running configuration check on " + args.device)
 
     manager = DevicesManager(args)
@@ -289,18 +265,14 @@ def _run_tests_on_know_good_image(args, device):
     if device.model.lower() == "edison":
         return (True, "Skipped - produces too many false negatives")
 
+    logger.info("Flashing and testing a known good image")
     if args.verbose:
         print("Flashing and testing a known good image")
-
-    logger.info("Flashing and testing a known good image")
+        print("Flashing " + str(device.name))
 
     image_directory_path = os.path.join(
         config.KNOWN_GOOD_IMAGE_FOLDER,
         device.model.lower())
-
-    if args.verbose:
-        print("Flashing " + str(device.name))
-
     work_dir = device.name
 
     try:
@@ -309,25 +281,19 @@ def _run_tests_on_know_good_image(args, device):
             shutil.rmtree(work_dir)
 
         files = get_file_list(image_directory_path)
-
         create_work_directory(work_dir)
         os.chdir(work_dir)
+        image = populate_work_directory(image_directory_path, files)
 
-        image = populate_work_directory(work_dir, image_directory_path, files)
-
+        logger.info("Image file: " + image)
         if args.verbose:
             print("Image file: " + image)
-        logger.info("Image file: " + image)
 
         device.write_image(image)
-
         tester = Tester(device)
         tester.execute()
-
         results = (tester.get_results(), tester.get_results_str())
-
         result = reduce(lambda x, y: x and y, results[0])
-
         result_str = "Image test result: "
 
         if result:
@@ -342,7 +308,6 @@ def _run_tests_on_know_good_image(args, device):
         traceback.print_exc()
         logger.error(traceback.format_exc())
         return (False, "Image Test result: " + str(error))
-
 
 # Enum for file flags
 class FileFlag(object):
@@ -367,7 +332,6 @@ def get_file_list(image_directory_path):
     Returns:
         None
     """
-
     flags = {
         "copy": FileFlag.COPY,
         "link": FileFlag.LINK,
@@ -397,9 +361,6 @@ def get_file_list(image_directory_path):
 
     return files
 
-
-
-
 def create_work_directory(directory):
     """
     Create working directory for test run
@@ -413,13 +374,11 @@ def create_work_directory(directory):
     logger.info("Creating working directory " + directory)
     os.makedirs(directory)
 
-def populate_work_directory(directory, image_directory_path, files):
+def populate_work_directory(image_directory_path, files):
     """
     Populate working directory with required files
 
     Args:
-        directory (str):
-            Working directory
         image_directory_path (str):
             Path to directory containing the image files that will be used to
             populate the working directory
@@ -431,60 +390,55 @@ def populate_work_directory(directory, image_directory_path, files):
     Raises:
         errors.AFTConfigurationError if no image file has been provided for flashing
     """
-
     logger.info("Populating working directory from " + image_directory_path)
-
     image_file = None
-    for file in files:
-        file_path = os.path.join(image_directory_path, file.name)
+    for _file in files:
+        file_path = os.path.join(image_directory_path, _file.name)
 
         if not os.path.exists(file_path):
             raise errors.AFTConfigurationError(
                 "File " + file_path + " does not exist")
 
-        if file.flags & FileFlag.COPY:
-            copy_file_or_directory(file_path, file)
-        elif file.flags & FileFlag.LINK:
-            link_file(file_path, file)
+        if _file.flags & FileFlag.COPY:
+            copy_file_or_directory(file_path, _file)
+        elif _file.flags & FileFlag.LINK:
+            link_file(file_path, _file)
 
-        if file.flags & FileFlag.IMAGE:
-            image_file = get_image_file(image_file, file)
+        if _file.flags & FileFlag.IMAGE:
+            image_file = get_image_file(image_file, _file)
 
     if not image_file:
         raise errors.AFTConfigurationError("No image file specified for flashing")
 
     return image_file
 
-
-def copy_file_or_directory(file_path, file):
+def copy_file_or_directory(file_path, _file):
     """
     Copy given image or directory to working directory
 
     Args:
         file_path (str): Path to the file in the good image directory
-        file (ImageFile): ImageFile object which contains the file name
+        _file (ImageFile): ImageFile object which contains the file name
 
     Returns:
         None
     """
-
     if os.path.isdir(file_path):
-        shutil.copytree(file_path, file.name)
+        shutil.copytree(file_path, _file.name)
     else:
         # If we are copying single files, ensure that the parent directories
         # will be created
-        create_missing_directories(file.name)
-        shutil.copy(file_path, file.name)
+        create_missing_directories(_file.name)
+        shutil.copy(file_path, _file.name)
 
-
-def link_file(file_path, file):
+def link_file(file_path, _file):
     """
     Create hard link to the given file in the working directory. Hard links
     are used as symlinks do not work when accessed over nfs.
 
     Args:
         file_path (str): Path to the file in the good image directory
-        file (ImageFile): ImageFile object which contains the file name
+        _file (ImageFile): ImageFile object which contains the file name
 
     Returns:
         None
@@ -497,17 +451,16 @@ def link_file(file_path, file):
             "Cannot create hard link to " + file_path + " as it is a " +
             "directory")
 
-    create_missing_directories(file.name)
-    os.link(file_path, file.name)
+    create_missing_directories(_file.name)
+    os.link(file_path, _file.name)
 
-
-def get_image_file(image_file, file):
+def get_image_file(image_file, _file):
     """
     Return the image file name, or raise an exception if the image file has
     already been set
 
     image_file (str or None): Name of the current image file or None
-    file: Current image file candidate
+    _file: Current image file candidate
 
     Returns (str):
         image file name
@@ -516,12 +469,12 @@ def get_image_file(image_file, file):
         errors.AFTConfigurationError if image name has already been set
     """
     if not image_file:
-        return file.name
+        return _file.name
     else:
         raise errors.AFTConfigurationError(
             "Multiple image file definitions: " + image_file +
             " already specified but attempting to specify " +
-            file.name + " as well")
+            _file.name + " as well")
 
 def create_missing_directories(path):
     """
@@ -530,7 +483,6 @@ def create_missing_directories(path):
     Args:
         path (str): Path that is used to create the directories
     """
-
     path = os.path.dirname(path)
     path = path.strip()
     if path == "":

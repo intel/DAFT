@@ -65,7 +65,6 @@ def record(serial_stream, output):
         text_batch = read_buffer[0:last_newline + 1]
         read_buffer = read_buffer[last_newline + 1:-1]
 
-
         time_now = time.time()
         timed_batch = text_batch.replace("\n", "\n[" + str(time_now) + "] ")
         output.write(timed_batch)

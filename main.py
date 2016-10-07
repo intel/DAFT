@@ -25,8 +25,8 @@ import logging
 
 import aft.config as config
 import aft.tools.device_configuration_checker as device_config
-from aft.logger import Logger as logger
 import aft.devices.common as common
+from aft.logger import Logger as logger
 from aft.tools.thread_handler import Thread_handler as thread_handler
 from aft.tools.topology_builder import TopologyBuilder
 from aft.tools.edison_recovery_flasher import recover_edisons
@@ -38,9 +38,8 @@ def main(argv=None):
     """
     Entry point for library-like use.
     """
-
     try:
-        logger.init_process()
+        logger.set_process_prefix()
 
         config.parse()
 
@@ -62,16 +61,15 @@ def main(argv=None):
             results = device_config.check(args)
             logger.info(results[1])
             print(results[1])
-
             if results[0] == True:
                 return 0
             else:
                 return 1
+
         elif args.checkall:
             results = device_config.check_all(args)
             logger.info(results[1])
             print(results[1])
-
             if results[0] == True:
                 logger.info("All tests passed")
                 return 0
@@ -79,14 +77,12 @@ def main(argv=None):
                 logger.info("There were failures")
                 return 1
 
-
         device_manager = DevicesManager(args)
 
         if args.blacklist:
             if not args.device:
                 print("Device must be specified for blacklisting")
                 return 1
-
             device_manager.blacklist_device(args.device, args.reason)
             return 0
 
