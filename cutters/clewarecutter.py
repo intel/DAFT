@@ -44,8 +44,6 @@ class ClewareCutter(Cutter):
         _POWER_OFF (str):
             The string passed to clewarecontrol to turn the device off
     """
-
-
     # if two devices try to access same cutter at the same time, it fails
     # sporadically (two instances of clewarecontrol seem to interfere with
     # each other). If this happens, retry with random delay so that devices
@@ -74,7 +72,6 @@ class ClewareCutter(Cutter):
         """
         self._send_command(self._POWER_ON)
 
-
     def disconnect(self):
         """
         Turns power off
@@ -86,10 +83,7 @@ class ClewareCutter(Cutter):
             subprocess32.CalledProcessError or subprocess32.TimeoutExpired
             on failure
         """
-
-
         self._send_command(self._POWER_OFF)
-
 
     def _send_command(self, power_status):
         """
@@ -143,7 +137,6 @@ class ClewareCutter(Cutter):
                 "cutter": (int) cleware_cutter_id,
                 "channel": (int) channel
             }
-
         """
 
         return {"type": "cleware", "cutter": self._cutter_id, "channel": self._channel}
@@ -182,6 +175,5 @@ class ClewareCutter(Cutter):
                 "cutter": int(val[1]),
                 "sockets": ids_to_sockets[val[0]]
             })
-
 
         return cutters

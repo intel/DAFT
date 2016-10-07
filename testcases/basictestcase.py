@@ -60,7 +60,7 @@ class BasicTestCase(TestCase):
         """
         Executes a command remotely, on the device.
         """
-        self.output = device.execute(self["parameters"].split(), timeout=120)
+        self.output = device.execute(self.parameters.split(), timeout=120)
         logger.info("Command: " + str(self.parameters) + "\nresult: " + str(self.output) + ".")
         return self._check_for_success()
 

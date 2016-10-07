@@ -72,9 +72,6 @@ class QATestCase(BasicTestCase):
         Test if there are FAILED test cases in the QA-test case output
         """
         logger.info(self.output)
-#        qa_log_file = open("results-runtest.py.log", "r")
-#        qa_log = qa_log_file.read()
-#        qa_log_file.close()
         failed_matches = re.findall("FAILED", self.output)
         result = True
         if len(failed_matches) > 0:

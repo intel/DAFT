@@ -10,13 +10,11 @@
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
+
 """
 Parser for a minimal subset of ansi control codes.
-
 Used to parse the files created by serial recorder
 """
-
-
 # Note: Galileo in general seems to love to absolutely mangle the control codes
 # to the point where even bash has trouble parsing them correctly. The approach
 # here is that any codes that make no sense are just ignored. This may cause the
@@ -33,7 +31,6 @@ class Token(object):
     MOVE_CURSOR = 2
     RESET_COLOR = 3
 
-
 def parse_file(input_file_name):
     """Parses the file with given name. Original file is backed up.
 
@@ -47,7 +44,6 @@ def parse_file(input_file_name):
 
     Note: The working file for parser is temp_original_file. This one will be
           renamed to original_file after the original file has been backed up
-
     """
     raw_input_file_name = input_file_name + ".raw"
     temp_name = input_file_name + ".temp"
@@ -63,7 +59,6 @@ def parse_file(input_file_name):
 
     # And rename the temp output file
     os.rename(temp_name, input_file_name)
-
 
 def do_parse(input_file, output_file):
     """
@@ -92,7 +87,6 @@ def do_parse(input_file, output_file):
     screen_buffer = create_screen_buffer(height, width)
 
     escape_char_code = 27
-
 
     # use for heuristic write & clear screen
     control_codes_after_top_left_move = False
@@ -156,7 +150,6 @@ def do_parse(input_file, output_file):
             screen_buffer[row][column] = char
             column += 1
 
-
         if column == width:
             column = 0
             row += 1
@@ -179,11 +172,9 @@ def do_parse(input_file, output_file):
         min(height, last_row_with_characters+1),
         width)
 
-
 def create_screen_buffer(height, width):
     """Initialize and return screen buffer"""
     return [['\0' for _ in range(width)] for _ in range(height)]
-
 
 def parse_token(input_file):
     """
@@ -246,7 +237,6 @@ def parse_token(input_file):
         else:
             code += char
 
-
 def parse_clear_screen(code):
     """
     Parse clear screen control code <ESC>[nJ
@@ -259,7 +249,6 @@ def parse_clear_screen(code):
         Array containing the type of clear screen command, depending on code
             argument
     """
-
     # clear from cursor to the end of screen
     # not implemented
     if code == "" or code == "0":
@@ -309,16 +298,12 @@ def parse_cursor_move(code):
     column = int(column) - 1
     return [Token.MOVE_CURSOR, row, column]
 
-
-
-# prints and clears buffer
-# we use null terminator characters to signify where the buffer ends
-# (that is, empty buffer is filled with null terminators)
-# this prevents printing any extra whitespace characters, as the buffer
-# width is arbitrary and does not match actual screen dimensions
 def write_and_clear_buffer(output_file, screen_buffer, last_row, width):
     """
-    Prints and clears screen buffer
+    Prints and clears buffer. We use null terminator characters to signify where
+    the buffer ends (that is, empty buffer is filled with null terminators).
+    This prevents printing any extra whitespace characters, as the buffer
+    width is arbitrary and does not match actual screen dimensions.
 
     Args:
         output_file: The file where the output is written
@@ -344,21 +329,19 @@ def write_and_clear_buffer(output_file, screen_buffer, last_row, width):
 
         print(line, file=output_file)
 
-# Return line length by returning the position of null byte after first
-# non-null character, when scanning from right
-#
-# Example: "hello\0" returns 5
-#          "hello\0world\0" returns 11
-#          "hello\0world\0\0\0\0\0\0" returns 11
-#
 def get_line_length(row, screen_buffer, width):
     """
-    Return line length
+    Return line length by returning the position of null byte after first
+    non-null character, when scanning from right
+    Example: "hello\0" returns 5
+             "hello\0world\0" returns 11
+             "hello\0world\0\0\0\0\0\0" returns 11
 
     Args:
         row: Current row
         screen_buffer: The screen buffer
         width: Maximum row width
+
     Returns:
         Line length: Line length, up to width
     """

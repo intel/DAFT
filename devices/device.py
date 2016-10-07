@@ -20,21 +20,20 @@ Class representing a DUT.
 
 import threading
 import abc
+import os
 
 from time import sleep
-import os
 from six import with_metaclass
 
 from aft.tools.thread_handler import Thread_handler as thread_handler
+from aft.logger import Logger as logger
 import aft.tools.serialrecorder as serialrecorder
 import aft.errors as errors
-from aft.logger import Logger as logger
 
 class Device(with_metaclass(abc.ABCMeta, object)):
     """
     Abstract class representing a DUT.
     """
-
     _POWER_CYCLE_DELAY = 10
 
     def __init__(self, device_descriptor, channel, kb_emulator=None):
@@ -72,7 +71,6 @@ class Device(with_metaclass(abc.ABCMeta, object)):
         recorder.start()
         thread_handler.add_thread(recorder)
 
-
     def test(self, test_case):
         """
         Run the tests associated with the specified image and grab logs from the
@@ -86,10 +84,8 @@ class Device(with_metaclass(abc.ABCMeta, object)):
         Returns:
             The return value of the test_case run()-method
             (implementation class specific)
-
         """
         test_result = self._run_tests(test_case)
-        self._retrieve_device_logs()
         return test_result
 
     @abc.abstractmethod
@@ -104,19 +100,6 @@ class Device(with_metaclass(abc.ABCMeta, object)):
             The return value of the test_case run()-method
             (implementation class specific)
         """
-
-
-    def _retrieve_device_logs(self):
-        """
-        Retrieve device logs from the DUT.
-
-        Returns: None
-        """
-        # TODO: Implement. Currently logs are not stored anywhere and are lost
-        # on poweroff, so this needs to be fixed first.
-
-        pass
-
 
     def detach(self):
         """
@@ -147,6 +130,7 @@ class Device(with_metaclass(abc.ABCMeta, object)):
         """
         Return IP-address of the active device as a String.
         """
+
     def _power_cycle(self):
         """
         Reboot the device.
@@ -155,7 +139,6 @@ class Device(with_metaclass(abc.ABCMeta, object)):
         self.detach()
         sleep(self._POWER_CYCLE_DELAY)
         self.attach()
-
 
     def __eq__(self, comp):
         return self.dev_id == comp.dev_id

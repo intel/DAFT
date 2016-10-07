@@ -34,28 +34,7 @@ import aft.errors as errors
 import aft.tools.misc as misc
 import aft.tools.ssh as ssh
 import aft.devices.common as common
-
-
-
-
-def _get_nth_parent_dir(path, parent):
-    """
-    Return 'parnet'h parent directory of 'path'
-
-    Args:
-        path (str): The original path
-        parent (integer): The nth parent directory that will be returned
-
-    Returns:
-        str: The path to the nth parent directory
-
-    """
-    if parent == 0:
-        return path
-    return _get_nth_parent_dir(os.path.dirname(path), parent - 1)
-
-
-# pylint: disable=too-many-instance-attributes
+from aft.tools.nicenabler import _get_nth_parent_dir
 
 class EdisonDevice(Device):
     """
@@ -65,57 +44,37 @@ class EdisonDevice(Device):
         _LOCAL_MOUNT_DIR (str):
             The directory where the testing harness will mount the Edison root
             file system.
-
         _EDISON_DEV_ID (str): Edison USB device id (vendor-id:device-id)
-
         _DUT_USB_SERVICE_FILE (str): USB networking service file
-
         _DUT_USB_SERVICE_LOCATION (str):
             The directory where the USB networking service file will be copied
             on the Edison image
-
         _DUT_USB_SERVICE_CONFIG_FILE (str):
             USB networking service configuration file
-
         _DUT_USB_SERVICE_CONFIG_DIR (str):
             The directory where the USB networking service configuration file
             will be copied on the Edison image
-
         _DUT_CONNMAN_SERVICE_FILE (str):
             The path to connman service file on the Edison image
-
         _MODULE_DATA_PATH (str):
             Path to the directory where the data files are stored
             (The usb networking service file, authorized_keys file etc)
-
         _FLASHER_OUTPUT_LOG (str): The log file name for the dfu-util flasher
-
         _HARNESS_AUTHORIZED_KEYS_FILE (str):
             The authorized key file name, which is stored on the testing
             harness data file directory.
-
         IFWI_DFU_FILE (str): Edison IFWI file, used by dfu-util
-
         _NIC_FILESYSTEM_LOCATION (str):
             Location for the network interface controller directories on the
             testing harness
-
-
         _configuration (dictionary): The device configurations
-
         _usb_path (str): Device usb path
-
         _gateway_ip (str): Gateway ip Address
         _host_ip (str): Host ip Address
         _dut_ip (str): Device IP address.
         _broadcast_ip (str): Broadcast ip address
-
         _root_extension: The image file extension
-
-
-
     """
-
     _LOCAL_MOUNT_DIR = "edison_root_mount"
     _EDISON_DEV_ID = "8087:0a99"
     _DUT_USB_SERVICE_FILE = "usb-network.service"
@@ -141,10 +100,7 @@ class EdisonDevice(Device):
                                            channel=channel,
                                            kb_emulator=kb_emulator)
         self._configuration = parameters
-
         self._FLASHER_OUTPUT_LOG = "flash_" + self._configuration["name"] + ".log"
-
-
         self._usb_path = self._configuration["edison_usb_port"]
         subnet_parts = self._configuration[
             "network_subnet"].split(".")  # always *.*.*.*/30
@@ -170,9 +126,7 @@ class EdisonDevice(Device):
             aft.errors.AFTDeviceError on various failures
             aft.errors.AFTConnectionError if the ssh connection could not be
                 formed
-
         """
-
         file_name_no_extension = os.path.splitext(file_name)[0]
 
         self._mount_local(file_name_no_extension)
@@ -180,15 +134,12 @@ class EdisonDevice(Device):
         self._add_ssh_key()
         self._unmount_local()
 
-        # self._flashing_attempts = 0 # dfu-util may occasionally fail. Extra
-        # attempts could be used?
         logger.info("Executing flashing sequence.")
         return self._flash_image(file_name_no_extension)
 
     def _mount_local(self, file_name_no_extension):
         """
         Mount a image-file to a class-defined folder.
-
         Aborts if the mount command fails.
 
         Args:
@@ -294,7 +245,6 @@ class EdisonDevice(Device):
         shutil.copy(output_file, original_connman)
         os.remove(output_file)
 
-
     def _add_ssh_key(self):
         """
         Inject the ssh-key to DUT's authorized_keys
@@ -354,7 +304,6 @@ class EdisonDevice(Device):
             # This can cause race condition if multiple devices are booted at
             # the same time!
             attempts = 0
-
 
             xfstk_parameters = ["xfstk-dldr-solo",
                                 "--gpflags", "0x80000007",
@@ -430,11 +379,9 @@ class EdisonDevice(Device):
 
         return True
 
-
     def _flash_partitions(self, file_name_no_extension):
         """
         Execute the sequence of DFU-calls to flash the image.
-
         This is based on flashall.sh script
 
         Args:
@@ -448,7 +395,6 @@ class EdisonDevice(Device):
         Raises:
             errors.aft.AFTDeviceError if flashing fails
         """
-
         file_name_no_extension += "."
 
         logger.info("Flashing IFWI.")
@@ -481,10 +427,6 @@ class EdisonDevice(Device):
         self._dfu_call("rootfs", file_name_no_extension +
                        self._configuration["root_extension"], ["-R"])
         logger.info("Flashing complete.")
-
-
-
-# pylint: disable=dangerous-default-value
 
     def _dfu_call(
         self,
@@ -526,7 +468,6 @@ class EdisonDevice(Device):
             aft.errors.AFTDeviceError if flashing has not succeeded after the
             number of attempts specified by the method argument
         """
-
         attempt = 0
         while attempt < attempts:
             flashing_log_file = open(self._FLASHER_OUTPUT_LOG, "a")
@@ -588,7 +529,6 @@ class EdisonDevice(Device):
         raise errors.AFTDeviceError(
             "Flashing failed " + str(attempts) +
             " times. Raising error (aborting).")
-# pylint: enable=dangerous-default-value
 
     def _wait_for_device(self, timeout=15):
         """
@@ -623,7 +563,6 @@ class EdisonDevice(Device):
         logger.critical(err_str)
         raise errors.AFTDeviceError(err_str)
 
-
     def _recover_edison(self):
         """
         Fork and launch a process that recovers the bricked Edison.
@@ -641,12 +580,10 @@ class EdisonDevice(Device):
         and shut down all the Edisons, and only then proceed with the flashing.
 
         """
-
         pid = os.fork()
         if pid == 0: # new process
             os.system("nohup aft --recover_edisons &")
             exit()
-
 
     def _run_tests(self, test_case):
         """
@@ -658,7 +595,6 @@ class EdisonDevice(Device):
         Returns:
             The return value of the test_case run()-method
             (implementation class specific)
-
         """
         self.open_interface()
         enabler = subprocess32.Popen(["python",
@@ -712,7 +648,6 @@ class EdisonDevice(Device):
 
         Raises:
             aft.errors.AFTConnectionError on timeout
-
         """
         start = time.time()
         while time.time() - start < timeout:
@@ -743,7 +678,6 @@ class EdisonDevice(Device):
         Returns:
             (str): Host ip address
         """
-
         return self._host_ip
 
     def _get_usb_nic(self, timeout=120):
@@ -774,9 +708,9 @@ class EdisonDevice(Device):
                     nic_path = os.path.realpath(os.path.join(
                         self._NIC_FILESYSTEM_LOCATION, interface))
                     usb_path = _get_nth_parent_dir(nic_path, 3)
-
                     if os.path.basename(usb_path) == self._usb_path:
                         return interface
+
                 except IOError as err:
                     print("IOError: " + str(err.errno) + " " + err.message)
                     print(

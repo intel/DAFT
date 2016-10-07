@@ -49,7 +49,6 @@ def wait_for_responsive_ip_for_pc_device(
 
     Returns:
         Ip address as a string, or None if ip address was not responsive.
-
     """
     logger.info("Waiting for the device to become responsive")
     logger.debug("Timeout: " + str(timeout))
@@ -91,7 +90,6 @@ def get_ip_for_pc_device(mac_address, leases_file_path):
 
     return None
 
-
 def get_leased_ip_addresses_for_mac(mac_address, leases_file_path):
     """
     Return list of ip addresses that have been leased for the device with the
@@ -104,10 +102,8 @@ def get_leased_ip_addresses_for_mac(mac_address, leases_file_path):
     Returns:
         List of ip addresses. Each ip address is a string.
     """
-
     leases = get_mac_leases_from_dnsmasq(leases_file_path)
     return [lease["ip"] for lease in leases if lease["mac"].lower() == mac_address.lower()]
-
 
 def get_mac_leases_from_dnsmasq(leases_file_path):
     """
@@ -127,9 +123,7 @@ def get_mac_leases_from_dnsmasq(leases_file_path):
             "hostname": "device_host_name",
             "client_id": "client_id_or_*_if_unset"
         }
-
     """
-
     with open(leases_file_path) as lease_file:
         leases = lease_file.readlines()
 
@@ -174,7 +168,6 @@ def make_directory(directory):
         if not os.path.isdir(directory):
             raise
 
-
 def verify_device_mode(ip, mode):
     """
     Check that the device with given ip is responsive to ssh and is in the
@@ -198,6 +191,7 @@ def verify_device_mode(ip, mode):
         logger.info("Device is not in " + mode + " mode")
         logger.debug("/cat/proc/version: " + str(sshout))
         return False
+
     except subprocess32.CalledProcessError as err:
         logger.warning(
             "Failed verifying the device mode with command: '" +
@@ -206,8 +200,6 @@ def verify_device_mode(ip, mode):
             str(err.output) + "'.")
 
         return False
-
-
 
 def blacklist_device(dev_id, name, reason):
     """
@@ -221,7 +213,6 @@ def blacklist_device(dev_id, name, reason):
     Returns:
         None
     """
-
     with open(config.DEVICE_BLACKLIST, "a") as blacklist_file:
         blacklist_file.write(dev_id + " " + name + " " + reason + "\n")
 
@@ -232,7 +223,6 @@ def unblacklist_device(dev_id):
             if line.split()[0] == dev_id:
                 continue
             lines.append(line)
-
 
     with open(config.DEVICE_BLACKLIST, "w") as device_blacklist:
         for line in lines:

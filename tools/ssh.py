@@ -29,7 +29,6 @@ def _get_proxy_settings():
     Fetches proxy settings from the environment.
     """
     proxy_env_variables = ["http_proxy", "https_proxy", "ftp_proxy", "no_proxy"]
-
     proxy_env_command = ""
     for var in proxy_env_variables:
         val = os.getenv(var)
@@ -49,7 +48,8 @@ def test_ssh_connectivity(remote_ip, timeout = 10):
                         ". SSH return code: " + str(err.returncode) + ".")
         return False
 
-def push(remote_ip, source, destination, timeout = 60, ignore_return_codes = None, user = "root"):
+def push(remote_ip, source, destination, timeout = 60,
+         ignore_return_codes = None, user = "root"):
     """
     Transmit a file from local 'source' to remote 'destination' over SCP
     """
@@ -57,13 +57,8 @@ def push(remote_ip, source, destination, timeout = 60, ignore_return_codes = Non
                 user + "@" + str(remote_ip) + ":" + destination]
     return tools.local_execute(scp_args, timeout, ignore_return_codes)
 
-def pull(
-    remote_ip,
-    source,
-    destination,
-    timeout = 60,
-    ignore_return_codes = None,
-    user = "root"):
+def pull(remote_ip, source, destination,timeout = 60,
+         ignore_return_codes = None, user = "root"):
     """
     Transmit a file from remote 'source' to local 'destination' over SCP
 
@@ -75,7 +70,6 @@ def pull(
         ignore_return_codes (list(integer)):
             List of scp return codes that will be ignored
         user (str): User that will be used with scp
-
 
     Returns:
         Scp output on success
@@ -103,7 +97,6 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
     Returns combines stdout and stderr if there are no errors. On error raises
     subprocess32 errors.
     """
-
     ssh_args = ["ssh",
                 "-i", "".join([os.path.expanduser("~"), "/.ssh/id_rsa_testing_harness"]),
                 "-o", "UserKnownHostsFile=/dev/null",

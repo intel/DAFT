@@ -25,9 +25,7 @@ import aft.config as config
 
 def recover_edisons(device_manager, verbose):
     """
-
     Acquire all Edisons, and recovery flash the blacklisted ones.
-
     Reason for acquiring all Edisons is that the recovery flasher assumes that
     only one Edison is present at a time. We must acquire and power off all
     Edisons to quarantee this
@@ -37,9 +35,7 @@ def recover_edisons(device_manager, verbose):
         verbose (boolean): Controls verbosity
 
     Returns: None
-
     """
-
     all_edison_names = _get_all_edison_names(device_manager)
     blacklisted_edison_names = _get_blacklisted_edison_names(all_edison_names)
 
@@ -51,7 +47,6 @@ def recover_edisons(device_manager, verbose):
     working_edison_names = list(
         set(all_edison_names).difference(blacklisted_edison_names))
 
-
     if verbose:
         print("Locking working edisons")
 
@@ -60,14 +55,12 @@ def recover_edisons(device_manager, verbose):
         working_edison_names,
         verbose)
 
-
     if verbose:
         print("Acquiring blacklisted Edisons")
 
     blacklisted_edisons = _get_blacklisted_edison_devices(
         device_manager,
         blacklisted_edison_names)
-
 
     if verbose:
         print("Powering down working edisons")
@@ -83,7 +76,6 @@ def recover_edisons(device_manager, verbose):
     for edison in blacklisted_edisons:
         edison.detach()
 
-
     if verbose:
         print("Recovering edisons")
 
@@ -97,9 +89,6 @@ def recover_edisons(device_manager, verbose):
     # release the working edisons
     for edison in locked_edisons:
         device_manager.release(edison)
-
-
-
 
 def _get_all_edison_names(device_manager):
     """
@@ -129,7 +118,6 @@ def _get_blacklisted_edison_names(all_edisons):
     Returns:
         list(str): List of blacklisted Edison names
     """
-
     blacklisted_edisons = []
     with open(config.DEVICE_BLACKLIST, "r") as device_blacklist:
         for line in device_blacklist:
@@ -138,8 +126,6 @@ def _get_blacklisted_edison_names(all_edisons):
                 blacklisted_edisons.append(split_line[1])
 
     return blacklisted_edisons
-
-
 
 def _lock_working_edisons(device_manager, working_edison_names, verbose):
     """
@@ -154,7 +140,6 @@ def _lock_working_edisons(device_manager, working_edison_names, verbose):
 
     Returns:
         list(aft.Device): List of locked, working Edison devices
-
     """
     locked_edisons = []
     attempt = 1
@@ -183,9 +168,6 @@ def _lock_working_edisons(device_manager, working_edison_names, verbose):
             locked_edisons = []
             sleep(120)
 
-
-
-
 def _get_blacklisted_edison_devices(device_manager, blacklisted_edison_names):
     """
     Return list of blacklisted Edison devices
@@ -197,10 +179,8 @@ def _get_blacklisted_edison_devices(device_manager, blacklisted_edison_names):
 
     Returns:
         list(aft.Device): List of blacklisted Edison devices
-
     """
     configs = device_manager.get_configs()
-
     blacklisted_edisons = []
     for edison in blacklisted_edison_names:
         for conf in configs:
@@ -213,14 +193,11 @@ def _get_blacklisted_edison_devices(device_manager, blacklisted_edison_names):
 
     return blacklisted_edisons
 
-
 def _recover(blacklisted_edison_devices):
 
     for edison in blacklisted_edison_devices:
         edison.recovery_flash()
         edison.detach()
-
-
 
 def _update_blacklist(blacklisted_edison_names):
     """
@@ -238,7 +215,6 @@ def _update_blacklist(blacklisted_edison_names):
             if line.split()[1] in blacklisted_edison_names:
                 continue
             lines.append(line)
-
 
     with open(config.DEVICE_BLACKLIST, "w") as device_blacklist:
         for line in lines:

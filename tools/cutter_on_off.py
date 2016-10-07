@@ -30,7 +30,6 @@ if len(sys.argv) < 3 :
 PORT = sys.argv[1]
 ACTION = sys.argv[2]
 
-
 SER = serial.Serial(PORT, 9600)
 # disconnect
 if str(ACTION) == '0' :

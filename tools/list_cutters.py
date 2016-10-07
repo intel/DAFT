@@ -54,6 +54,5 @@ def main():
         print(str(1) + " " + str(device[1]))
     return 0
 
-
 if __name__ == '__main__':
     main()

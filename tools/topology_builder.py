@@ -59,7 +59,6 @@ from aft.tools.misc import local_execute
 from aft.devices.edisondevice import EdisonDevice
 
 class TopologyBuilder(object):
-
     """
     The topology builder class
 
@@ -72,9 +71,7 @@ class TopologyBuilder(object):
         _devices (List(Dictionary)): List of devices that have been configured
         _timestamp (int): Timestamp from dmesg before turning devices on
         _config (Dictionary): Configuration parameters for topology builder
-
     """
-
     def __init__(self, args):
         """
         Constructor
@@ -102,7 +99,6 @@ class TopologyBuilder(object):
         Returns:
             None
         """
-
         logger.info("Starting topology building")
         if self._dryrun:
             print("*** Dry run - no configurations will be stored ***")
@@ -114,11 +110,7 @@ class TopologyBuilder(object):
 
         cutters = self._get_cutters()
         self._power_cycle_cutters(cutters)
-
-
         device_files = os.listdir("/dev/")
-
-
         wait_duration = 80
         pem_results = self._find_active_pem_ports_from(
             wait_duration,
@@ -129,16 +121,13 @@ class TopologyBuilder(object):
             print("Waiting for devices to boot")
 
         sleep(120)
-
         self._network_configs = self._get_network_configs()
-
         self._pem_ports = pem_results.get()
 
         if self._verbose:
             print("PEM ports:")
             pprint.pprint(self._pem_ports)
             print("")
-
 
         # PEM really doesn't like it if serial port is opened by some other
         # program. We have to run pem\serial port detection in serial as a
@@ -147,20 +136,16 @@ class TopologyBuilder(object):
         # remove pem-ports as we know these aren't serial ports
         potential_serial_ports = list(
             set(device_files).difference(self._pem_ports))
-
         wait_duration = 20
-
         serial_results = self._find_active_serial_ports_from(
             wait_duration,
             potential_serial_ports)
-
         self._serial_ports = serial_results.get()
 
         if self._verbose:
             print("Serial ports: ")
             pprint.pprint(self._serial_ports)
             print("")
-
 
         if self._verbose:
             print("Disconnecting cutters one by one to associate device configs")
@@ -170,11 +155,8 @@ class TopologyBuilder(object):
             self._devices.append(self._get_device_configuration(cutter))
 
         configuration = self._create_configuration()
-
         output = StringIO()
-
         configuration.write(output)
-
         logger.info("Finished topology building")
         logger.info("Result:")
         logger.info(output.getvalue())
@@ -303,7 +285,6 @@ class TopologyBuilder(object):
 
         return int(line.split(".")[0].split("[")[1])
 
-
     def _get_network_configs(self):
         """
         Get PC and Edison device network configurations.
@@ -326,7 +307,6 @@ class TopologyBuilder(object):
                 "subnet": "edison_network_subnet_ip",
                 "ip": "host_interface_ip"
             }
-
         """
         if self._verbose:
             print("Acquiring device networking configurations")
@@ -341,7 +321,6 @@ class TopologyBuilder(object):
             } for conf in self._get_edison_configs()]
 
         ip.extend(edison_ip)
-
         ip.extend([
             {"type": "PC", "mac": pair[0], "ip": pair[1]}
             for pair in self._get_pc_like_configs()])
@@ -352,10 +331,7 @@ class TopologyBuilder(object):
             pprint.pprint(ip)
             print("")
 
-
         return ip
-
-
 
     # edison networking is kinda special, so it gets its very own special case
     def _get_edison_configs(self):
@@ -387,10 +363,8 @@ class TopologyBuilder(object):
                             Example:
                                 [328860.109597] usb 2-1.4.1.2: Product: Edison
             """
-
             # [:-1]: need to remove ':' from the end
             usb_port = line.split(" ")[2][:-1]
-
             args = {}
             # Device class constructor expects these keys to be found
             # Probably should extract networking code from EdisonDevice so that
@@ -405,9 +379,7 @@ class TopologyBuilder(object):
 
             args["network_subnet"] = self._config["edison"]["subnet_prefix"] + \
                 str(subnet_ip)
-
             args["edison_usb_port"] = usb_port
-
             dev = EdisonDevice(args, None, None)
             dev.open_interface()
 
@@ -460,9 +432,7 @@ class TopologyBuilder(object):
                 "device_ip_address"
             )
         """
-
         lease_file = "/var/lib/misc/dnsmasq.leases"
-
         leases = common.get_mac_leases_from_dnsmasq(lease_file)
         return [(lease["mac"], lease["ip"]) for lease in leases]
 
@@ -482,17 +452,16 @@ class TopologyBuilder(object):
             Example: ["ttyUSB2", "ttyUSB4", "ttyUSB7"]
         """
         pem_results = Queue()
-
         pem_finder = Process(
             target=TopologyBuilder._get_active_PEM_device_files,
             args=(self, pem_results, wait_duration, device_files))
+
+        logger.info("Finding active PEM ports")
         if self._verbose:
             print("PEM thread - Finding active PEM ports")
 
-        logger.info("Finding active PEM ports")
         pem_finder.start()
         return pem_results
-
 
     def _find_active_serial_ports_from(self, wait_duration, device_files):
         """
@@ -508,19 +477,17 @@ class TopologyBuilder(object):
         Returns:
             List of device files that have active serial port.
             Example: ["ttyUSB2", "ttyUSB4", "ttyUSB7"]
-
         """
         serial_results = Queue()
-
         serial_finder = Process(
             target=TopologyBuilder._get_active_serial_device_files,
             args=(self, serial_results, wait_duration, device_files))
+
+        logger.info("Finding active serial ports")
         if self._verbose:
             print("Serial thread - Finding active serial ports")
 
-        logger.info("Finding active serial ports")
         serial_finder.start()
-
         return serial_results
 
     def _get_active_PEM_device_files(self, queue, wait_duration, device_files):
@@ -545,7 +512,6 @@ class TopologyBuilder(object):
 
         Returns:
             None
-
         """
         from pem.main import main as pem_main
         # give devices some time to boot\shutdown (mostly shutdown)
@@ -553,14 +519,12 @@ class TopologyBuilder(object):
         # failure to wait can lead to false positives, eg. port was incorrectly
         # recognized as active
         sleep(10)
-
         usb_files = [usb for usb in device_files if usb.startswith(
             "ttyUSB")]
         kb_path = self._config["pem_finder_keystrokes"]
         process_usb_pairs = []
 
         for usb in usb_files:
-
             p = Process(
                 target=pem_main,
                 args=([
@@ -573,12 +537,10 @@ class TopologyBuilder(object):
                     kb_path],))
 
             process_usb_pairs.append((p, usb))
-
             p.start()
 
         #give pem time to find connection
         sleep(wait_duration)
-
         pem_ports = []
         for p in process_usb_pairs:
             p[0].join(1)
@@ -588,8 +550,6 @@ class TopologyBuilder(object):
                 pem_ports.append(p[1])
 
         queue.put(pem_ports)
-
-
 
     def _get_active_serial_device_files(
             self,
@@ -609,21 +569,16 @@ class TopologyBuilder(object):
         Args:
             queue (multiprocessing.Queue):
                 Queue used to communicate results back to the main thread.
-
             wait_duration (integer):
                 The duration in seconds this thread sleeps after starting serial
                 write/read processes.
-
             device_files (list of strings):
                 List of device files that will be checked for serial devices.
                 Note that any other device file than ttyUSBx will be ignored.
 
         Returns:
             None
-
         """
-
-
         def checker(s):
             """
             Helper function that writes text to the serial port and immediately
@@ -642,16 +597,12 @@ class TopologyBuilder(object):
             for _ in range(len(text)//2):
                 s.read()
 
-
         # in case we are doing a shutdown, give the devices a little time so
         # that the port doesn't seem to be still active
         sleep(10)
-
         usb_files = [usb for usb in device_files if usb.startswith(
             "ttyUSB")]
-
         processes = []
-
         for usb in usb_files:
             s = serial.Serial("/dev/" + usb, 115200, timeout=40, xonxoff=True)
             p = Process(
@@ -659,12 +610,9 @@ class TopologyBuilder(object):
                 args=(s,))
 
             processes.append((p, usb, s))
-
             p.start()
 
-        #give threads some time
-        sleep(wait_duration)
-
+        sleep(wait_duration) #give threads some time
         serial_ports = []
         for p in processes:
             p[0].join(1)
@@ -676,8 +624,6 @@ class TopologyBuilder(object):
 
         queue.put(serial_ports)
 
-
-
     def _get_device_configuration(self, cutter):
         """
         Disconnects a cutter, then checks if any ip, serial port or PEM has
@@ -685,7 +631,6 @@ class TopologyBuilder(object):
 
         Args:
             cutter (aft.Cutter): The cutter that will be disconnected
-
 
         Returns:
             Dictionary containing all the associated information (ports, cutters
@@ -704,7 +649,6 @@ class TopologyBuilder(object):
                 "serial_port" = "/dev/ttyUSB2",
                 "serial_bauds": "115200"
             }
-
         """
 
         logger.info("Shutting down a cutter")
@@ -722,13 +666,11 @@ class TopologyBuilder(object):
         pem_results = self._find_active_pem_ports_from(
             wait_duration,
             self._pem_ports)
-
         serial_results = self._find_active_serial_ports_from(
             wait_duration,
             self._serial_ports)
 
         device = {}
-
         self._set_device_cutter_config(device, cutter)
         self._set_device_network_and_type(device)
         self._set_device_serial_port(device, serial_results)
@@ -752,7 +694,6 @@ class TopologyBuilder(object):
 
             cutter (aft.Cutter): The cutter that was disconnected
         """
-
         logger.info("Configuring device power cutter")
         cutter_config = cutter.get_cutter_config()
         for key in cutter_config:
@@ -773,7 +714,6 @@ class TopologyBuilder(object):
         Returns:
             None
         """
-
         # slight delay for powering down
         logger.info("Configuring device networking and type")
         sleep(5)
@@ -825,7 +765,6 @@ class TopologyBuilder(object):
         Returns:
             Operation status code: 0 = success, 1 = failure
         """
-
         if device_type == "edison":
             if self._verbose:
                 print("Pinging " + ip)
@@ -855,7 +794,6 @@ class TopologyBuilder(object):
         Returns:
             None
         """
-
         logger.info("Configuring PC device MAC and type")
         device["id"] = net_config["mac"]
 
@@ -905,7 +843,6 @@ class TopologyBuilder(object):
         """
         logger.info("Configuring device serial settings")
         active_serial_ports = serial_results.get()
-
         dead_ports = list(
             set(self._serial_ports).difference(active_serial_ports))
 
@@ -916,6 +853,7 @@ class TopologyBuilder(object):
             logger.warning("Too many usb devices disappeared - cannot " +
                             "configure serial port")
             logger.warning("Device dictionary: " + str(device))
+
         elif len(dead_ports) == 0:
             if self._verbose:
                 print("All USB devices still active - device seems to not to "
@@ -941,8 +879,8 @@ class TopologyBuilder(object):
         """
         logger.info("Configuring device PEM settings")
         active_pem_ports = pem_results.get()
-
         dead_ports = list(set(self._pem_ports).difference(active_pem_ports))
+
         if len(dead_ports) > 1:
             if self._verbose:
                 print("Too many usb devices disappeared - cannot configure PEM"
@@ -974,9 +912,7 @@ class TopologyBuilder(object):
         """
         logger.info("Creating configuration object")
         config = SafeConfigParser()
-
         device_ids = {}
-
         for device in self._devices:
             # lack of model generally means that there was an unused power
             # cutter socket
@@ -988,9 +924,7 @@ class TopologyBuilder(object):
 
             dev_id = device_ids[device["model"]]
             device_ids[device["model"]] = dev_id + 1
-
             section = device["model"].upper() + "_" +  str(dev_id)
-
             config.add_section(section)
 
             for key in device:

@@ -21,13 +21,15 @@ from setuptools import setup
 DEVICE_FILES = ["default_config/devices/platform.cfg",
                 "default_config/devices/catalog.cfg",
                 "default_config/devices/topology.cfg"]
-TEST_PLANS = ["default_config/test_plan/iot_qatest.cfg", "default_config/test_plan/iot_gtest.cfg"]
-CONFIG_FILES = ["default_config/aft.cfg", "default_config/topology_builder.json"]
+TEST_PLANS = ["default_config/test_plan/iot_qatest.cfg",
+              "default_config/test_plan/iot_gtest.cfg"]
+CONFIG_FILES = ["default_config/aft.cfg",
+                "default_config/topology_builder.json"]
 BLACKLIST_FILES = ["default_config/blacklist"]
 
-CONFIG_FILTER = lambda filename : not os.path.isfile(os.path.join("/etc/aft",
-                                                                  filename[len("default_config/"):]
-                                                                 ))
+CONFIG_FILTER = lambda filename : not \
+    os.path.isfile(os.path.join("/etc/aft", filename[len("default_config/"):]))
+
 DEVICE_FILES = [filename for filename in DEVICE_FILES if CONFIG_FILTER(filename)]
 TEST_PLANS = [filename for filename in TEST_PLANS if CONFIG_FILTER(filename)]
 CONFIG_FILES =  [filename for filename in CONFIG_FILES if CONFIG_FILTER(filename)]
@@ -45,7 +47,8 @@ setup(
     version = "1.0.0",
     description = "Automated Flasher Tester",
     author = "Igor Stoppa, Topi Kuutela, Erkka Kääriä, Simo Kuusela",
-    author_email = "igor.stoppa@intel.com, topi.kuutela@intel.com, erkka.kaaria@intel.com, simo.kuusela@intel.com",
+    author_email = "igor.stoppa@intel.com, topi.kuutela@intel.com, " +
+                    "erkka.kaaria@intel.com, simo.kuusela@intel.com",
     url = "github",
     packages = ["aft"],
     package_dir = {"aft" : "."},
