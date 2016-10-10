@@ -22,6 +22,7 @@ points)
 
 from time import sleep
 import os
+import sys
 import shutil
 import serial
 try:
@@ -268,71 +269,80 @@ class BeagleBoneBlackDevice(Device):
             str(self._SERVICE_MODE_RETRY_ATTEMPTS) + " times.")
 
         for _ in range(self._SERVICE_MODE_RETRY_ATTEMPTS):
+            try:
+                self._power_cycle()
 
-            self._power_cycle()
+                tftp_path = self.parameters["support_fs"]
+                kernel_image_path = self.parameters["support_kernel_path"]
+                dtb_path = self.parameters["support_dtb_path"]
+                console = "ttyO0,115200n8"
 
-            tftp_path = self.parameters["support_fs"]
-            kernel_image_path = self.parameters["support_kernel_path"]
-            dtb_path = self.parameters["support_dtb_path"]
-            console = "ttyO0,115200n8"
+                stream = serial.Serial(
+                    self.parameters["serial_port"],
+                    self.parameters["serial_bauds"],
+                    timeout=0.01,
+                    xonxoff=True)
 
-            stream = serial.Serial(
-                self.parameters["serial_port"],
-                self.parameters["serial_bauds"],
-                timeout=0.01,
-                xonxoff=True)
+                counter = 100
 
-            counter = 100
+                # enter uboot console
+                for _ in range(counter):
+                    serial_write(stream, " ", 0.1)
 
-            # enter uboot console
-            for _ in range(counter):
-                serial_write(stream, " ", 0.1)
+                # if autoload is on, dhcp command attempts to download kernel
+                # as well. We do this later manually over tftp
+                serial_write(stream, "setenv autoload no", 1)
 
-            # if autoload is on, dhcp command attempts to download kernel
-            # as well. We do this later manually over tftp
-            serial_write(stream, "setenv autoload no", 1)
+                # get ip from dhcp server
+                # NOTE: This seems to occasionally fail. This doesn't matter
+                # too much, as the next retry attempt propably works.
+                serial_write(stream, "dhcp", 15)
 
-            # get ip from dhcp server
-            # NOTE: This seems to occasionally fail. This doesn't matter
-            # too much, as the next retry attempt propably works.
-            serial_write(stream, "dhcp", 15)
+                # setup kernel boot arguments (nfs related args and console so
+                # that process is printed in case something goes wrong)
+                serial_write(
+                    stream,
+                    "setenv bootargs console=" + console +
+                    ", root=/dev/nfs nfsroot=${serverip}:" +
+                    self.nfs_path + ",vers=3 rw ip=${ipaddr}",
+                    1)
 
-            # setup kernel boot arguments (nfs related args and console so that
-            # process is printed in case something goes wrong)
-            serial_write(
-                stream,
-                "setenv bootargs console=" + console +
-                ", root=/dev/nfs nfsroot=${serverip}:" +
-                self.nfs_path + ",vers=3 rw ip=${ipaddr}",
-                1)
+                # download kernel image into the specified memory address
+                serial_write(
+                    stream,
+                    "tftp 0x81000000 " + os.path.join(tftp_path,
+                                                      kernel_image_path),
+                    15)
 
-            # download kernel image into the specified memory address
-            serial_write(
-                stream,
-                "tftp 0x81000000 " + os.path.join(tftp_path, kernel_image_path),
-                15)
+                # download device tree binary into the specified memory location
+                # IMPORTANT NOTE: Make sure that the kernel image and device
+                # tree binary files do not end up overlapping in the memory, as
+                # this ends up overwriting one of the files and boot
+                # unsurprisingly fails
+                serial_write(
+                    stream,
+                    "tftp 0x80000000 " + os.path.join(tftp_path, dtb_path),
+                    5)
 
-            # download device tree binary into the specified memory location
-            # IMPORTANT NOTE: Make sure that the kernel image and device tree
-            # binary files do not end up overlapping in the memory, as this
-            # ends up overwriting one of the files and boot unsurprisingly fails
-            serial_write(
-                stream,
-                "tftp 0x80000000 " + os.path.join(tftp_path, dtb_path),
-                5)
+                # boot, give kernel image and dtb as args (middle arg is
+                # ignored, hence the '-')
+                serial_write(stream, "bootz 0x81000000 - 0x80000000", 1)
+                stream.close()
 
-            # boot, give kernel image and dtb as args (middle arg is ignored,
-            # hence the '-')
-            serial_write(stream, "bootz 0x81000000 - 0x80000000", 1)
-            stream.close()
+                self.dev_ip = self._wait_for_responsive_ip()
 
-            self.dev_ip = self._wait_for_responsive_ip()
+                if (self.dev_ip and
+                        self._verify_mode(self.parameters["service_mode"])):
+                    return
+                else:
+                    logger.warning("Failed to enter service mode")
 
-            if (self.dev_ip and
-                    self._verify_mode(self.parameters["service_mode"])):
-                return
-            else:
-                logger.warning("Failed to enter service mode")
+            except KeyboardInterrupt:
+                raise
+
+            except:
+                _err = sys.exc_info()
+                logger.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
 
         raise errors.AFTDeviceError("Could not set the device in service mode")
 
@@ -351,13 +361,21 @@ class BeagleBoneBlackDevice(Device):
         # we can just power cycle to boot the testable image
         logger.info("Entering test mode")
         for _ in range(self._TEST_MODE_RETRY_ATTEMPTS):
-            self._power_cycle()
-            self.dev_ip = self._wait_for_responsive_ip()
+            try:
+                self._power_cycle()
+                self.dev_ip = self._wait_for_responsive_ip()
 
-            if self.dev_ip and self._verify_mode(self.parameters["test_mode"]):
-                return
-            else:
-                logger.warning("Failed to enter test mode")
+                if self.dev_ip and self._verify_mode(self.parameters["test_mode"]):
+                    return
+                else:
+                    logger.warning("Failed to enter test mode")
+
+            except KeyboardInterrupt:
+                raise
+
+            except:
+                _err = sys.exc_info()
+                logger.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
 
         raise errors.AFTDeviceError("Could not set the device in test mode")
 
