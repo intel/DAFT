@@ -18,6 +18,7 @@ Class representing a PC-like Device with an IP.
 """
 
 import os
+import sys
 import json
 
 from aft.logger import Logger as logger
@@ -160,24 +161,32 @@ class PCDevice(Device):
             str(self._RETRY_ATTEMPTS) + " times.")
 
         for _ in range(self._RETRY_ATTEMPTS):
-            self._power_cycle()
+            try:
+                self._power_cycle()
 
-            if self.kb_emulator:
-                logger.info("Using " + type(self.kb_emulator).__name__ +
-                            " to send keyboard sequence " + mode["sequence"])
+                if self.kb_emulator:
+                    logger.info("Using " + type(self.kb_emulator).__name__ +
+                                " to send keyboard sequence " + mode["sequence"])
 
-                self.kb_emulator.send_keystrokes(mode["sequence"])
+                    self.kb_emulator.send_keystrokes(mode["sequence"])
 
-            else:
-                logger.info("No keyboard emulator defined for the device")
+                else:
+                    logger.warning("No keyboard emulator defined for the device")
 
-            ip_address = self._wait_for_responsive_ip()
+                ip_address = self._wait_for_responsive_ip()
 
-            if ip_address:
-                if self._verify_mode(mode["name"]):
-                    return
-            else:
-                logger.warning("Failed entering " + mode["name"] + " mode.")
+                if ip_address:
+                    if self._verify_mode(mode["name"]):
+                        return
+                else:
+                    logger.warning("Failed entering " + mode["name"] + " mode.")
+
+            except KeyboardInterrupt:
+                raise
+
+            except:
+                _err = sys.exc_info()
+                logger.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
 
         logger.critical(
             "Unable to get device " + self.dev_id + " in mode " +
