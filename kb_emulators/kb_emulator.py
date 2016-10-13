@@ -22,10 +22,9 @@ class KeyboardEmulator(with_metaclass(abc.ABCMeta, object)):
     """
     Common abstract base class for keyboard emulators.
     """
-    TIMEOUT = 60 # Timeout for sending
 
     @abc.abstractmethod
-    def send_keystrokes(self, keystrokes, timeout=TIMEOUT):
+    def send_keystrokes(self, keystrokes):
         """
         Method to send keystrokes
         """

@@ -22,7 +22,6 @@ class ArduinoKeyboard(KeyboardEmulator):
     Class for Arduino keyboard emulator
     """
 
-    _TIMEOUT = 60
     _INTERFACE = "serialconnection"
 
     def __init__(self, config):
@@ -33,20 +32,19 @@ class ArduinoKeyboard(KeyboardEmulator):
         self.emulator_path = config["pem_port"]
         self.interface = config["pem_interface"]
 
-    def send_keystrokes(self, _file, timeout=_TIMEOUT):
+    def send_keystrokes(self, _file):
         """
         Method to send keystrokes from a file
         """
-        self._send_PEM_keystrokes(_file, timeout=timeout)
+        self._send_PEM_keystrokes(_file)
 
-    def _send_PEM_keystrokes(self, _file, timeout, attempts=1):
+    def _send_PEM_keystrokes(self, _file, attempts=1):
         """
-        Try to send keystrokes within the time limit
+        Try to send keystrokes from a file
 
         Args:
             keystrokes (str): PEM keystroke file
             attempts (integer): How many attempts will be made
-            timeout (integer): Timeout for a single attempt
 
         Returns:
             None
@@ -78,7 +76,7 @@ class ArduinoKeyboard(KeyboardEmulator):
             # the subprocess is still waiting for timeout
             process.daemon = True
             process.start()
-            process.join(timeout)
+            process.join(60)
 
             if not exception_queue.empty():
                 raise exception_queue.get()
