@@ -21,7 +21,6 @@ class ArduinoKeyboard(KeyboardEmulator):
     """
     Class for Arduino keyboard emulator
     """
-
     _INTERFACE = "serialconnection"
 
     def __init__(self, config):
@@ -35,20 +34,11 @@ class ArduinoKeyboard(KeyboardEmulator):
     def send_keystrokes(self, _file):
         """
         Method to send keystrokes from a file
-        """
-        self._send_PEM_keystrokes(_file)
-
-    def _send_PEM_keystrokes(self, _file, attempts=1):
-        """
-        Try to send keystrokes from a file
 
         Args:
             keystrokes (str): PEM keystroke file
-            attempts (integer): How many attempts will be made
-
         Returns:
             None
-
         Raises:
             aft.errors.AFTDeviceError if PEM connection times out
         """
@@ -66,24 +56,22 @@ class ArduinoKeyboard(KeyboardEmulator):
             except Exception as err:
                 exceptions.put(err)
 
-        for i in range(attempts):
-            logger.info(
-                "Attempt " + str(i + 1) + " of " + str(attempts) + " to send " +
-                "keystrokes through PEM")
-            exception_queue = Queue()
-            process = Process(target=call_pem, args=(exception_queue,))
-            # ensure python process is closed in case main process dies but
-            # the subprocess is still waiting for timeout
-            process.daemon = True
-            process.start()
-            process.join(60)
+        exception_queue = Queue()
+        process = Process(target=call_pem, args=(exception_queue,))
+        # ensure python process is closed in case main process dies but
+        # the subprocess is still waiting for timeout
+        process.daemon = True
+        process.start()
+        process.join(60)
 
-            if not exception_queue.empty():
-                raise exception_queue.get()
+        if not exception_queue.empty():
+            raise exception_queue.get()
 
-            if process.is_alive():
-                process.terminate()
-            else:
-                return
+        if process.is_alive():
+            process.terminate()
+        else:
+            return
 
-        raise errors.AFTDeviceError("Failed to connect to PEM")
+        raise errors.AFTDeviceError("Failed to connect to Arduino keyboard " +
+                                    "emulator - check the connections, " +
+                                    "AFT settings and emulator hardware")
