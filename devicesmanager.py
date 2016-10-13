@@ -32,6 +32,7 @@ import aft.config as config
 import aft.devicefactory as devicefactory
 import aft.devices.common as common
 from aft.logger import Logger as logger
+from aft.tester import Tester
 
 class DevicesManager(object):
     """Class handling devices connected to the same host PC"""
@@ -289,6 +290,90 @@ class DevicesManager(object):
 
             if os.path.isfile(path):
                 os.unlink(path)
+
+    def try_flash_specific(self, args):
+        '''
+        Reserve and flash specific device.
+
+        Args:
+            args: AFT arguments
+        Returns:
+            device, tester: Reserved machine and tester handles.
+        '''
+        device = self.reserve_specific(args.device, model=args.machine)
+        tester = Tester(device)
+
+        if args.record:
+            device.record_serial()
+
+        if not args.noflash:
+            print("Flashing " + str(device.name) + ".")
+            device.write_image(args.file_name)
+            print("Flashing successful.")
+
+        return device, tester
+
+    def try_flash_model(self, args):
+        '''
+        Reserve and flash a machine. By default it tries to flash 2 times with 2
+        different machines. If flashing fails machine will be blacklisted.
+
+        Args:
+            args: AFT arguments
+        Returns:
+            device, tester: Reserved machine and tester handles.
+        '''
+        machine_attempt = 0
+        machine_retries = args.machine_retries
+        while machine_attempt < machine_retries:
+            machine_attempt += 1
+            device = self.reserve()
+            tester = Tester(device)
+
+            if args.record:
+                device.record_serial()
+
+            if args.noflash:
+                return device, tester
+
+            flash_attempt = 0
+            flash_retries = args.flash_retries
+            while flash_attempt < flash_retries:
+                flash_attempt += 1
+                try:
+                    print("Flashing " + str(device.name) + ", attempt " +
+                        str(flash_attempt) + " of " + str(flash_retries) + ".")
+                    device.write_image(args.file_name)
+                    print("Flashing successful.")
+                    return device, tester
+
+                except KeyboardInterrupt:
+                    raise
+
+                except:
+                    _err = sys.exc_info()
+                    _err = str(_err[0]).split("'")[1] + ": " + str(_err[1])
+                    logger.error(_err)
+                    print(_err)
+                    if (flash_retries - flash_attempt) == 0:
+                        msg = "Flashing failed " + str(flash_attempt) + " times"
+                        print(msg + ", blacklisting " + str(device.name))
+                        logger.info(msg + ", blacklisting " + str(device.name))
+                        common.blacklist_device(device.dev_id, device.name, msg)
+                        self.release(device)
+
+                        if machine_attempt < machine_retries:
+                            print("Attempting flashing another machine")
+
+                        else:
+                            raise
+
+                    elif (flash_retries - flash_attempt) == 1:
+                        print("Flashing failed, trying again one more time")
+
+                    elif (flash_retries - flash_attempt) > 1:
+                        print("Flashing failed, trying again " +
+                            str(flash_retries - flash_attempt) + " more times")
 
     def get_configs(self):
         return self.device_configs
