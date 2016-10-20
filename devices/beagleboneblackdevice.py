@@ -500,12 +500,15 @@ class BeagleBoneBlackDevice(Device):
         except subprocess32.CalledProcessError as err:
             common.log_subprocess32_error_and_abort(err)
 
-        dtb_target = os.path.join(
-            self.mount_dir,
-            "boot",
-            "am335x-boneblack.dtb")
-
-        self._copy_file_over_ssh(self.dtb_file, dtb_target)
+        # Copy dtb file if there isn't one in the image
+        boot_dir = os.path.join(self.mount_dir,"boot")
+        boot_files = ssh.remote_execute(self.dev_ip, ["ls", boot_dir])
+        if "am335x-boneblack.dtb" not in boot_files:
+            dtb_target = os.path.join(
+                self.mount_dir,
+                "boot",
+                "am335x-boneblack.dtb")
+            self._copy_file_over_ssh(self.dtb_file, dtb_target)
 
     def _add_ssh_key(self):
         """
