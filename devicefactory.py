@@ -23,6 +23,7 @@ import aft.devices.virtualboxdevice
 import aft.cutters.clewarecutter
 import aft.cutters.usbrelay
 import aft.cutters.mockcutter
+import aft.cutters.netbootercutter
 import aft.kb_emulators.arduinokeyboard
 
 _DEVICE_CLASSES = {
@@ -34,6 +35,7 @@ _DEVICE_CLASSES = {
 _CUTTER_CLASSES = {
     "clewarecutter" : aft.cutters.clewarecutter.ClewareCutter,
     "usbrelay" : aft.cutters.usbrelay.Usbrelay,
+    "netbootercutter" : aft.cutters.netbootercutter.NetBooterCutter,
     "mockcutter" : aft.cutters.mockcutter.Mockcutter
 }
 _KB_EMULATOR_CLASSES = {
