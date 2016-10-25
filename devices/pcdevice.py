@@ -327,7 +327,7 @@ class PCDevice(Device):
         ssh.remote_execute(self.dev_ip, ["mount", self._target_device,
                                          self._SUPER_ROOT_MOUNT_POINT])
         ssh.remote_execute(self.dev_ip, ["mount", self._SUPER_ROOT_MOUNT_POINT +
-                                         "rootfs",
+                                         "rootfs.img",
                                          self._ROOT_PARTITION_MOUNT_POINT])
 
     def _install_tester_public_key(self, image_file_name):
@@ -434,6 +434,9 @@ class PCDevice(Device):
         logger.info("Unmounting.")
         ssh.remote_execute(
             self.dev_ip, ["umount", self._ROOT_PARTITION_MOUNT_POINT])
+        if self._uses_hddimg:
+            ssh.remote_execute(
+            self.dev_ip, ["umount", self._SUPER_ROOT_MOUNT_POINT])
 
     def execute(self, command, timeout, user="root", verbose=False):
         """
