@@ -125,6 +125,9 @@ def main(argv=None):
         if not args.nopoweroff:
             device.detach()
 
+        if args.boot:
+            device_manager.boot_device_to_mode(device, args)
+
         device_manager.release(device)
 
         if "backup_argv" in locals():
@@ -175,8 +178,7 @@ def parse_args():
         action="store",
         nargs="?",
         help = "Image to write: a local file, compatible with the selected " +
-        "machine."
-        )
+        "machine.")
 
     parser.add_argument(
         "--device",
@@ -200,7 +202,7 @@ def parse_args():
         nargs="?",
         action="store",
         default="2",
-        help="Specify how many time flashing one machine will be tried.")
+        help="Specify how many times flashing one machine will be tried.")
 
     parser.add_argument(
         "--record",
@@ -226,6 +228,14 @@ def parse_args():
         action="store_true",
         default=False,
         help="Do not power off the DUT after testing")
+
+    parser.add_argument(
+        "--boot",
+        type=str,
+        nargs="?",
+        action="store",
+        choices=["test_mode", "service_mode"],
+        help="Boot device to specific mode")
 
     parser.add_argument(
         "--check",
