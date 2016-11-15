@@ -1,6 +1,7 @@
 # coding=utf-8
 # Copyright (c) 2016 Intel, Inc.
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -30,6 +31,7 @@ try:
 except ImportError:
     import subprocess as subprocess32
 
+from aft.tools.misc import local_execute
 from aft.logger import Logger as logger
 from aft.devices.device import Device
 import aft.config as config
@@ -214,6 +216,11 @@ class BeagleBoneBlackDevice(Device):
 
         logger.info("Creating directories and copying image files")
 
+        if config.SINGLE_DEVICE_SETUP:
+            local_execute(["mount", "-o", "loop,offset=1048576",
+                          "/root/support_image/support.img",
+                          "/root/support_fs/beaglebone/"])
+
         common.make_directory(os.path.join(
             self.nfs_path,
             self.working_directory[1:]))
@@ -248,6 +255,9 @@ class BeagleBoneBlackDevice(Device):
         shutil.copy(
             ssh_file,
             os.path.join(self.nfs_path, self.ssh_file[1:]))
+
+        if config.SINGLE_DEVICE_SETUP:
+            local_execute(["umount", "/root/support_fs/beaglebone"])
 
     def _enter_service_mode(self):
         """
@@ -289,53 +299,61 @@ class BeagleBoneBlackDevice(Device):
                 for _ in range(counter):
                     serial_write(stream, " ", 0.1)
 
-                # if autoload is on, dhcp command attempts to download kernel
-                # as well. We do this later manually over tftp
-                serial_write(stream, "setenv autoload no", 1)
+                if config.SINGLE_DEVICE_SETUP:
+                    # Load kernel image and device tree binary from usb
+                    serial_write(stream, "setenv bootargs 'console=ttyO0,115200n8, root=/dev/sda1 rootwait rootfstype=ext4 rw'", 1)
+                    serial_write(stream, "usb start", 5)
+                    serial_write(stream, "ext4load usb 0:1 0x81000000 /boot/vmlinuz-4.4.9-ti-r25", 10)
+                    serial_write(stream, "ext4load usb 0:1 0x80000000 /boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb", 5)
 
-                # get ip from dhcp server
-                # NOTE: This seems to occasionally fail. This doesn't matter
-                # too much, as the next retry attempt propably works.
-                serial_write(stream, "dhcp", 15)
-
-                # setup kernel boot arguments (nfs related args and console so
-                # that process is printed in case something goes wrong)
-                serial_write(
-                    stream,
-                    "setenv bootargs console=" + console +
-                    ", root=/dev/nfs nfsroot=${serverip}:" +
-                    self.nfs_path + ",vers=3 rw ip=${ipaddr}",
-                    1)
-
-                # download kernel image into the specified memory address
-                serial_write(
-                    stream,
-                    "tftp 0x81000000 " + os.path.join(tftp_path,
-                                                      kernel_image_path),
-                    15)
-
-                # download device tree binary into the specified memory location
-                # IMPORTANT NOTE: Make sure that the kernel image and device
-                # tree binary files do not end up overlapping in the memory, as
-                # this ends up overwriting one of the files and boot
-                # unsurprisingly fails
-                serial_write(
-                    stream,
-                    "tftp 0x80000000 " + os.path.join(tftp_path, dtb_path),
-                    5)
-
-                # boot, give kernel image and dtb as args (middle arg is
-                # ignored, hence the '-')
-                serial_write(stream, "bootz 0x81000000 - 0x80000000", 1)
-                stream.close()
-
-                self.dev_ip = self._wait_for_responsive_ip()
-
-                if (self.dev_ip and
-                        self._verify_mode(self.parameters["service_mode"])):
-                    return
                 else:
-                    logger.warning("Failed to enter service mode")
+                    # if autoload is on, dhcp command attempts to download kernel
+                    # as well. We do this later manually over tftp
+                    serial_write(stream, "setenv autoload no", 1)
+
+                    # get ip from dhcp server
+                    # NOTE: This seems to occasionally fail. This doesn't matter
+                    # too much, as the next retry attempt propably works.
+                    serial_write(stream, "dhcp", 15)
+
+                    # setup kernel boot arguments (nfs related args and console so
+                    # that process is printed in case something goes wrong)
+                    serial_write(
+                        stream,
+                        "setenv bootargs console=" + console +
+                        ", root=/dev/nfs nfsroot=${serverip}:" +
+                        self.nfs_path + ",vers=3 rw ip=${ipaddr}",
+                        1)
+
+                    # download kernel image into the specified memory address
+                    serial_write(
+                        stream,
+                        "tftp 0x81000000 " + os.path.join(tftp_path,
+                                                          kernel_image_path),
+                        15)
+
+                    # download device tree binary into the specified memory location
+                    # IMPORTANT NOTE: Make sure that the kernel image and device
+                    # tree binary files do not end up overlapping in the memory, as
+                    # this ends up overwriting one of the files and boot
+                    # unsurprisingly fails
+                    serial_write(
+                        stream,
+                        "tftp 0x80000000 " + os.path.join(tftp_path, dtb_path),
+                        5)
+
+                    # boot, give kernel image and dtb as args (middle arg is
+                    # ignored, hence the '-')
+                    serial_write(stream, "bootz 0x81000000 - 0x80000000", 1)
+                    stream.close()
+
+                    self.dev_ip = self._wait_for_responsive_ip()
+
+                    if (self.dev_ip and
+                            self._verify_mode(self.parameters["service_mode"])):
+                        return
+                    else:
+                        logger.warning("Failed to enter service mode")
 
             except KeyboardInterrupt:
                 raise
@@ -548,7 +566,11 @@ class BeagleBoneBlackDevice(Device):
         """
         Remove the temp directory  used during flashing
         """
-        shutil.rmtree(os.path.join(
+        if config.SINGLE_DEVICE_SETUP:
+            ssh.remote_execute(self.dev_ip,
+                              ["rm", "-r", self.working_directory])
+        else:
+            shutil.rmtree(os.path.join(
                 self.nfs_path,
                 self.working_directory[1:]))
 
