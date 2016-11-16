@@ -249,11 +249,7 @@ def check(args):
     results = (image_test_results[0], image_test_results[1])
 
     if not results[0]:
-        common.blacklist_device(
-                device.dev_id,
-                args.device,
-                "Failed device health check")
-        msg = "Device " + args.device + " failed health test - blacklisting"
+        msg = "Device " + args.device + " failed health test"
         logger.info(msg)
         if args.verbose:
             print(msg)

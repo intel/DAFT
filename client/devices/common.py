@@ -208,30 +208,3 @@ def verify_device_mode(ip, mode):
             str(err.output) + "'.")
 
         return False
-
-def blacklist_device(dev_id, name, reason):
-    """
-    Blacklist the device with given id
-
-    Args:
-        dev_id (str): The device id
-        name (str): The human readable device name
-        reason (str): Reason for blacklisting
-
-    Returns:
-        None
-    """
-    with open(config.DEVICE_BLACKLIST, "a") as blacklist_file:
-        blacklist_file.write(dev_id + " " + name + " " + reason + "\n")
-
-def unblacklist_device(dev_id):
-    lines = []
-    with open(config.DEVICE_BLACKLIST, "r") as device_blacklist:
-        for line in device_blacklist:
-            if line.split()[0] == dev_id:
-                continue
-            lines.append(line)
-
-    with open(config.DEVICE_BLACKLIST, "w") as device_blacklist:
-        for line in lines:
-            device_blacklist.write(line)
