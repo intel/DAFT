@@ -24,7 +24,6 @@ import argparse
 import logging
 
 import aft.config as config
-import aft.tools.device_configuration_checker as device_config
 from aft.logger import Logger as logger
 from aft.tools.thread_handler import Thread_handler as thread_handler
 from aft.tools.topology_builder import TopologyBuilder
@@ -53,26 +52,6 @@ def main(argv=None):
             builder = TopologyBuilder(args)
             builder.build_topology()
             return 0
-
-        if args.check:
-            results = device_config.check(args)
-            logger.info(results[1])
-            print(results[1])
-            if results[0] == True:
-                return 0
-            else:
-                return 1
-
-        elif args.checkall:
-            results = device_config.check_all(args)
-            logger.info(results[1])
-            print(results[1])
-            if results[0] == True:
-                logger.info("All tests passed")
-                return 0
-            else:
-                logger.info("There were failures")
-                return 1
 
         device_manager = DevicesManager(args)
 
@@ -152,8 +131,7 @@ def parse_args():
         action="store",
         nargs="?",
         help = "Image to write: a local file, compatible with the selected " +
-        "machine."
-        )
+        "machine.")
 
     parser.add_argument(
         "--device",
@@ -195,20 +173,6 @@ def parse_args():
         action="store_true",
         default=False,
         help="Do not power off the DUT after testing")
-
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Check that device is configured correctly")
-
-    parser.add_argument(
-        "--checkall",
-        type=str,
-        nargs="?",
-        const="fast",
-        action="store",
-        choices=["fast", "accurate"],
-        help="Check configurations for all devices. Defaults to fast")
 
     parser.add_argument(
         "--configure",
