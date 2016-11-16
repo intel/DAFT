@@ -301,5 +301,34 @@ class DevicesManager(object):
                     print("Flashing failed, trying again " +
                         str(flash_retries - flash_attempt) + " more times")
 
+    def boot_device_to_mode(self, device, args):
+        '''
+        Boot specified device to mode specified by args.boot
+        '''
+        if device.__class__.__name__ == "EdisonDevice":
+            if args.boot == "test_mode":
+                device._power_cycle()
+            else:
+                print("Edison only has 'test_mode'")
+                return 1
+
+        if device.__class__.__name__ == "BeagleBoneBlackDevice":
+            if args.boot == "test_mode":
+                device._enter_test_mode()
+                mode = device.parameters["test_mode"]
+            if args.boot == "service_mode":
+                device._enter_service_mode()
+                mode = device.parameters["service_mode"]
+
+        if device.__class__.__name__ == "PCDevice":
+            if args.boot == "test_mode":
+                device._enter_mode(device._test_mode)
+                mode = device._test_mode["name"]
+            if args.boot == "service_mode":
+                device._enter_mode(device._service_mode)
+                mode = device._service_mode["name"]
+
+        print("Succesfully booted to " + mode)
+
     def get_configs(self):
         return self.device_configs
