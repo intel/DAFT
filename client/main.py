@@ -26,7 +26,6 @@ import logging
 import aft.config as config
 from aft.logger import Logger as logger
 from aft.tools.thread_handler import Thread_handler as thread_handler
-from aft.tools.topology_builder import TopologyBuilder
 from aft.devicesmanager import DevicesManager
 
 
@@ -47,11 +46,6 @@ def main(argv=None):
 
         if args.debug:
             logger.level(logging.DEBUG)
-
-        if args.configure:
-            builder = TopologyBuilder(args)
-            builder.build_topology()
-            return 0
 
         device_manager = DevicesManager(args)
 
@@ -173,16 +167,6 @@ def parse_args():
         action="store_true",
         default=False,
         help="Do not power off the DUT after testing")
-
-    parser.add_argument(
-        "--configure",
-        type=str,
-        nargs="?",
-        const="dryrun",
-        action="store",
-        choices=["dryrun", "save"],
-        help=("Find and configure devices. Dryrun merely prints the configs, "
-            "save actually saves them. Defaults to dryrun"))
 
     parser.add_argument(
         "--verbose",

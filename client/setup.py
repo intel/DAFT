@@ -23,8 +23,7 @@ DEVICE_FILES = ["default_config/devices/platform.cfg",
                 "default_config/devices/topology.cfg"]
 TEST_PLANS = ["default_config/test_plan/iot_qatest.cfg",
               "default_config/test_plan/iot_gtest.cfg"]
-CONFIG_FILES = ["default_config/aft.cfg",
-                "default_config/topology_builder.json"]
+CONFIG_FILES = ["default_config/aft.cfg"]
 
 CONFIG_FILTER = lambda filename : not \
     os.path.isfile(os.path.join("/etc/aft", filename[len("default_config/"):]))
