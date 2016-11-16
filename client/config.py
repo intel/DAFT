@@ -21,7 +21,6 @@ SERIAL_LOG_NAME = "serial.log"
 AFT_LOG_NAME = "aft.log"
 NFS_FOLDER = "/home/tester/"
 KNOWN_GOOD_IMAGE_FOLDER = "/home/tester/good_test_images"
-SINGLE_DEVICE_SETUP = 0
 
 import sys
 try:

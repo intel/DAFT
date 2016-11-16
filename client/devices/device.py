@@ -39,7 +39,6 @@ class Device(with_metaclass(abc.ABCMeta, object)):
     def __init__(self, device_descriptor, channel, kb_emulator=None):
         self.name = device_descriptor["name"]
         self.model = device_descriptor["model"]
-        self.dev_id = device_descriptor["id"]
         self.test_plan = device_descriptor["test_plan"]
         self.parameters = device_descriptor
         self.channel = channel
@@ -139,13 +138,3 @@ class Device(with_metaclass(abc.ABCMeta, object)):
         self.detach()
         sleep(self._POWER_CYCLE_DELAY)
         self.attach()
-
-    def __eq__(self, comp):
-        return self.dev_id == comp.dev_id
-
-    def __ne__(self, comp):
-        return self.dev_id != comp.dev_id
-
-    def __repr__(self):
-        return "Device(name={0}, model={1}, dev_id={2}, channel={3}". \
-            format(self.name, self.model, self.dev_id, self.channel)

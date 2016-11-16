@@ -30,7 +30,6 @@ import errno
 import aft.errors as errors
 import aft.config as config
 import aft.devicefactory as devicefactory
-import aft.devices.common as common
 from aft.logger import Logger as logger
 from aft.tester import Tester
 
@@ -191,13 +190,13 @@ class DevicesManager(object):
                     # This is a non-atomic operation which may cause trouble
                     # Using a locking database system could be a viable fix.
                     lockfile = os.fdopen(os.open(os.path.join(config.LOCK_FILE,
-                                                                    "aft_" + device.dev_id),
-                                                       os.O_WRONLY | os.O_CREAT, 0o660), "w")
+                                                              "daft_dut_lock"),
+                                         os.O_WRONLY | os.O_CREAT, 0o660), "w")
                     fcntl.flock(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
                     logger.info("Device acquired.")
 
-                    self._lockfiles.append((device.dev_id, lockfile))
+                    self._lockfiles.append(("daft_dut_lock", lockfile))
 
                     atexit.register(self.release, device)
                     return device
@@ -218,7 +217,7 @@ class DevicesManager(object):
         the process dies, but this removes the stale lockfile.
         """
         for i in self._lockfiles:
-            if i[0] == reserved_device.dev_id:
+            if i[0] == "daft_dut_lock":
                 i[1].close()
                 self._lockfiles.remove(i)
                 break
@@ -226,7 +225,7 @@ class DevicesManager(object):
         if reserved_device:
             path = os.path.join(
                 config.LOCK_FILE,
-                "aft_" + reserved_device.dev_id)
+                "daft_dut_lock")
 
             if os.path.isfile(path):
                 os.unlink(path)
