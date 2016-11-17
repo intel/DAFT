@@ -30,7 +30,6 @@ import errno
 import aft.errors as errors
 import aft.config as config
 import aft.devicefactory as devicefactory
-import aft.devices.common as common
 from aft.logger import Logger as logger
 from aft.tester import Tester
 
@@ -128,38 +127,6 @@ class DevicesManager(object):
 
         return configs
 
-    def _construct_blacklist(self):
-        """
-        Construct device blacklisting
-
-        Args:
-            None
-
-        Returns:
-            List of dictionaries, where dictionaries have the following format:
-            {
-                "id": "device_id",
-                "name": "device_name",
-                "reason": "reason for blacklisting"
-            }
-        """
-        blacklist = []
-        with open(config.DEVICE_BLACKLIST, "r") as blacklist_file:
-            for line in blacklist_file:
-                values = line.split()
-
-                reason = ""
-                for i in range(2, len(values)):
-                    reason += values[i] + " "
-                blacklist.append(
-                    {
-                        "id": values[0],
-                        "name": values[1],
-                        "reason": reason.strip()
-                    })
-
-        return blacklist
-
     def reserve(self, timeout = 3600):
         """
         Reserve and lock a device and return it
@@ -176,7 +143,6 @@ class DevicesManager(object):
                                                     kb_emulator)
                 devices.append(device)
 
-        devices = self._remove_blacklisted_devices(devices)
         return self._do_reserve(devices, self._args.machine, timeout)
 
     def reserve_specific(self, machine_name, timeout = 3600, model=None):
@@ -214,8 +180,7 @@ class DevicesManager(object):
         if len(devices) == 0:
             raise errors.AFTConfigurationError(
                 "No device configurations when reserving " + name +
-                " - check that given machine type or name is correct " +
-                "and not blacklisted in /etc/aft/blacklist")
+                " - check that given machine type or name is correct ")
 
         start = time.time()
         while time.time() - start < timeout:
@@ -225,13 +190,13 @@ class DevicesManager(object):
                     # This is a non-atomic operation which may cause trouble
                     # Using a locking database system could be a viable fix.
                     lockfile = os.fdopen(os.open(os.path.join(config.LOCK_FILE,
-                                                                    "aft_" + device.dev_id),
-                                                       os.O_WRONLY | os.O_CREAT, 0o660), "w")
+                                                              "daft_dut_lock"),
+                                         os.O_WRONLY | os.O_CREAT, 0o660), "w")
                     fcntl.flock(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
                     logger.info("Device acquired.")
 
-                    self._lockfiles.append((device.dev_id, lockfile))
+                    self._lockfiles.append(("daft_dut_lock", lockfile))
 
                     atexit.register(self.release, device)
                     return device
@@ -246,39 +211,13 @@ class DevicesManager(object):
         raise errors.AFTTimeoutError("Could not reserve " + name +
                                      " in " + str(timeout) + " seconds.")
 
-    def _remove_blacklisted_devices(self, devices):
-        """
-        Remove blacklisted devices from the device list
-
-        Args:
-            List of devices
-
-        Returns:
-            Filtered list of devices
-        """
-        _device_blacklist = self._construct_blacklist()
-        filtered_devices = []
-        for device in devices:
-            for blacklisted_device in _device_blacklist:
-                if blacklisted_device["id"] == device.dev_id:
-                    msg = ("Removed blacklisted device " +
-                            blacklisted_device["name"] + " from device pool " +
-                            "(Reason: " + blacklisted_device["reason"] + ")")
-                    logger.info(msg)
-                    print(msg)
-                    break
-            else: # else clause for the for loop
-                filtered_devices.append(device)
-
-        return filtered_devices
-
     def release(self, reserved_device):
         """
         Put the reserved device back to the pool. It will happen anyway when
         the process dies, but this removes the stale lockfile.
         """
         for i in self._lockfiles:
-            if i[0] == reserved_device.dev_id:
+            if i[0] == "daft_dut_lock":
                 i[1].close()
                 self._lockfiles.remove(i)
                 break
@@ -286,7 +225,7 @@ class DevicesManager(object):
         if reserved_device:
             path = os.path.join(
                 config.LOCK_FILE,
-                "aft_" + reserved_device.dev_id)
+                "daft_dut_lock")
 
             if os.path.isfile(path):
                 os.unlink(path)
@@ -315,109 +254,52 @@ class DevicesManager(object):
 
     def try_flash_model(self, args):
         '''
-        Reserve and flash a machine. By default it tries to flash 2 times with 2
-        different machines. If flashing fails machine will be blacklisted.
+        Reserve and flash a machine. By default it tries to flash 2 times,
 
         Args:
             args: AFT arguments
         Returns:
             device, tester: Reserved machine and tester handles.
         '''
-        machine_attempt = 0
-        machine_retries = args.machine_retries
-        while machine_attempt < machine_retries:
-            machine_attempt += 1
-            device = self.reserve()
-            tester = Tester(device)
+        device = self.reserve()
+        tester = Tester(device)
 
-            if args.record:
-                device.record_serial()
+        if args.record:
+            device.record_serial()
 
-            if args.noflash:
+        if args.noflash:
+            return device, tester
+
+        flash_attempt = 0
+        flash_retries = args.flash_retries
+        while flash_attempt < flash_retries:
+            flash_attempt += 1
+            try:
+                print("Flashing " + str(device.name) + ", attempt " +
+                    str(flash_attempt) + " of " + str(flash_retries) + ".")
+                device.write_image(args.file_name)
+                print("Flashing successful.")
                 return device, tester
 
-            flash_attempt = 0
-            flash_retries = args.flash_retries
-            while flash_attempt < flash_retries:
-                flash_attempt += 1
-                try:
-                    print("Flashing " + str(device.name) + ", attempt " +
-                        str(flash_attempt) + " of " + str(flash_retries) + ".")
-                    device.write_image(args.file_name)
-                    print("Flashing successful.")
-                    return device, tester
+            except KeyboardInterrupt:
+                raise
 
-                except KeyboardInterrupt:
+            except:
+                _err = sys.exc_info()
+                _err = str(_err[0]).split("'")[1] + ": " + str(_err[1])
+                logger.error(_err)
+                print(_err)
+                if (flash_retries - flash_attempt) == 0:
+                    print("Flashing failed " + str(flash_attempt) + " times")
+                    self.release(device)
                     raise
 
-                except:
-                    _err = sys.exc_info()
-                    _err = str(_err[0]).split("'")[1] + ": " + str(_err[1])
-                    logger.error(_err)
-                    print(_err)
-                    if (flash_retries - flash_attempt) == 0:
-                        msg = "Flashing failed " + str(flash_attempt) + " times"
-                        print(msg + ", blacklisting " + str(device.name))
-                        logger.info(msg + ", blacklisting " + str(device.name))
-                        common.blacklist_device(device.dev_id, device.name, msg)
-                        self.release(device)
+                elif (flash_retries - flash_attempt) == 1:
+                    print("Flashing failed, trying again one more time")
 
-                        if machine_attempt < machine_retries:
-                            print("Attempting flashing another machine")
-
-                        else:
-                            raise
-
-                    elif (flash_retries - flash_attempt) == 1:
-                        print("Flashing failed, trying again one more time")
-
-                    elif (flash_retries - flash_attempt) > 1:
-                        print("Flashing failed, trying again " +
-                            str(flash_retries - flash_attempt) + " more times")
+                elif (flash_retries - flash_attempt) > 1:
+                    print("Flashing failed, trying again " +
+                        str(flash_retries - flash_attempt) + " more times")
 
     def get_configs(self):
         return self.device_configs
-
-    def blacklist_device(self, device, reason):
-        """
-        Blacklist a device, preventing any further testing
-
-        Args:
-            Device (str): Name of the device
-            reason (str): Reason for blacklisting
-        """
-        dev_id = None
-
-        for _config in self.device_configs:
-            if _config["name"].lower() == device.lower():
-                dev_id = _config["settings"]["id"]
-                break
-
-        common.blacklist_device(dev_id, device, reason)
-
-    def unblacklist_device(self, device):
-        """
-        Unblacklist a device
-
-        Args:
-            Device (str): Name of the device
-        """
-        dev_id = None
-
-        for _config in self.device_configs:
-            if _config["name"].lower() == device.lower():
-                dev_id = _config["settings"]["id"]
-                break
-
-        common.unblacklist_device(dev_id)
-
-    def blacklist_print(self):
-        """
-        Print the contents of the blacklist file
-        """
-        with open(config.DEVICE_BLACKLIST, "r") as blacklist_file:
-            blacklist = blacklist_file.read().strip()
-            if len(blacklist) < 1:
-                print("Blacklist is empty")
-            else:
-                print(blacklist)

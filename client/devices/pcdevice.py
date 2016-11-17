@@ -137,7 +137,6 @@ class PCDevice(Device):
             (str): The device ip address
         """
         return common.get_ip_for_pc_device(
-            self.dev_id,
             self.parameters["leases_file_name"])
 
     def _enter_mode(self, mode):
@@ -189,8 +188,7 @@ class PCDevice(Device):
                 logger.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
 
         logger.critical(
-            "Unable to get device " + self.dev_id + " in mode " +
-            mode["name"])
+            "Unable to get the device in mode " + mode["name"])
 
         raise errors.AFTDeviceError(
             "Could not set the device in mode " + mode["name"])
@@ -205,7 +203,6 @@ class PCDevice(Device):
                 The device ip, or None if no active ip address was found
         """
         self.dev_ip = common.wait_for_responsive_ip_for_pc_device(
-            self.dev_id,
             self.parameters["leases_file_name"],
             self._BOOT_TIMEOUT,
             self._POLLING_INTERVAL)

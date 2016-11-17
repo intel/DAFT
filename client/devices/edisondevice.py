@@ -158,16 +158,10 @@ class EdisonDevice(Device):
             root_file_system_file = file_name_no_extension + "." + \
                 self._root_extension
 
-            if config.SINGLE_DEVICE_SETUP:
-                subprocess32.check_call(["mount",
-                                         root_file_system_file,
-                                         self._LOCAL_MOUNT_DIR])
+            subprocess32.check_call(["mount",
+                                     root_file_system_file,
+                                     self._LOCAL_MOUNT_DIR])
 
-            else:
-                # guestmount allows us to mount the image without root privileges
-                subprocess32.check_call(["guestmount", "-a", root_file_system_file,
-                                         "-m", "/dev/sda",
-                                         self._LOCAL_MOUNT_DIR])
         except subprocess32.CalledProcessError as err:
             logger.info("Failed to mount.")
             common.log_subprocess32_error_and_abort(err)
@@ -287,64 +281,11 @@ class EdisonDevice(Device):
         logger.info("Flushing and unmounting the root filesystem.")
         try:
             subprocess32.check_call(["sync"])
-            if config.SINGLE_DEVICE_SETUP:
-                subprocess32.check_call(["umount",
-                                         self._LOCAL_MOUNT_DIR])
-            else:
-                subprocess32.check_call([
-                    "guestunmount",
-                    os.path.join(os.curdir,self._LOCAL_MOUNT_DIR)])
+            subprocess32.check_call(["umount",
+                                     self._LOCAL_MOUNT_DIR])
 
         except subprocess32.CalledProcessError as err:
             common.log_subprocess32_error_and_abort(err)
-
-    def recovery_flash(self):
-        """
-        Execute the flashing of device-side DFU-tools
-
-        Aborts if the flashing fails
-
-        Note that only one Edison should be powered on when doing the recovery
-        flashing
-
-        Returns:
-            None
-        """
-        logger.info("Recovery flashing.")
-        try:
-            # This can cause race condition if multiple devices are booted at
-            # the same time!
-            attempts = 0
-
-            xfstk_parameters = ["xfstk-dldr-solo",
-                                "--gpflags", "0x80000007",
-                                "--osimage", os.path.join(
-                                    self._MODULE_DATA_PATH,
-                                    "u-boot-edison.img"),
-                                "--fwdnx", os.path.join(
-                                    self._MODULE_DATA_PATH,
-                                    "edison_dnx_fwr.bin"),
-                                "--fwimage", os.path.join(
-                                    self._MODULE_DATA_PATH,
-                                    "edison_ifwi-dbg-00.bin"),
-                                "--osdnx", os.path.join(
-                                    self._MODULE_DATA_PATH,
-                                    "edison_dnx_osr.bin")]
-            self._power_cycle()
-            while subprocess32.call(xfstk_parameters) and attempts < 10:
-                logger.info(
-                    "Rebooting and trying recovery flashing again. "
-                    + str(attempts))
-                self._power_cycle()
-                time.sleep(random.randint(10, 30))
-                attempts += 1
-
-        except subprocess32.CalledProcessError as err:
-            common.log_subprocess32_error_and_abort(err)
-        except OSError as err:
-            logger.critical("Failed recovery flashing, errno = " +
-                             str(err.errno) + ". Is the xFSTK tool installed?")
-            sys.exit(1)
 
     def _flash_image(self, file_name_no_extension):
         """
@@ -367,26 +308,13 @@ class EdisonDevice(Device):
             self._flash_partitions(file_name_no_extension)
         except errors.AFTPotentiallyBrokenBootloader as err:
             # if the bootloader is broken, the device is bricked until it is
-            # recovered through recovery flashing. As only one device can be
-            # powered on during recovery flashing, we just blacklist the device
-            # and recover it later
+            # recovered through recovery flashing.
 
-            logger.critical(
-                "Bootloader might be broken - blacklisting the " +
-                "device as a precaution (Note: This could be a false positive)")
-
-            common.blacklist_device(
-                self._configuration["id"],
-                self._configuration["name"],
-                "Bootloader might be broken - recovery flashing " +
-                "will be performed as a precaution (Note: This could be a " +
-                "false positive")
-
-            self._recover_edison()
-
+            logger.critical("Bootloader might be broken " +
+                            "(Note: This could be a false positive)")
             raise errors.AFTDeviceError(
-                "Bootloader might be broken - blacklisting the " +
-                "device as a precaution (Note: This could be a false positive)")
+                "Bootloader might be broken " +
+                "(Note: This could be a false positive)")
 
         return True
 
@@ -573,28 +501,6 @@ class EdisonDevice(Device):
             " seconds."
         logger.critical(err_str)
         raise errors.AFTDeviceError(err_str)
-
-    def _recover_edison(self):
-        """
-        Fork and launch a process that recovers the bricked Edison.
-
-        Reason for forking is that we do not want this flashing process to hang
-        around until recovery has been finished, as this blocks CI (the current
-        task will not finish in CI until this process exits). The recovery can
-        take significant amount of time, as it has to wait until *all* Edisons
-        are idle. If the testing load is high, one or more Edisons could be
-        constantly running tests, which blocks the recovery effort.
-
-        The reason for having to wait for all Edisons is that the recovery
-        program does not work correctly, if more than one Edison is powered on
-        at the same time. In order to recover an Edison, we must then acquire
-        and shut down all the Edisons, and only then proceed with the flashing.
-
-        """
-        pid = os.fork()
-        if pid == 0: # new process
-            os.system("nohup aft --recover_edisons &")
-            exit()
 
     def _run_tests(self, test_case):
         """

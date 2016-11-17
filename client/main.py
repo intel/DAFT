@@ -24,11 +24,8 @@ import argparse
 import logging
 
 import aft.config as config
-import aft.tools.device_configuration_checker as device_config
 from aft.logger import Logger as logger
 from aft.tools.thread_handler import Thread_handler as thread_handler
-from aft.tools.topology_builder import TopologyBuilder
-from aft.tools.edison_recovery_flasher import recover_edisons
 from aft.devicesmanager import DevicesManager
 
 
@@ -50,54 +47,7 @@ def main(argv=None):
         if args.debug:
             logger.level(logging.DEBUG)
 
-        if args.configure:
-            builder = TopologyBuilder(args)
-            builder.build_topology()
-            return 0
-
-        if args.check:
-            results = device_config.check(args)
-            logger.info(results[1])
-            print(results[1])
-            if results[0] == True:
-                return 0
-            else:
-                return 1
-
-        elif args.checkall:
-            results = device_config.check_all(args)
-            logger.info(results[1])
-            print(results[1])
-            if results[0] == True:
-                logger.info("All tests passed")
-                return 0
-            else:
-                logger.info("There were failures")
-                return 1
-
         device_manager = DevicesManager(args)
-
-        if args.blacklist:
-            if not args.device:
-                print("Device must be specified for blacklisting")
-                return 1
-            device_manager.blacklist_device(args.device, args.reason)
-            return 0
-
-        if args.unblacklist:
-            if not args.device:
-                print("Device must be specified for unblacklisting")
-                return 1
-            device_manager.unblacklist_device(args.device)
-            return 0
-
-        if args.blacklist_print:
-            device_manager.blacklist_print()
-            return 0
-
-        if args.recover_edisons:
-            recover_edisons(device_manager, args.verbose)
-            return 0
 
         if not args.machine:
             print("Both machine and image must be specified")
@@ -175,8 +125,7 @@ def parse_args():
         action="store",
         nargs="?",
         help = "Image to write: a local file, compatible with the selected " +
-        "machine."
-        )
+        "machine.")
 
     parser.add_argument(
         "--device",
@@ -185,14 +134,6 @@ def parse_args():
         action="store",
         default="",
         help="Specify the individual physical device by name.")
-
-    parser.add_argument(
-        "--machine_retries",
-        type=int,
-        nargs="?",
-        action="store",
-        default="2",
-        help="Specify how many machines will be tried if flashing fails.")
 
     parser.add_argument(
         "--flash_retries",
@@ -228,30 +169,6 @@ def parse_args():
         help="Do not power off the DUT after testing")
 
     parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Check that device is configured correctly")
-
-    parser.add_argument(
-        "--checkall",
-        type=str,
-        nargs="?",
-        const="fast",
-        action="store",
-        choices=["fast", "accurate"],
-        help="Check configurations for all devices. Defaults to fast")
-
-    parser.add_argument(
-        "--configure",
-        type=str,
-        nargs="?",
-        const="dryrun",
-        action="store",
-        choices=["dryrun", "save"],
-        help=("Find and configure devices. Dryrun merely prints the configs, "
-            "save actually saves them. Defaults to dryrun"))
-
-    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Prints additional information on various operations")
@@ -260,34 +177,6 @@ def parse_args():
         "--debug",
         action="store_true",
         help="Increases logging level")
-
-    parser.add_argument(
-        "--blacklist",
-        action="store_true",
-        help=("Blacklist a device. The device must be specified with --device. "
-            "--reason can be used to provide a reason"))
-
-    parser.add_argument(
-        "--unblacklist",
-        action="store_true",
-        help=("Removes device from the blacklist. The device must be specified"
-            "with --device."))
-
-    parser.add_argument(
-        "--reason",
-        action="store",
-        help="Reason for given operation",
-        default="No reason given")
-
-    parser.add_argument(
-        "--blacklist_print",
-        action="store_true",
-        help="Print the contents of the blacklist")
-
-    parser.add_argument(
-        "--recover_edisons",
-        action="store_true",
-        help="Lock all Edisons and recover blacklisted ones")
 
     return parser.parse_args()
 

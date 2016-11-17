@@ -28,12 +28,9 @@ except ImportError:
     import subprocess as subprocess32
 
 from aft.logger import Logger as logger
-import aft.config as config
 import aft.tools.ssh as ssh
 
-
 def wait_for_responsive_ip_for_pc_device(
-    mac_address,
     leases_file_path,
     timeout,
     polling_interval):
@@ -42,7 +39,6 @@ def wait_for_responsive_ip_for_pc_device(
     address up to timeout seconds.
 
     Args:
-        mac_address (str): Device mac address
         leases_file_path (str): Path to dnsmasq leases file
         timeout (integer): Timeout in seconds
         polling_interval (integer): Time between retries in seconds.
@@ -55,7 +51,7 @@ def wait_for_responsive_ip_for_pc_device(
     logger.debug("Polling interval: " + str(polling_interval))
 
     for _ in range(timeout // polling_interval):
-        responsive_ip = get_ip_for_pc_device(mac_address, leases_file_path)
+        responsive_ip = get_ip_for_pc_device(leases_file_path)
 
         if not responsive_ip:
             time.sleep(polling_interval)
@@ -66,7 +62,7 @@ def wait_for_responsive_ip_for_pc_device(
 
     logger.info("No responsive ip was found")
 
-def get_ip_for_pc_device(mac_address, leases_file_path):
+def get_ip_for_pc_device(leases_file_path):
     """
     Return active ip address for PC like device that leases it through dnsmasq.
 
@@ -74,15 +70,13 @@ def get_ip_for_pc_device(mac_address, leases_file_path):
     successfully
 
     Args:
-        mac_address (str): Device mac address
         leases_file_path (str): Path to dnsmasq leases file
 
     Returns:
         Device ip address as string or None if device does not have active
         ip address
     """
-    ip_addresses = get_leased_ip_addresses_for_mac(
-        mac_address, leases_file_path)
+    ip_addresses = get_leased_ip_addresses_for_mac(leases_file_path)
 
     for ip_address in ip_addresses:
         if ssh.test_ssh_connectivity(ip_address):
@@ -90,13 +84,12 @@ def get_ip_for_pc_device(mac_address, leases_file_path):
 
     return None
 
-def get_leased_ip_addresses_for_mac(mac_address, leases_file_path):
+def get_leased_ip_addresses_for_mac(leases_file_path):
     """
     Return list of ip addresses that have been leased for the device with the
     given mac address.
 
     Args:
-        mac_address (str): Device mac address
         leases_file_path (str): Path to dnsmasq leases file.
 
     Returns:
@@ -104,14 +97,12 @@ def get_leased_ip_addresses_for_mac(mac_address, leases_file_path):
     """
     leases = get_mac_leases_from_dnsmasq(leases_file_path)
 
-
     # If the testing setup has only one device return the first leases ip
     # address (there should be only one)
-    if config.SINGLE_DEVICE_SETUP and len(leases):
+    if len(leases):
         return [leases[0]["ip"]]
-
-
-    return [lease["ip"] for lease in leases if lease["mac"].lower() == mac_address.lower()]
+    else:
+        return []
 
 def get_mac_leases_from_dnsmasq(leases_file_path):
     """
@@ -208,30 +199,3 @@ def verify_device_mode(ip, mode):
             str(err.output) + "'.")
 
         return False
-
-def blacklist_device(dev_id, name, reason):
-    """
-    Blacklist the device with given id
-
-    Args:
-        dev_id (str): The device id
-        name (str): The human readable device name
-        reason (str): Reason for blacklisting
-
-    Returns:
-        None
-    """
-    with open(config.DEVICE_BLACKLIST, "a") as blacklist_file:
-        blacklist_file.write(dev_id + " " + name + " " + reason + "\n")
-
-def unblacklist_device(dev_id):
-    lines = []
-    with open(config.DEVICE_BLACKLIST, "r") as device_blacklist:
-        for line in device_blacklist:
-            if line.split()[0] == dev_id:
-                continue
-            lines.append(line)
-
-    with open(config.DEVICE_BLACKLIST, "w") as device_blacklist:
-        for line in lines:
-            device_blacklist.write(line)
