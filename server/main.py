@@ -18,8 +18,8 @@ import os
 import time
 import glob
 import argparse
-import subprocess32
-import ConfigParser
+import subprocess
+import configparser
 
 def main():
     args = parse_args()
@@ -66,7 +66,7 @@ def update_aft(beaglebone):
         pass
 
     push_folder(beaglebone["bb_ip"], "client", "/root/")
-    remote_execute(beaglebone["bb_ip"],["cd", "/root/client", ";python",
+    remote_execute(beaglebone["bb_ip"],["cd", "/root/client", ";python3",
                                         "setup.py", "install"])
 
 def update_every_beaglebones_aft():
@@ -130,7 +130,7 @@ def get_config():
     '''
     Read, parse and return Beaglebone/DUT configuration file
     '''
-    config = ConfigParser.SafeConfigParser()
+    config = configparser.SafeConfigParser()
     config.read("/etc/daft/devices.cfg")
     configurations = []
     for device in config.sections():
@@ -234,7 +234,7 @@ def push(remote_ip, source, destination, timeout = 60,
                 user + "@" + str(remote_ip) + ":" + destination]
     try:
         output = local_execute(scp_args, timeout, ignore_return_codes)
-    except subprocess32.CalledProcessError as err:
+    except subprocess.CalledProcessError as err:
         raise err
 
     return output
@@ -249,7 +249,7 @@ def push_folder(remote_ip, source, destination, timeout = 60,
                 user + "@" + str(remote_ip) + ":" + destination]
     try:
         output = local_execute(scp_args, timeout, ignore_return_codes)
-    except subprocess32.CalledProcessError as err:
+    except subprocess.CalledProcessError as err:
         raise err
     return output
 
@@ -268,7 +268,7 @@ def pull(remote_ip, source, destination,timeout = 60,
         destination]
     try:
         output = local_execute(scp_args, timeout, ignore_return_codes)
-    except subprocess32.CalledProcessError as err:
+    except subprocess.CalledProcessError as err:
         raise err
     return output
 
@@ -277,7 +277,7 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
     """
     Execute a Bash command over ssh on a remote device with IP 'remote_ip'.
     Returns combines stdout and stderr if there are no errors. On error raises
-    subprocess32 errors.
+    subprocess errors.
     """
     ssh_args = ["ssh",
                 "-i", "".join([os.path.expanduser("~"), "/.ssh/id_rsa_testing_harness"]),
@@ -290,7 +290,7 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
 
     try:
         output = local_execute(ssh_args + command, timeout, ignore_return_codes)
-    except subprocess32.CalledProcessError as err:
+    except subprocess.CalledProcessError as err:
         raise err
 
     return output
@@ -299,11 +299,11 @@ def local_execute(command, timeout = 60, ignore_return_codes = None):
     """
     Execute a command on local machine. Returns combined stdout and stderr if
     return code is 0 or included in the list 'ignore_return_codes'. Otherwise
-    raises a subprocess32 error.
+    raises a subprocess error.
     """
-    process = subprocess32.Popen(command, universal_newlines=True,
-                                 stdout = subprocess32.PIPE,
-                                 stderr = subprocess32.STDOUT)
+    process = subprocess.Popen(command, universal_newlines=True,
+                                 stdout = subprocess.PIPE,
+                                 stderr = subprocess.STDOUT)
     start = time.time()
     output = ""
     return_code = None
@@ -312,18 +312,18 @@ def local_execute(command, timeout = 60, ignore_return_codes = None):
         if return_code == None:
             try:
                 output += process.communicate(timeout = 1)[0]
-            except subprocess32.TimeoutExpired:
+            except subprocess.TimeoutExpired:
                 pass
     if return_code == None:
         # Time ran out but the process didn't end.
-        raise subprocess32.TimeoutExpired(cmd = command, output = output,
+        raise subprocess.TimeoutExpired(cmd = command, output = output,
                                           timeout = timeout)
     if ignore_return_codes == None:
         ignore_return_codes = []
     if return_code in ignore_return_codes or return_code == 0:
         return output
     else:
-        raise subprocess32.CalledProcessError(returncode = return_code,
+        raise subprocess.CalledProcessError(returncode = return_code,
                                               cmd = command, output = output)
 
 def parse_args():
