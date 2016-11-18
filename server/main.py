@@ -33,10 +33,10 @@ def main():
 
         else:
             start_time = time.time()
-            beaglebone_dut = reserve_device(args.device)
-            copy_files_to_beaglebone(beaglebone_dut, args.image_file)
-            execute_flashing(beaglebone_dut, args.image_file)
-            execute_testing(beaglebone_dut, args.image_file)
+            beaglebone_dut = reserve_device(args)
+            copy_files_to_beaglebone(beaglebone_dut, args)
+            execute_flashing(beaglebone_dut, args)
+            execute_testing(beaglebone_dut, args)
             release_device(beaglebone_dut)
             print("DAFT run duration: " + time_used(start_time))
             return 0
@@ -106,10 +106,11 @@ def time_used(start_time):
     time_taken = str(minutes) + "min " + str(seconds) + "s"
     return time_taken
 
-def reserve_device(dut):
+def reserve_device(args):
     '''
     Reserve Beaglebone/DUT for flashing and testing
     '''
+    dut = args.dut
     config = get_config()
     while True:
         for device in config:
@@ -148,18 +149,17 @@ def release_device(beaglebone_dut):
             f.write("")
             print("Released " + beaglebone_dut["lockfile"])
 
-def copy_files_to_beaglebone(bb_dut, image):
+def copy_files_to_beaglebone(bb_dut, args):
     '''
     Copy files for flashing and testing to Beaglebone harness
     '''
     print("Copying necessary files to Beaglebone")
     start_time = time.time()
-
-    image_path = os.path.abspath(image)
+    test_files = os.path.abspath(args.test_files)
+    image_path = os.path.abspath(args.image_file)
     image_path_without_extension = image_path.replace(".dsk", "")
     image_layout = image_path_without_extension + "-disk-layout.json"
     image_bmap = image_path + ".bmap"
-    test_files = "iottest"
 
     try:
         remote_execute(bb_dut["bb_ip"], ["rm", "-r", bb_dut["workspace"]+"*"])
@@ -167,13 +167,15 @@ def copy_files_to_beaglebone(bb_dut, image):
         print("Beaglebone workspace already clean")
 
     push(bb_dut["bb_ip"], image_path, bb_dut["workspace"], timeout=1800)
-    push(bb_dut["bb_ip"], image_layout, bb_dut["workspace"])
-    push(bb_dut["bb_ip"], image_bmap, bb_dut["workspace"])
+    if os.path.isfile(image_layout):
+        push(bb_dut["bb_ip"], image_layout, bb_dut["workspace"])
+    if os.path.isfile(image_bmap):
+        push(bb_dut["bb_ip"], image_bmap, bb_dut["workspace"])
     push_folder(bb_dut["bb_ip"], test_files, bb_dut["workspace"])
 
     print("Copying files to Beaglebone took: " + time_used(start_time))
 
-def execute_flashing(bb_dut, image):
+def execute_flashing(bb_dut, args):
     '''
     Execute flashing of the DUT
     '''
@@ -187,7 +189,7 @@ def execute_flashing(bb_dut, image):
     try:
         output = remote_execute(bb_dut["bb_ip"],
                                 ["cd", bb_dut["workspace"],";aft", dut,
-                                image, "--record", "--notest"],
+                                args.image_file, "--record", "--notest"],
                                 timeout=2400)
     finally:
         current_dir = os.getcwd()
@@ -199,7 +201,7 @@ def execute_flashing(bb_dut, image):
     print(output)
     print("Flashing took: " + time_used(start_time))
 
-def execute_testing(bb_dut, image):
+def execute_testing(bb_dut, args):
     '''
     Execute flashing and testing of the DUT
     '''
@@ -213,7 +215,7 @@ def execute_testing(bb_dut, image):
     try:
         output = remote_execute(bb_dut["bb_ip"],
                                 ["cd", bb_dut["workspace"],";aft", dut,
-                                image, "--record", "--noflash"],
+                                args.image_file, "--record", "--noflash"],
                                 timeout=2400)
     finally:
         current_dir = os.getcwd()
@@ -331,10 +333,10 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "device",
+        "dut",
         action="store",
         nargs="?",
-        help="Model type")
+        help="Device type to test")
 
     parser.add_argument(
         "image_file",
@@ -342,6 +344,13 @@ def parse_args():
         nargs="?",
         help = "Image to write: a local file, compatible with the selected " +
         "device.")
+
+    parser.add_argument(
+        "--test_files",
+        type=str,
+        nargs="?",
+        action="store",
+        help = "Folder to copy to Beaglebone for tests")
 
     parser.add_argument(
         "--update",
