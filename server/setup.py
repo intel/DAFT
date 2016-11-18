@@ -14,7 +14,13 @@
 """
 DAFT installation module
 """
+import os
 from setuptools import setup
+
+if os.path.isfile("/etc/daft/devices.cfg"):
+    DEFAULT_CONFIG = []
+else:
+    DEFAULT_CONFIG = ["default_config/devices.cfg"]
 
 setup(
     name = "DAFT",
@@ -25,4 +31,6 @@ setup(
     url = "github",
     py_modules = ["main"],
     entry_points = { "console_scripts" : ["daft=main:main"] },
+    data_files = [("/etc/daft/", DEFAULT_CONFIG),
+                  ("/etc/daft/lockfiles/", [])]
     )
