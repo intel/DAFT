@@ -17,7 +17,6 @@ import sys
 import os
 import time
 import glob
-import atexit
 import argparse
 import subprocess32
 import ConfigParser
@@ -94,7 +93,8 @@ def update_every_beaglebones_aft():
                     release_device(device)
                     updated_devices.append(device)
         config = [device for device in config if device not in updated_devices]
-        time.sleep(10)
+        if config:
+            time.sleep(10)
 
 def time_used(start_time):
     '''
@@ -302,7 +302,6 @@ def local_execute(command, timeout = 60, ignore_return_codes = None):
     process = subprocess32.Popen(command, universal_newlines=True,
                                  stdout = subprocess32.PIPE,
                                  stderr = subprocess32.STDOUT)
-    atexit.register(subprocess_killer, process)
     start = time.time()
     output = ""
     return_code = None
@@ -324,12 +323,6 @@ def local_execute(command, timeout = 60, ignore_return_codes = None):
     else:
         raise subprocess32.CalledProcessError(returncode = return_code,
                                               cmd = command, output = output)
-
-def subprocess_killer(process):
-    """
-    A function to kill subprocesses, intended to be used as 'atexit' handle.
-    """
-    process.terminate()
 
 def parse_args():
     """
