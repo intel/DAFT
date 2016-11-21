@@ -89,6 +89,7 @@ def update_every_beaglebones_aft():
                 if not f.read():
                     f.write("Locked\n")
                     print("Reserved " + device["lockfile"])
+                    f.close() #Need to close, release_device() opens it again
                     update_aft(device)
                     release_device(device)
                     updated_devices.append(device)
