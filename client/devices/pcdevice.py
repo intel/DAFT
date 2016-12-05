@@ -406,26 +406,6 @@ class PCDevice(Device):
                     ".ssh/authorized_keys")
             ])
 
-        if not self._uses_hddimg:
-            logger.info("Adding IMA attribute to the ssh-key")
-            ssh.remote_execute(
-                self.dev_ip,
-                [
-                    "setfattr",
-                    "-n",
-                    "security.ima",
-                    "-v",
-                    "0x01`sha1sum " +
-                    os.path.join(
-                        self._ROOT_PARTITION_MOUNT_POINT,
-                        root_user_home,
-                        ".ssh/authorized_keys") + " | cut '-d ' -f1`",
-                    os.path.join(
-                        self._ROOT_PARTITION_MOUNT_POINT,
-                        root_user_home,
-                        ".ssh/authorized_keys")
-                ])
-
         logger.info("Flushing.")
         ssh.remote_execute(self.dev_ip, ["sync"])
         logger.info("Unmounting.")

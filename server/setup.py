@@ -17,14 +17,15 @@ DAFT installation module
 import os
 from setuptools import setup
 
-if os.path.isfile("/etc/daft/devices.cfg"):
-    DEFAULT_CONFIG = []
-else:
-    DEFAULT_CONFIG = ["default_config/devices.cfg"]
+DEFAULT_CONFIG = []
+if not os.path.isfile("/etc/daft/devices.cfg"):
+    DEFAULT_CONFIG.append("default_config/devices.cfg")
+if not os.path.isfile("/etc/daft/daft.cfg"):
+    DEFAULT_CONFIG.append("default_config/daft.cfg")
 
 setup(
     name = "DAFT",
-    version = "0.4",
+    version = "0.5",
     description = "Distributed Automatic Flasher Tester",
     author = "Simo Kuusela, Topi Kuutela, Igor Stoppa",
     author_email = "simo.kuusela@intel.com",
