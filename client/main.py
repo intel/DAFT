@@ -18,8 +18,6 @@
 Main entry point for aft.
 """
 
-import os
-import glob
 import sys
 import argparse
 import logging
@@ -28,7 +26,7 @@ import aft.config as config
 from aft.logger import Logger as logger
 from aft.tools.thread_handler import Thread_handler as thread_handler
 from aft.devicesmanager import DevicesManager
-
+from aft.tools.misc import local_execute
 
 def main(argv=None):
     """
@@ -86,13 +84,11 @@ def main(argv=None):
         for thread in thread_handler.get_threads():
             thread.join(5)
 
-        # Change log file permissions because if root_squash is used with
-        # nfs server, logs can't be removed/changed without sudo
-        text_files = glob.glob("*log*")
-        text_files = text_files + glob.glob("iottest/*log*")
-        text_files = text_files + glob.glob("*xml")
-        for text_file in text_files:
-            os.chmod(text_file, 0o664)
+        # Change file permissions because if root_squash is used with nfs server
+        # logs and __pycache__ files can't be removed/changed on the server
+        # without sudo, this will change all files that BBB has created
+        local_execute(["chmod", "--silent", "-R", "777", "./"],
+                       ignore_return_codes=[1])
 
 def parse_args():
     """
