@@ -16,30 +16,28 @@
 import sys
 import os
 import time
-import glob
+import shutil
 import argparse
 import subprocess
 import configparser
 
 def main():
     args = parse_args()
+    config = get_daft_config()
     beaglebone_dut = None
 
-    try:
-        if args.update:
-            update_every_beaglebones_aft()
-            print("Updated AFT to all Beaglebones")
-            return 0
+    if args.update:
+        update_aft(config)
+        return 0
 
-        else:
-            start_time = time.time()
-            beaglebone_dut = reserve_device(args)
-            copy_files_to_beaglebone(beaglebone_dut, args)
-            execute_flashing(beaglebone_dut, args)
-            execute_testing(beaglebone_dut, args)
-            release_device(beaglebone_dut)
-            print("DAFT run duration: " + time_used(start_time))
-            return 0
+    try:
+        start_time = time.time()
+        beaglebone_dut = reserve_device(args)
+        execute_flashing(beaglebone_dut, args, config)
+        execute_testing(beaglebone_dut, args, config)
+        release_device(beaglebone_dut)
+        print("DAFT run duration: " + time_used(start_time))
+        return 0
 
     except KeyboardInterrupt:
         print("Keyboard interrupt, stopping DAFT run")
@@ -56,46 +54,33 @@ def main():
                       beaglebone_dut["lockfile"])
         raise
 
-def update_aft(beaglebone):
+def update_aft(config):
     '''
-    Update AFT to specific Beaglebone
+    Update Beaglebone AFT
     '''
-    try:
-        remote_execute(beaglebone["bb_ip"], ["rm", "-r", "/root/client"])
-    except:
-        pass
+    if os.path.isdir("client"):
+        if os.path.isdir(config["bbb_fs_path"] + "root/"):
+            try:
+                shutil.rmtree(config["bbb_fs_path"] + "root/client/")
+            except FileNotFoundError:
+                pass
+            shutil.copytree("client", config["bbb_fs_path"] + "root/client")
+            print("Updated AFT succesfully")
+        else:
+            print("Can't update AFT, didn't find " + config["bbb_fs_path"] +
+                  "root/")
+    else:
+        print("Can't update AFT, didn't find \"client\" folder")
 
-    push_folder(beaglebone["bb_ip"], "client", "/root/")
-    remote_execute(beaglebone["bb_ip"],["cd", "/root/client", ";python3",
-                                        "setup.py", "install"])
-
-def update_every_beaglebones_aft():
+def get_daft_config():
     '''
-    Update every Beaglebones AFT
+    Read and parse DAFT configuration file and return result as dictionary
     '''
-    if not os.path.isdir("client"):
-        print("Didn't find client folder")
-
-    print("Updating AFT to Beaglebones")
-    config = get_config()
-    updated_devices = []
-    while config:
-        for device in config:
-            lockfile = "/etc/daft/lockfiles/" + device["lockfile"]
-            write_mode = "w+"
-            if os.path.isfile(lockfile):
-                write_mode = "r+"
-            with open(lockfile, write_mode) as f:
-                if not f.read():
-                    f.write("Locked\n")
-                    print("Reserved " + device["lockfile"])
-                    f.close() #Need to close, release_device() opens it again
-                    update_aft(device)
-                    release_device(device)
-                    updated_devices.append(device)
-        config = [device for device in config if device not in updated_devices]
-        if config:
-            time.sleep(10)
+    config = configparser.SafeConfigParser()
+    config.read("/etc/daft/daft.cfg")
+    section = config.sections()[0]
+    config = dict(config.items(section))
+    return config
 
 def time_used(start_time):
     '''
@@ -112,7 +97,7 @@ def reserve_device(args):
     Reserve Beaglebone/DUT for flashing and testing
     '''
     dut = args.dut
-    config = get_config()
+    config = get_bbb_config()
     while True:
         for device in config:
             if device["dut"].lower() == dut:
@@ -127,9 +112,9 @@ def reserve_device(args):
                         return device
         time.sleep(10)
 
-def get_config():
+def get_bbb_config():
     '''
-    Read, parse and return Beaglebone/DUT configuration file
+    Read and parse BBB configuration file and return result as dictionary
     '''
     config = configparser.SafeConfigParser()
     config.read("/etc/daft/devices.cfg")
@@ -137,6 +122,7 @@ def get_config():
     for device in config.sections():
         device_config = dict(config.items(device))
         device_config["lockfile"] = device
+        device_config["dut"] = ''.join(x for x in device if not x.isdigit())
         configurations.append(device_config)
     return configurations
 
@@ -150,128 +136,60 @@ def release_device(beaglebone_dut):
             f.write("")
             print("Released " + beaglebone_dut["lockfile"])
 
-def copy_files_to_beaglebone(bb_dut, args):
-    '''
-    Copy files for flashing and testing to Beaglebone harness
-    '''
-    print("Copying necessary files to Beaglebone")
-    start_time = time.time()
-    test_files = os.path.abspath(args.test_files)
-    image_path = os.path.abspath(args.image_file)
-    image_path_without_extension = image_path.replace(".dsk", "")
-    image_layout = image_path_without_extension + "-disk-layout.json"
-    image_bmap = image_path + ".bmap"
-
-    try:
-        remote_execute(bb_dut["bb_ip"], ["rm", "-r", bb_dut["workspace"]+"*"])
-    except:
-        print("Beaglebone workspace already clean")
-
-    push(bb_dut["bb_ip"], image_path, bb_dut["workspace"], timeout=1800)
-    if os.path.isfile(image_layout):
-        push(bb_dut["bb_ip"], image_layout, bb_dut["workspace"])
-    if os.path.isfile(image_bmap):
-        push(bb_dut["bb_ip"], image_bmap, bb_dut["workspace"])
-    push_folder(bb_dut["bb_ip"], test_files, bb_dut["workspace"])
-
-    print("Copying files to Beaglebone took: " + time_used(start_time))
-
-def execute_flashing(bb_dut, args):
+def execute_flashing(bb_dut, args, config):
     '''
     Execute flashing of the DUT
     '''
     print("Executing flashing of DUT")
     start_time = time.time()
-    if bb_dut["dut"].lower() == "minnowboard":
-        dut = "minnowboardmax"
-    if bb_dut["dut"].lower() == "joule":
-        dut = "bxtc"
-
+    dut = bb_dut["dut"].lower()
+    current_dir = os.getcwd().replace(config["workspace_nfs_path"], "")
+    img_path = args.image_file.replace(config["workspace_nfs_path"],
+                                       "/root/workspace/")
+    record = ""
+    if args.record:
+        record = "--record"
     try:
         output = remote_execute(bb_dut["bb_ip"],
-                                ["cd", bb_dut["workspace"],";aft", dut,
-                                args.image_file, "--record", "--notest"],
+                                ["cd", "/root/workspace/" + current_dir,";aft",
+                                dut, img_path, record, "--notest"],
                                 timeout=2400)
     finally:
-        current_dir = os.getcwd()
-        pull(bb_dut["bb_ip"], bb_dut["workspace"] + "*log", current_dir)
-        log_files = glob.glob("*.log")
+        log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
+                     "serial.log.raw"]
         for log in log_files:
-            os.rename(log, "flashing_" + log)
+            if os.path.isfile(log):
+                os.rename(log, "flash_" + log)
 
     print(output)
     print("Flashing took: " + time_used(start_time))
 
-def execute_testing(bb_dut, args):
+def execute_testing(bb_dut, args, config):
     '''
     Execute flashing and testing of the DUT
     '''
     print("Executing testing of the DUT")
     start_time = time.time()
-    if bb_dut["dut"].lower() == "minnowboard":
-        dut = "minnowboardmax"
-    if bb_dut["dut"].lower() == "joule":
-        dut = "bxtc"
-
+    dut = bb_dut["dut"].lower()
+    current_dir = os.getcwd().replace(config["workspace_nfs_path"], "")
+    record = ""
+    if args.record:
+        record = "--record"
     try:
         output = remote_execute(bb_dut["bb_ip"],
-                                ["cd", bb_dut["workspace"],";aft", dut,
-                                args.image_file, "--record", "--noflash"],
+                                ["cd", "/root/workspace/" + current_dir,";aft",
+                                dut, args.image_file, record, "--noflash"],
                                 timeout=2400)
+
     finally:
-        current_dir = os.getcwd()
-        pull(bb_dut["bb_ip"], bb_dut["workspace"] + "*log", current_dir)
+        log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
+                     "serial.log.raw"]
+        for log in log_files:
+            if os.path.isfile(log):
+                os.rename(log, "test_" + log)
 
     print(output)
     print("Testing took: " + time_used(start_time))
-
-def push(remote_ip, source, destination, timeout = 60,
-         ignore_return_codes = None, user = "root"):
-    """
-    Transmit a file from local 'source' to remote 'destination' over SCP
-    """
-    scp_args = ["scp", "-o", "UserKnownHostsFile=/dev/null",
-                "-o", "StrictHostKeyChecking=no", source,
-                user + "@" + str(remote_ip) + ":" + destination]
-    try:
-        output = local_execute(scp_args, timeout, ignore_return_codes)
-    except subprocess.CalledProcessError as err:
-        raise err
-
-    return output
-
-def push_folder(remote_ip, source, destination, timeout = 60,
-         ignore_return_codes = None, user = "root"):
-    """
-    Transmit a file from local 'source' to remote 'destination' over SCP
-    """
-    scp_args = ["scp", "-o", "UserKnownHostsFile=/dev/null",
-                "-o", "StrictHostKeyChecking=no", "-r", source,
-                user + "@" + str(remote_ip) + ":" + destination]
-    try:
-        output = local_execute(scp_args, timeout, ignore_return_codes)
-    except subprocess.CalledProcessError as err:
-        raise err
-    return output
-
-def pull(remote_ip, source, destination,timeout = 60,
-         ignore_return_codes = None, user = "root"):
-    """
-    Transmit a file from remote 'source' to local 'destination' over SCP
-    """
-    scp_args = [
-        "scp",
-        "-o",
-        "UserKnownHostsFile=/dev/null",
-        "-o",
-        "StrictHostKeyChecking=no",
-        user + "@" + str(remote_ip) + ":" + source,
-        destination]
-    try:
-        output = local_execute(scp_args, timeout, ignore_return_codes)
-    except subprocess.CalledProcessError as err:
-        raise err
-    return output
 
 def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
                    user = "root", connect_timeout = 15):
@@ -347,16 +265,16 @@ def parse_args():
         "device.")
 
     parser.add_argument(
-        "--test_files",
-        type=str,
-        nargs="?",
-        action="store",
-        help = "Folder to copy to Beaglebone for tests")
+        "--record",
+        action="store_true",
+        default=False,
+        help="Record serial output from DUT while flashing/testing")
 
     parser.add_argument(
         "--update",
         action="store_true",
-        help="Update AFT with all Beaglebones")
+        default=False,
+        help="Update AFT to Beaglebone filesystem")
 
     return parser.parse_args()
 

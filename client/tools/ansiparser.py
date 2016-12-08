@@ -54,7 +54,7 @@ def parse_file(input_file_name):
 
 
     # back up the file, just in case
-    print("Backing up " + input_file_name + " as " + raw_input_file_name + ".")
+    print("Backing up " + input_file_name + " as " + raw_input_file_name + ".", end="")
     os.rename(input_file_name, raw_input_file_name)
 
     # And rename the temp output file

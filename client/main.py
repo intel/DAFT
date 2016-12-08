@@ -18,8 +18,9 @@
 Main entry point for aft.
 """
 
+import os
+import glob
 import sys
-import os.path
 import argparse
 import logging
 
@@ -48,20 +49,6 @@ def main(argv=None):
             logger.level(logging.DEBUG)
 
         device_manager = DevicesManager(args)
-
-        if not args.machine:
-            print("Both machine and image must be specified")
-            return 1
-
-        if not args.noflash:
-            if not args.file_name:
-                print("Both machine and image must be specified")
-                return 1
-
-            if not os.path.isfile(args.file_name):
-                print("Didn't find image: " + args.file_name)
-                logger.error("Didn't find image: " + args.file_name)
-                return 1
 
         if args.device:
             device, tester = device_manager.try_flash_specific(args)
@@ -98,6 +85,14 @@ def main(argv=None):
         thread_handler.set_flag(thread_handler.RECORDERS_STOP)
         for thread in thread_handler.get_threads():
             thread.join(5)
+
+        # Change log file permissions because if root_squash is used with
+        # nfs server, logs can't be removed/changed without sudo
+        text_files = glob.glob("*log*")
+        text_files = text_files + glob.glob("iottest/*log*")
+        text_files = text_files + glob.glob("*xml")
+        for text_file in text_files:
+            os.chmod(text_file, 0o664)
 
 def parse_args():
     """
