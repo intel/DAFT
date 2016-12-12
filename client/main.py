@@ -84,12 +84,6 @@ def main(argv=None):
         for thread in thread_handler.get_threads():
             thread.join(5)
 
-        # Change file permissions because if root_squash is used with nfs server
-        # logs and __pycache__ files can't be removed/changed on the server
-        # without sudo, this will change all files that BBB has created
-        local_execute(["chmod", "--silent", "-R", "777", "./"],
-                       ignore_return_codes=[1])
-
 def parse_args():
     """
     Argument parsing
