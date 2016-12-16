@@ -80,6 +80,7 @@ def get_daft_config():
     config.read("/etc/daft/daft.cfg")
     section = config.sections()[0]
     config = dict(config.items(section))
+    config["workspace_nfs_path"] = os.path.normpath(config["workspace_nfs_path"])
     return config
 
 def time_used(start_time):
@@ -145,13 +146,13 @@ def execute_flashing(bb_dut, args, config):
     dut = bb_dut["dut"].lower()
     current_dir = os.getcwd().replace(config["workspace_nfs_path"], "")
     img_path = args.image_file.replace(config["workspace_nfs_path"],
-                                       "/root/workspace/")
+                                       "/root/workspace")
     record = ""
     if args.record:
         record = "--record"
     try:
         output = remote_execute(bb_dut["bb_ip"],
-                                ["cd", "/root/workspace/" + current_dir,";aft",
+                                ["cd", "/root/workspace" + current_dir,";aft",
                                 dut, img_path, record, "--notest"],
                                 timeout=2400)
     finally:
@@ -177,7 +178,7 @@ def execute_testing(bb_dut, args, config):
         record = "--record"
     try:
         output = remote_execute(bb_dut["bb_ip"],
-                                ["cd", "/root/workspace/" + current_dir,";aft",
+                                ["cd", "/root/workspace" + current_dir,";aft",
                                 dut, args.image_file, record, "--noflash"],
                                 timeout=2400)
 
