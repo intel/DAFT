@@ -58,19 +58,19 @@ def update_aft(config):
     '''
     Update Beaglebone AFT
     '''
-    if os.path.isdir("client"):
+    if os.path.isdir("testing_harness"):
         if os.path.isdir(config["bbb_fs_path"] + "root/"):
             try:
                 shutil.rmtree(config["bbb_fs_path"] + "root/client/")
             except FileNotFoundError:
                 pass
-            shutil.copytree("client", config["bbb_fs_path"] + "root/client")
+            shutil.copytree("testing_harness", config["bbb_fs_path"] + "root/client")
             print("Updated AFT succesfully")
         else:
             print("Can't update AFT, didn't find " + config["bbb_fs_path"] +
                   "root/")
     else:
-        print("Can't update AFT, didn't find \"client\" folder")
+        print("Can't update AFT, didn't find \"testing_harness\" folder")
 
 def get_daft_config():
     '''
