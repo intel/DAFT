@@ -59,16 +59,17 @@ def update_aft(config):
     Update Beaglebone AFT
     '''
     if os.path.isdir("testing_harness"):
-        if os.path.isdir(config["bbb_fs_path"] + "root/"):
+        if os.path.isdir(config["bbb_fs_path"] + "/root/"):
             try:
-                shutil.rmtree(config["bbb_fs_path"] + "root/client/")
+                shutil.rmtree(config["bbb_fs_path"] + "/root/client/")
             except FileNotFoundError:
                 pass
-            shutil.copytree("testing_harness", config["bbb_fs_path"] + "root/client")
+            shutil.copytree("testing_harness", config["bbb_fs_path"] +
+                                               "/root/client")
             print("Updated AFT succesfully")
         else:
             print("Can't update AFT, didn't find " + config["bbb_fs_path"] +
-                  "root/")
+                  "/root/")
     else:
         print("Can't update AFT, didn't find \"testing_harness\" folder")
 
@@ -81,6 +82,7 @@ def get_daft_config():
     section = config.sections()[0]
     config = dict(config.items(section))
     config["workspace_nfs_path"] = os.path.normpath(config["workspace_nfs_path"])
+    config["bbb_fs_path"] = os.path.normpath(config["bbb_fs_path"])
     return config
 
 def time_used(start_time):
@@ -154,7 +156,7 @@ def execute_flashing(bb_dut, args, config):
         output = remote_execute(bb_dut["bb_ip"],
                                 ["cd", "/root/workspace" + current_dir,";aft",
                                 dut, img_path, record, "--notest"],
-                                timeout=2400)
+                                timeout=2400, config = config)
     finally:
         log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
                      "serial.log.raw"]
@@ -180,7 +182,7 @@ def execute_testing(bb_dut, args, config):
         output = remote_execute(bb_dut["bb_ip"],
                                 ["cd", "/root/workspace" + current_dir,";aft",
                                 dut, args.image_file, record, "--noflash"],
-                                timeout=2400)
+                                timeout=2400, config = config)
 
     finally:
         log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
@@ -193,14 +195,14 @@ def execute_testing(bb_dut, args, config):
     print("Testing took: " + time_used(start_time))
 
 def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
-                   user = "root", connect_timeout = 15):
+                   user = "root", connect_timeout = 15, config = None):
     """
     Execute a Bash command over ssh on a remote device with IP 'remote_ip'.
     Returns combines stdout and stderr if there are no errors. On error raises
     subprocess errors.
     """
     ssh_args = ["ssh",
-                "-i", "".join([os.path.expanduser("~"), "/.ssh/id_rsa_testing_harness"]),
+                "-i", config["bbb_fs_path"] + "/root/.ssh/id_rsa_testing_harness",
                 "-o", "UserKnownHostsFile=/dev/null",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "BatchMode=yes",
