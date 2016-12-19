@@ -62,7 +62,12 @@ class QATestCase(BasicTestCase):
             self.parameters += " " + "--target-ip " + ip_address
 
         if not "--pkg-arch" in self.parameters:
-            self.parameters += self._DEVICE_PARAMETERS[device.model.lower()]
+            if device.model.lower() in self._DEVICE_PARAMETERS:
+                self.parameters += self._DEVICE_PARAMETERS[device.model.lower()]
+            else:
+                self.parameters += (" --machine intel-corei7-64 " +
+                                    "--test-manifest " +
+                                    "iottest/testplan/minnowmax.iottest.manifest")
 
         self.run_local_command()
         return self._result_has_zero_fails()
