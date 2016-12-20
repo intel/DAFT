@@ -269,12 +269,10 @@ class PCDevice(Device):
             None
         """
         logger.info("Mount one layer.")
-        ssh.remote_execute(
-            self.dev_ip,
-            [
-                "mount",
-                self.get_root_partition_path(image_file_name),
-                self._ROOT_PARTITION_MOUNT_POINT])
+        ssh.remote_execute(self.dev_ip,
+                           ["mount",
+                           self.get_root_partition_path(image_file_name),
+                           self._ROOT_PARTITION_MOUNT_POINT])
 
     def get_root_partition_path(self, image_file_name):
         """
@@ -292,8 +290,8 @@ class PCDevice(Device):
 
         if not os.path.isfile(layout_file_name):
             logger.info("Disk layout file " + layout_file_name  +
-                         " doesn't exist. Using root_partition from config.")
-            return self.default_root_patition
+                         " doesn't exist. Finding root partition.")
+            return self.find_root_partition()
 
         layout_file = open(layout_file_name, "r")
         disk_layout = json.load(layout_file)
@@ -309,6 +307,43 @@ class PCDevice(Device):
 
     def get_layout_file_name(self, image_file_name):
         return image_file_name.split(".")[0] + "-disk-layout.json"
+
+    def find_root_partition(self):
+        '''
+        Find _target_device partition that has /home/root
+        '''
+        # Find all _target_device partitions
+        partitions = []
+        target = self._target_device.split("/")[-1]
+        lsblk = ssh.remote_execute(self.dev_ip, ["lsblk"])
+        lsblk = lsblk.split()
+        for line in lsblk:
+            if target in line:
+                line = ''.join(x for x in line if x.isalnum())
+                if not line==target:
+                    partitions.append(line)
+
+        # Check through partitions if it contains '/home/root' directory
+        for partition in partitions:
+            ssh.remote_execute(self.dev_ip,
+                               ["mount",
+                                "/dev/" + partition,
+                                self._ROOT_PARTITION_MOUNT_POINT])
+            files = ssh.remote_execute(self.dev_ip,
+                               ["ls",
+                                self._ROOT_PARTITION_MOUNT_POINT])
+            if "home" in files:
+                files = ssh.remote_execute(self.dev_ip,
+                                   ["ls",
+                                    self._ROOT_PARTITION_MOUNT_POINT + "home/"])
+            ssh.remote_execute(self.dev_ip,
+                               ["umount",
+                                self._ROOT_PARTITION_MOUNT_POINT])
+            if "root" in files:
+                partition_path = "/dev/" + partition
+                return partition_path
+
+        raise errors.AFTDeviceError("Couldn't find root partition")
 
     def _mount_two_layers(self):
         """
