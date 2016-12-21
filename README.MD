@@ -1,3 +1,4 @@
+# Distributed Automatic Flasher Tester (DAFT)
 # Contents
 1. [Overview](#1-overview)
     * 1.1. [How it works](#11-how-it-works)
