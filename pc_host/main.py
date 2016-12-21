@@ -27,8 +27,7 @@ def main():
     beaglebone_dut = None
 
     if args.update:
-        update_aft(config)
-        return 0
+        return update_aft(config)
 
     try:
         start_time = time.time()
@@ -58,20 +57,23 @@ def update_aft(config):
     '''
     Update Beaglebone AFT
     '''
-    aft_path = "usr/local/lib/python3.4/dist-packages/aft-1.0.0-py3.4.egg/aft"
     if os.path.isdir("testing_harness"):
-        if os.path.isdir(config["bbb_fs_path"] + aft_path):
+        if os.path.isdir(config["bbb_fs_path"] + config["bbb_aft_path"]):
             try:
-                shutil.rmtree(config["bbb_fs_path"] + aft_path)
+                shutil.rmtree(config["bbb_fs_path"] + config["bbb_aft_path"])
             except FileNotFoundError:
                 pass
-            shutil.copytree("testing_harness", config["bbb_fs_path"] + aft_path)
+            shutil.copytree("testing_harness", config["bbb_fs_path"] +
+                                               config["bbb_aft_path"])
             print("Updated AFT succesfully")
+            return 0
         else:
             print("Can't update AFT, didn't find " + config["bbb_fs_path"] +
-                  aft_path)
+                  config["bbb_aft_path"])
+            return 2
     else:
         print("Can't update AFT, didn't find \"testing_harness\" folder")
+        return 1
 
 def get_daft_config():
     '''
