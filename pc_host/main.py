@@ -247,6 +247,7 @@ def local_execute(command, timeout = 60, ignore_return_codes = None):
     if return_code in ignore_return_codes or return_code == 0:
         return output
     else:
+        print(output)
         raise subprocess.CalledProcessError(returncode = return_code,
                                               cmd = command, output = output)
 
