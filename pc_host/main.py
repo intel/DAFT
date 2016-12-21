@@ -44,6 +44,10 @@ def main():
             release_device(beaglebone_dut)
         return 0
 
+    except ImageNameError:
+        release_device(beaglebone_dut)
+        return 0
+
     except:
         if beaglebone_dut:
             lockfile = "/etc/daft/lockfiles/" + beaglebone_dut["lockfile"]
@@ -145,6 +149,10 @@ def execute_flashing(bb_dut, args, config):
     '''
     Execute flashing of the DUT
     '''
+    if not os.path.isfile(args.image_file):
+        print(args.image_file + " doesn't exist.")
+        raise ImageNameError()
+
     print("Executing flashing of DUT")
     start_time = time.time()
     dut = bb_dut["dut"].lower()
@@ -250,6 +258,9 @@ def local_execute(command, timeout = 60, ignore_return_codes = None):
         print(output)
         raise subprocess.CalledProcessError(returncode = return_code,
                                               cmd = command, output = output)
+
+class ImageNameError(Exception):
+    pass
 
 def parse_args():
     """
