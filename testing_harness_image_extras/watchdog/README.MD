@@ -1,0 +1,1 @@
+This watchdog checks periodically if it has connection to the 192.168.30.1 server and also if sshd and dnsmasq services are running. Watchdog.py should be placed in /usr/bin/watchdog and watchdog.service to /etc/systemd/system/watchdog.service on the testing harness image.
