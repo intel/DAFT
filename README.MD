@@ -25,7 +25,7 @@
 [DAFT hardware images](#daft-hardware-images)
 
 # 1. Overview
-![](https://github.com/01org/DAFT/blob/master/readme_pictures/daft_setup.jpg?raw=true)
+![](readme_pictures/daft_setup.jpg)
 _DAFT hardware setup._
 
 DAFT (Distributed Automatic Flasher Tester) is a tool for automated flashing and testing of an OS image on a real device. Its goal is to both standardize and simplify the testing on a variety of devices, while keeping minimal the cost and the complexity of the setup. In particular, it strives to use only inexpensive off-the shelf hardware components and to keep one single configuration that can be used by both large testing farms and individual testers/developers.
@@ -51,7 +51,7 @@ Fewest mandatory steps to create DAFT setup with one device under test (DUT) and
 * [Use DAFT](#29-using-daft)
 
 ## 2.1 Required hardware
-![](https://github.com/01org/DAFT/blob/master/readme_pictures/daft_setup_numbered.png?raw=true)
+![](readme_pictures/daft_setup_numbered.png)
 _1. USB to USB-mini cable 2. BeagleBone Black 3. Micro SD card 4. USB-Serial cable 5. Ethernet cable 6. BBB power supply 7. DUT power supply 8. Power jack extension cable 9. Relay 10. Dupont cables 11. DUT (Minnowboard MAX) 12. Micro SD card 13. Secondary network interface 14. Ubuntu PC_
 
 List of hardware needed for DAFT setup:
@@ -260,7 +260,7 @@ sudo chown <b>user</b>:<b>group</b> /etc/daft/lockfiles
 </pre>
 
 ## 2.6 Setting up relay
-![](https://github.com/01org/DAFT/blob/master/readme_pictures/relay_and_cable.jpg?raw=true)
+![](readme_pictures/relay_and_cable.jpg)
 _Relay with extension cable hooked up._
 
 First cut the DC plug extension cable in half from the middle (or power supplys one if you don't mind cutting it). At least some cables had trouble if they weren't cut short so it's recommended to shorten the cables first. Then solder the ground lines back together and use tape or heat shrink tube to cover it. Then solder or screw the DC line cables to the relay. If the relay has screw holes it's recommended to solder small tin beads to the cable ends and flatten them with pliers to get better contact. On default it's expected that the relay is normally closed but this can be changed by changing _gpio_cutter_on_ and _gpio_cutter_off_ values:
@@ -280,11 +280,11 @@ serial_bauds = 115200
 </pre>
 
 ## 2.7 Connecting hardware
-![](https://github.com/01org/DAFT/blob/master/readme_pictures/daft_diagram.png?raw=true)
+![](readme_pictures/daft_diagram.png)
 
 _Wiring diagram for hardware._
 
-![](https://github.com/01org/DAFT/blob/master/readme_pictures/connecting_relay.jpg?raw=true)
+![](readme_pictures/connecting_relay.jpg)
 _How to connect the relay to the BBB._
 
 After everything else has been done, hardware can be connected together according to the pictures above and BBB can be booted from NFS. If there is a problem with booting it's most likely due to dnsmasq, TFTP, NFS or file permissions. Check [troubleshooting section](#troubleshooting) for more help if needed.
@@ -379,9 +379,9 @@ If it gets stuck on `dhcp` it's dnsmasq or network configuration problem. Check 
 ## DAFT hardware images
 
 ### USB-serial
-![](https://github.com/01org/DAFT/blob/master/readme_pictures/usb_serial_cable.jpg?raw=true)
+![](readme_pictures/usb_serial_cable.jpg)
 _USB-serial cable._
 
 ### Relays
-![](https://github.com/01org/DAFT/blob/master/readme_pictures/relays.jpg?raw=true)
+![](readme_pictures/relays.jpg)
 _Examples of the types of relays that work with BBB though the left one is better as it includes optocoupler which reduces the current needed from GPIO._
