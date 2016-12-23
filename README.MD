@@ -19,8 +19,9 @@
     * 2.7 [Connecting hardware](#27-connecting-hardware)
     * 2.8 [Setting up DUT](#28-setting-up-dut)
     * 2.9 [Using DAFT](#29-using-daft)
-3. [Troubleshooting](#3-troubleshooting)
-    * 3.1 [Beaglebone Black booting](#31-beaglebone-black-booting)
+3. [Creating BeagleBone Black filesystem](#3-creating-beaglebone-black-filesystem)
+4. [Troubleshooting](#4-troubleshooting)
+    * 4.1 [Beaglebone Black booting](#41-beaglebone-black-booting)
 
 [DAFT hardware images](#daft-hardware-images)
 
@@ -35,7 +36,7 @@ At the highest level DAFT is called from the command line with the device type a
 ```
 daft joule os-image.img
 ```
-DAFT will then procede to flash the image to the device. After that has been done successfully the new image is booted and tests are executed. Tests aren't strictly part of DAFT but rather DAFT includes tools and libraries to interact with the device so own tests can be written.
+DAFT will then procede to flash the image to the device. After that has been done successfully the new image is booted and tests are executed. Tests aren't strictly part of DAFT but rather DAFT includes tools and libraries to interact with the device so own test can be written or existing test suites can be integrated.
 
 # 2. Creating DAFT setup
 Fewest mandatory steps to create DAFT setup with one device under test (DUT) and BeagleBone Black (BBB):
@@ -61,7 +62,7 @@ List of hardware needed for DAFT setup:
 * Secondary network interface for PC if it doesn't have one
     * Easiest option is USB ethernet adapter, cheapest is PCI network card
 * BeagleBone Black
-* Micro SD card for [BBB uboot](#243-setting-beaglebone-black-to-boot-from-nfs) (optional)
+* Micro SD card for [BBB U-Boot](#243-setting-beaglebone-black-to-boot-from-nfs) (optional)
 * Ethernet cable
 * USB to USB-mini cable
     * BeagleBone Black should come with one
@@ -81,9 +82,9 @@ List of hardware needed for DAFT setup:
 At the time of writing only Joule and Minnowboard MAX/Turbot are supported as DUT but any PC like device with BIOS should work with small tweaks. Older version of the setup was also tested to work with Gigabyte NUC, Intel Edison, BeagleBone Black and Intel Galileo V2 but they might require some work on the BeagleBone filesystem to make them work.
 
 ## 2.2 Setting up BeagleBone Black filesystem on the PC
-TODO: Make scrpit/guide on how to make one from scratch
+TODO: Make guide for making DUT support image which is also needed for the system
 
-Download ready made BBB filesystem and extract it to root:
+Make BBB filesystem from [scratch](#3-creating-beaglebone-black-filesystem) or download ready made one. To download ready made BBB filesystem and extract it to root use these commands:
 ```
 cd /
 sudo wget address-to-bbb-fs
@@ -214,9 +215,9 @@ Setting BBB to boot from NFS is done by changing `/uEnv.txt` file contents on a 
 bootcmd=setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.9-ti-r25; tftp0x80000000 bbb_fs/boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
 uenvcmd=boot
 ```
-You can use the default factory image inside the BBB or flash a working BBB image with uboot to SD card. If you want to use the image inside BBB just boot it and use [USB-serial cable](#usb-serial), SSH or monitor and keyboard to change the file.
+You can use the default factory image inside the BBB or flash a working BBB image with U-Boot to SD card. If you want to use the image inside BBB just boot it and use [USB-serial cable](#usb-serial), SSH or monitor and keyboard to change the file.
 
-If you want to use SD card you have to first boot BBB with the factory image and use following command on it to destroy its uboot files so it won't boot from those:
+If you want to use SD card you have to first boot BBB with the factory image and use following command on it to destroy its U-Boot files so it won't boot from those:
 ```
 dd if=/dev/zero of=/dev/mmcblk0 bs=4M count=10; sync
 ```
@@ -287,7 +288,7 @@ _Wiring diagram for hardware._
 ![](readme_pictures/connecting_relay.jpg)
 _How to connect the relay to the BBB._
 
-After everything else has been done, hardware can be connected together according to the pictures above and BBB can be booted from NFS. If there is a problem with booting it's most likely due to dnsmasq, TFTP, NFS or file permissions. Check [troubleshooting section](#troubleshooting) for more help if needed.
+After everything else has been done, hardware can be connected together according to the pictures above and BBB can be booted from NFS. If there is a problem with booting it's most likely due to dnsmasq, TFTP, NFS or file permissions. Check [troubleshooting section](#4-troubleshooting) for more help if needed.
 
 ## 2.8 Setting up DUT
 
@@ -362,10 +363,102 @@ Starting enabling the watchdog again:
 ```
 ln -s /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
 ```
+## 3. Creating BeagleBone Black filesystem
 
-## 3. Troubleshooting
-### 3.1 Beaglebone Black booting
-Instead of allowing BBB to boot normally you can interrupt it by pressing space while booting. It will then enter uboot terminal. Use USB-serial cable or monitor and keyboard to do it. Then you can manually try to boot from nfs with these uboot commands:
+Download BBB image from [here](https://beagleboard.org/latest-images) (bone-debian-8.6-lxqt-4gb-armhf-2016-11-06-4gb.img was used when writing this guide).
+Use `dd` to copy it to USB stick. SD card could also be used but working with USB stick is faster (change /dev/sdX to match your USB stick):
+```
+sudo dd if=bone-debian-8.6-lxqt-4gb-armhf-2016-11-06-4gb.img of=/dev/sdX bs=8M status=progress
+sync
+```
+After copying it reseize the partition so it has more space (change /dev/sdX to match yours):
+```
+sudo fdisk /dev/sdX
+d
+n
+<enter>
+<enter>
+8192
+a
+w
+sudo e2fsck -f /dev/sdX1
+sudo resize2fs /dev/sdX1
+```
+Connect the USB stick to BBB and boot it. Use USB-serial cable or monitor and keyboard and stop the U-Boot from doing default boot by pressing space. Use this command to boot from USB stick:
+```
+setenv bootargs 'console=ttyO0,115200n8, root=/dev/sda1 rootwait rootfstype=ext4 rw'; usb start; ext4load usb 0:1 0x81000000 /boot/vmlinuz-4.4.30-ti-r64; ext4load usb 0:1 0x80000000 /boot/dtbs/4.4.30-ti-r64/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
+```
+When BBB has booted do all of these commands to make all the changes needed for DAFT (notice the lines that make proxy settings, change them or don't use them if you don't use proxy):
+```
+dmesg -n 1
+cd /opt/scripts/boot/
+rm am335x_evm.sh autoconfigure_usb0.sh capemgr.sh
+cd
+rm /etc/systemd/system/multi-user.target.wants/connman.service
+vim /etc/apt/apt.conf.d/03-proxy-https
+    'Acquire::http::Proxy "http://yourproxyaddress:proxyport";' # Add this line to the file
+apt update
+apt install nfs-common dnsmasq python3-setuptools python3-pip
+pip3 --proxy http://yourproxyaddress:proxyport install pyserial netifaces unittest-xml-reporting
+git config --global https.proxy http://yourproxyaddress:proxyport
+git config --global http.proxy http://yourproxyaddress:proxyport
+git clone https://github.com/01org/DAFT.git
+cd DAFT/testing_harness
+python3 setup.py install
+cd
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness.sh ~/
+cp DAFT/testing_harness_image_extras/watchdog/watchdog.py /usr/bin/watchdog
+cp DAFT/testing_harness_image_extras/watchdog/watchdog.service /etc/systemd/system/
+cp -r DAFT/testing_harness_image_extras/kbsequences /root/
+chmod +x initialize_testing_harness.sh
+chmod +x /usr/bin/watchdog
+mkdir support_image /ramdisk /config .ssh workspace
+systemctl enable dnsmasq
+systemctl enable watchdog
+iptables -t nat -A POSTROUTING --out-interface eth0 -j MASQUERADE
+iptables -A FORWARD --in-interface usb0 -j ACCEPT
+iptables-save > /etc/iptables.rules
+cp -r /var/ /_var
+vim /etc/rc.local
+    /root/initialize_testing_harness.sh # Add this line to the file before 'exit 0'
+vim /etc/sysctl.conf
+    net.ipv4.ip_forward = 1 # Add this line to the file
+vim /etc/network/interfaces
+    # Remove everything but have these lines
+    auto lo
+    iface lo inet loopback
+    auto eth0
+    iface eth0 inet dhcp
+vim /etc/dnsmasq.conf
+    # Remove everything but have these lines
+    dhcp-range=192.168.7.2,192.168.7.254,10m
+    interface=usb0
+vim /etc/fstab
+    # Remove everything but have these lines
+    192.168.30.1:/daft/support_img /root/support_image nfs rsize=8192,wsize=8192,timeo=14,intr,nolock,auto
+    192.168.30.1:/home/tester/ /root/workspace nfs rsize=8192,wsize=8192,timeo=14,intr,nolock,auto
+    tmpfs /ramdisk tmpfs defaults,size=100M 0 0
+vim /root/.ssh/config
+    # Add these lines
+    Host *
+        IdentityFile ~/.ssh/id_rsa_testing_harness
+```
+Now make _id_rsa_testing_harness_ and _id_rsa_testing_harness.pub_ SSH-keys with `ssh-keygen -t dsa` or copy some other keys to `/root/.ssh/` but use the previous names for them. The _id_rsa_testing_harness.pub_ SSH-key should be added to `/root/.ssh/known_hosts` and also to DUT support images _known_hosts_ file. This SSH-key will also be injected to _known_hosts_ on the images that are flashed. After this the image should work with DAFT. Poweroff the BBB and connect the USB stick to PC. Mount it and copy the filesystem from it (change /dev/sdX1 to match your USB stick):
+```
+mkdir tmp_mnt bbb_fs
+sudo mount /dev/sdX1 tmp_mnt
+sudo cp -r tmp_mnt/* bbb_fs/
+sync
+sudo umount tmp_mnt
+sudo rmdir tmp_mnt
+```
+Now you should have a working BBB filesystem that BBB can use to boot from with NFS. You should be able to move/copy the folder to `/daft/` and boot from it with this U-Boot command:
+```
+setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.30-ti-r64; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.30-ti-r64/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
+```
+## 4. Troubleshooting
+### 4.1 Beaglebone Black booting
+Instead of allowing BBB to boot normally you can interrupt it by pressing space while booting. It will then enter U-Boot terminal. Use USB-serial cable or monitor and keyboard to do it. Then you can manually try to boot from nfs with these U-Boot commands:
 ```
 setenv autoload no
 dhcp
@@ -374,7 +467,7 @@ tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.9-ti-r25
 tftp 0x80000000 bbb_fs/boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb
 bootz 0x81000000 - 0x80000000
 ```
-If it gets stuck on `dhcp` it's dnsmasq or network configuration problem. Check with `ifconfig` if the network interfaces IP is _192.168.30.1_ and with `systemctl status dnsmasq` to see if dnsmasq is running. If it gets stuck to `tftp` commands it's a problem with TFTP or with the pathnames. If you have changed the location of the BBB filesystem or NFS/TFTP folder paths you might have to change `/daft/bbb_fs` and `bbb_fs/boot/*` paths in the boot commands. Uboot is quite clunky with the pathnames so try different paths like `/bbb_fs/boot/*`, `daft/bbb_fs/boot/*` or `/daft/bbb_fs/boot/*`. If it starts booting but gets stuck it's probably a problem with NFS or file permissions.
+If it gets stuck on `dhcp` it's dnsmasq or network configuration problem. Check with `ifconfig` if the network interfaces IP is _192.168.30.1_ and with `systemctl status dnsmasq` to see if dnsmasq is running. If it gets stuck to `tftp` commands it's a problem with TFTP or with the pathnames. If you have changed the location of the BBB filesystem or NFS/TFTP folder paths you might have to change `/daft/bbb_fs` and `bbb_fs/boot/*` paths in the boot commands. U-Boot is quite clunky with the pathnames so try different paths like `/bbb_fs/boot/*`, `daft/bbb_fs/boot/*` or `/daft/bbb_fs/boot/*`. If it starts booting but gets stuck it's probably a problem with NFS or file permissions.
 
 ## DAFT hardware images
 
