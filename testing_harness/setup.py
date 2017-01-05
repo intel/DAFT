@@ -21,15 +21,12 @@ from setuptools import setup
 DEVICE_FILES = ["default_config/devices/platform.cfg",
                 "default_config/devices/catalog.cfg",
                 "default_config/devices/topology.cfg"]
-TEST_PLANS = ["default_config/test_plan/iot_qatest.cfg",
-              "default_config/test_plan/iot_gtest.cfg"]
 CONFIG_FILES = ["default_config/aft.cfg"]
 
 CONFIG_FILTER = lambda filename : not \
     os.path.isfile(os.path.join("/etc/aft", filename[len("default_config/"):]))
 
 DEVICE_FILES = [filename for filename in DEVICE_FILES if CONFIG_FILTER(filename)]
-TEST_PLANS = [filename for filename in TEST_PLANS if CONFIG_FILTER(filename)]
 CONFIG_FILES =  [filename for filename in CONFIG_FILES if CONFIG_FILTER(filename)]
 
 #Depending on python version, dependencies will differ
@@ -58,5 +55,4 @@ setup(
     install_requires = dependencies,
     entry_points = { "console_scripts" : ["aft=aft.main:main"] },
     data_files = [("/etc/aft/devices/", DEVICE_FILES),
-                  ("/etc/aft/test_plan/", TEST_PLANS),
                   ("/etc/aft/", CONFIG_FILES)])

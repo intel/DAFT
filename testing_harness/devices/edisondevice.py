@@ -1,7 +1,8 @@
 # coding=utf-8
-# Copyright (c) 2013-2016 Intel, Inc.
+# Copyright (c) 2013-2017 Intel, Inc.
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -17,12 +18,9 @@ can get an IP-address.
 """
 
 import os
-import sys
 import time
 import netifaces
 import shutil
-import random
-import atexit
 try:
     import subprocess32
 except ImportError:
@@ -31,11 +29,9 @@ except ImportError:
 from aft.logger import Logger as logger
 from aft.devices.device import Device
 import aft.errors as errors
-import aft.tools.misc as misc
 import aft.tools.ssh as ssh
 import aft.devices.common as common
 from aft.tools.nicenabler import _get_nth_parent_dir
-import aft.config as config
 
 class EdisonDevice(Device):
     """
@@ -501,28 +497,6 @@ class EdisonDevice(Device):
             " seconds."
         logger.critical(err_str)
         raise errors.AFTDeviceError(err_str)
-
-    def _run_tests(self, test_case):
-        """
-        Open the network interface and run the test
-
-        Args:
-            test_case (aft.TestCase): The test case object
-
-        Returns:
-            The return value of the test_case run()-method
-            (implementation class specific)
-        """
-        self.open_interface()
-        enabler = subprocess32.Popen(["python",
-                                      os.path.join(os.path.dirname(__file__),
-                                                   os.path.pardir, "tools",
-                                                   "nicenabler.py"),
-                                      self._usb_path, self._host_ip + "/30"])
-        atexit.register(misc.subprocess_killer, enabler)
-        self._wait_until_ssh_visible()
-        logger.info("Running test cases")
-        return test_case.run(self)
 
     def execute(self, command, timeout, user="root", verbose=False):
         pass

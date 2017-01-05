@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2013-2016 Intel, Inc.
+# Copyright (c) 2013-2017 Intel, Inc.
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
@@ -107,27 +107,13 @@ class PCDevice(Device):
         # Bubblegum fix to support both .hddimg and .hdddirect at the same time
         self._uses_hddimg = os.path.splitext(file_name)[-1] == ".hddimg"
 
-        self._enter_mode(self._service_mode)
+        self.enter_mode(self._service_mode)
         file_on_nfs = os.path.abspath(file_name).replace(
             config.NFS_FOLDER,
             self._IMG_NFS_MOUNT_POINT)
 
         self._flash_image(nfs_file_name=file_on_nfs, filename=file_name)
         self._install_tester_public_key(file_name)
-
-    def _run_tests(self, test_case):
-        """
-        Boot to test-mode and execute testplan.
-
-        Args:
-            test_case (aft.TestCase): Test case object
-
-        Returns:
-            The return value of the test_case run()-method
-            (implementation class specific)
-        """
-        self._enter_mode(self._test_mode)
-        return test_case.run(self)
 
     def get_ip(self):
         """
@@ -139,7 +125,7 @@ class PCDevice(Device):
         return common.get_ip_for_pc_device(
             self.parameters["leases_file_name"])
 
-    def _enter_mode(self, mode):
+    def enter_mode(self, mode):
         """
         Try to put the device into the specified mode.
 

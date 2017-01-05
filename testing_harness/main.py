@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2013-2016 Intel, Inc.
+# Copyright (c) 2013-2017 Intel, Inc.
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
@@ -23,10 +23,10 @@ import argparse
 import logging
 
 import aft.config as config
+import aft.tester as tester
 from aft.logger import Logger as logger
 from aft.tools.thread_handler import Thread_handler as thread_handler
 from aft.devicesmanager import DevicesManager
-from aft.tools.misc import local_execute
 
 def main(argv=None):
     """
@@ -49,19 +49,20 @@ def main(argv=None):
         device_manager = DevicesManager(args)
 
         if args.device:
-            device, tester = device_manager.try_flash_specific(args)
+            device = device_manager.try_flash_specific(args)
         else:
-            device, tester = device_manager.try_flash_model(args)
+            device = device_manager.try_flash_model(args)
 
         if not args.notest:
+            device_manager.boot_device_to_mode(device, "test_mode")
             print("Testing " + str(device.name) + ".")
-            tester.execute()
+            tester.run_tests(device.tests)
 
         if not args.nopoweroff:
             device.detach()
 
         if args.boot:
-            device_manager.boot_device_to_mode(device, args)
+            device_manager.boot_device_to_mode(device, args.boot)
 
         device_manager.release(device)
 
