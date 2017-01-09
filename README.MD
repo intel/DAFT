@@ -1,7 +1,8 @@
 # Distributed Automatic Flasher Tester (DAFT)
 # Contents
 1. [Overview](#1-overview)
-    * 1.1. [How it works](#11-how-it-works)
+    * 1.1. [DAFT setup](#11-daft-setup)
+    * 1.2. [How it works](#12-how-it-works)
 2. [Creating DAFT setup](#2-creating-daft-setup)
     * 2.1 [Required hardware](#21-required-hardware)
     * 2.2 [Setting up BeagleBone Black filesystem on the PC](#22-setting-up-beaglebone-black-filesystem-on-the-pc)
@@ -19,6 +20,7 @@
     * 2.7 [Connecting hardware](#27-connecting-hardware)
     * 2.8 [Setting up DUT](#28-setting-up-dut)
     * 2.9 [Using DAFT](#29-using-daft)
+    * 2.10 [Adding more devices](#210-adding-more-devices)
 3. [Creating BeagleBone Black filesystem](#3-creating-beaglebone-black-filesystem)
 4. [Troubleshooting](#4-troubleshooting)
     * 4.1 [Beaglebone Black booting](#41-beaglebone-black-booting)
@@ -31,7 +33,12 @@ _DAFT hardware setup._
 
 DAFT (Distributed Automatic Flasher Tester) is a tool for automated flashing and testing of an OS image on a real device. Its goal is to both standardize and simplify the testing on a variety of devices, while keeping minimal the cost and the complexity of the setup. In particular, it strives to use only inexpensive off-the shelf hardware components and to keep one single configuration that can be used by both large testing farms and individual testers/developers.
 
-## 1.1 How it works
+## 1.1 DAFT setup
+DAFT setup consists of a PC, Beaglebone black(s) (BBB) and device(s) under test (DUT). Role of the BBB is to control the DUT so flashing and testing can be done. Every DUT in the setup needs one BBB to control it. BBB has the ability to emulate keyboard, mass storage and ethernet device at the same time through one USB OTG port. It also has different kinds of input/output pins like GPIO and I2C which enables lots of possibilities with testing. For example at the time of writing GPIO pins are used to control a relay that is used to turn the DUT on/off. Role of the PC is to control the BBBs and to provide them the image to be flashed and tested. PC also provides BBBs the filesystem that they boot from using NFS and TFTP.
+
+DAFT is also split code wise with _testing_harness_ including the code BBB uses and _pc_host_ including the code the PC uses. The program that BBB uses is called AFT (Automatic Flasher Tester) and the program that the PC uses is DAFT.
+
+## 1.2 How it works
 At the highest level DAFT is called from the command line with the device type and the image file to be tested as its arguments:
 ```
 daft joule os-image.img
@@ -44,12 +51,14 @@ Fewest mandatory steps to create DAFT setup with one device under test (DUT) and
 * [Get required hardware](#21-required-hardware)
 * [Set up BeagleBone Black filesystem on the PC](#22-setting-up-beaglebone-black-filesystem-on-the-pc)
 * [Configure required services on the PC](#23-configuring-ubuntu-pc)
-* [Configure BeagleBoneblack](#24-configuring-beaglebone-black)
+* [Configure BeagleBone Black](#24-configuring-beaglebone-black)
 * [Install and configure DAFT software](#25-install-and-configure-daft-software)
 * [Set up relay](#26-setting-up-relay)
 * [Connect hardware together](#27-connecting-hardware)
 * [Set up DUT](#28-setting-up-dut)
 * [Use DAFT](#29-using-daft)
+
+When the setup has been completed check this section on [adding more devices](#210-adding-more-devices).
 
 ## 2.1 Required hardware
 ![](readme_pictures/daft_setup_numbered.png)
@@ -359,10 +368,33 @@ If flashing or entering test mode fails DAFT will blacklist the BBB used by lock
 ```
 rm /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
 ```
-Starting enabling the watchdog again:
+Enabling the watchdog again is done by:
 ```
 ln -s /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
 ```
+
+## 2.10 Adding more devices
+![](readme_pictures/daft_setup_three_devices.png)
+
+_Setup with three DUTs._
+
+To add more DUTs and BBBs to the setup an ethernet switch is needed between the PC and BBBs. Nothing else special is needed. Just configure new BBBs to boot from the same NFS directory as previously and check `/var/lib/misc/dnsmasq.leases` file after they have booted for their IP address. Then add new devices to `/etc/daft/devices.cfg` with different number:
+```
+vim /etc/daft/devices.cfg
+```
+<pre>
+[Minnowboard1]
+bb_ip = 192.168.30.2
+
+<b>[Minnowboard2]
+bb_ip = 192.168.30.4</b>
+
+[Joule1]
+bb_ip = 192.168.30.3
+
+<b>[Joule2]
+bb_ip = 192.168.30.5</b>
+</pre>
 ## 3. Creating BeagleBone Black filesystem
 
 Download BBB image from [here](https://beagleboard.org/latest-images) (bone-debian-8.6-lxqt-4gb-armhf-2016-11-06-4gb.img was used when writing this guide).
