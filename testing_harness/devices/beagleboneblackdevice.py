@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2016 Intel, Inc.
+# Copyright (c) 2016-2017 Intel, Inc.
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
 # Author Simo Kuusela <simo.kuusela@intel.com>
 #
@@ -160,20 +160,6 @@ class BeagleBoneBlackDevice(Device):
             self.working_directory,
             "mount_dir")
 
-    def _run_tests(self, test_case):
-        """
-        Enter test mode and run QA tests using visitor pattern
-
-        Args:
-            test_case (aft.TestCase): The test case object
-
-        Returns:
-            The return value of the test_case run()-method
-            (implementation class specific)
-        """
-        self._enter_test_mode()
-        return test_case.run(self)
-
     def write_image(self, root_tarball):
         """
         Writes the new image into the device.
@@ -185,7 +171,7 @@ class BeagleBoneBlackDevice(Device):
             None
         """
         self._prepare_support_fs(root_tarball)
-        self._enter_service_mode()
+        self.enter_service_mode()
         self._flash_image()
         self._remove_temp_dir()
 
@@ -257,7 +243,7 @@ class BeagleBoneBlackDevice(Device):
 
         local_execute(["umount", "/root/support_fs/beaglebone"])
 
-    def _enter_service_mode(self):
+    def enter_service_mode(self):
         """
         Enter service mode by booting support image over nfs
 
@@ -315,7 +301,7 @@ class BeagleBoneBlackDevice(Device):
 
         raise errors.AFTDeviceError("Could not set the device in service mode")
 
-    def _enter_test_mode(self):
+    def enter_test_mode(self):
         """
         Enter test mode by booting from sd card
 

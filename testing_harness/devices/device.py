@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2013-2016 Intel, Inc.
+# Copyright (c) 2013-2017 Intel, Inc.
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
@@ -39,7 +39,7 @@ class Device(with_metaclass(abc.ABCMeta, object)):
     def __init__(self, device_descriptor, channel, kb_emulator=None):
         self.name = device_descriptor["name"]
         self.model = device_descriptor["model"]
-        self.test_plan = device_descriptor["test_plan"]
+        self.tests = device_descriptor["tests"]
         self.parameters = device_descriptor
         self.channel = channel
         self.kb_emulator = kb_emulator
@@ -69,36 +69,6 @@ class Device(with_metaclass(abc.ABCMeta, object)):
 
         recorder.start()
         thread_handler.add_thread(recorder)
-
-    def test(self, test_case):
-        """
-        Run the tests associated with the specified image and grab logs from the
-        device afterwards.
-
-        Uses visitor pattern so subclasses need to invoke test_case.run()
-
-        Args:
-            test_case (aft.TestCase): The test case object
-
-        Returns:
-            The return value of the test_case run()-method
-            (implementation class specific)
-        """
-        test_result = self._run_tests(test_case)
-        return test_result
-
-    @abc.abstractmethod
-    def _run_tests(self, test_case):
-        """
-        Run device-specific steps and invoke test_case.run()
-
-        Args:
-            test_case (aft.TestCase): The test case object
-
-        Returns:
-            The return value of the test_case run()-method
-            (implementation class specific)
-        """
 
     def detach(self):
         """

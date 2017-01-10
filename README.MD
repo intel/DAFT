@@ -22,8 +22,11 @@
     * 2.9 [Using DAFT](#29-using-daft)
     * 2.10 [Adding more devices](#210-adding-more-devices)
 3. [Creating BeagleBone Black filesystem](#3-creating-beaglebone-black-filesystem)
-4. [Troubleshooting](#4-troubleshooting)
-    * 4.1 [Beaglebone Black booting](#41-beaglebone-black-booting)
+4. [Tests](#4-tests)
+    * 4.1 [Choosing which tests are run](#41-choosing-which-tests-are-run)
+    * 4.2 [Adding new tests](#42-adding-new-tests)    
+5. [Troubleshooting](#5-troubleshooting)
+    * 5.1 [Beaglebone Black booting](#51-beaglebone-black-booting)
 
 [DAFT hardware images](#daft-hardware-images)
 
@@ -297,7 +300,7 @@ _Wiring diagram for hardware._
 ![](readme_pictures/connecting_relay.jpg)
 _How to connect the relay to the BBB._
 
-After everything else has been done, hardware can be connected together according to the pictures above and BBB can be booted from NFS. If there is a problem with booting it's most likely due to dnsmasq, TFTP, NFS or file permissions. Check [troubleshooting section](#4-troubleshooting) for more help if needed.
+After everything else has been done, hardware can be connected together according to the pictures above and BBB can be booted from NFS. If there is a problem with booting it's most likely due to dnsmasq, TFTP, NFS or file permissions. Check [troubleshooting section](#5-troubleshooting) for more help if needed.
 
 ## 2.8 Setting up DUT
 
@@ -463,7 +466,7 @@ vim /etc/network/interfaces
     iface eth0 inet dhcp
 vim /etc/dnsmasq.conf
     # Remove everything but have these lines
-    dhcp-range=192.168.7.2,192.168.7.254,10m
+    dhcp-range=192.168.7.2,192.168.7.2,10m
     interface=usb0
 vim /etc/fstab
     # Remove everything but have these lines
@@ -488,8 +491,48 @@ Now you should have a working BBB filesystem that BBB can use to boot from with 
 ```
 setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.30-ti-r64; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.30-ti-r64/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
 ```
-## 4. Troubleshooting
-### 4.1 Beaglebone Black booting
+
+## 4. Tests
+### 4.1 Choosing which tests are run
+To change which tests are run for specific device type, change the AFT device settings:
+```
+vim /daft/bbb_fs/etc/aft/devices/catalog.cfg
+```
+<pre>
+[Minnowboard]
+platform = PC
+serial_port = /dev/ttyUSB0
+tests = <b>all</b>
+target_device = /dev/mmcblk0
+root_partition = /dev/mmcblk0p2
+service_mode = ubuntu
+test_mode = yocto
+service_mode_keystrokes = /root/kbsequences/minnowboard/boot_usb
+test_mode_keystrokes = /root/kbsequences/empty
+</pre>
+The default setting is **all** which uses all the tests found from AFT installation locations _testcases_ directory. Test files are expected to start with _test_ and end to _.py_. To choose specific tests just write them without _test_ and _.py_, and separate them with space. So for example:
+<pre>
+[Minnowboard]
+platform = PC
+serial_port = /dev/ttyUSB0
+tests = <b>baseos mraa</b>
+target_device = /dev/mmcblk0
+root_partition = /dev/mmcblk0p2
+service_mode = ubuntu
+test_mode = yocto
+service_mode_keystrokes = /root/kbsequences/minnowboard/boot_usb
+test_mode_keystrokes = /root/kbsequences/empty
+</pre>
+
+Using this setting would only run _test_baseos.py_ and _test_mraa.py_ tests.
+### 4.2 Adding new tests
+Tests in DAFT are done with Python using its unittest framework and library. Test files should start with _test_ and end to _.py_. To make your own tests look for `DAFT/testing_harness/testcases/example` for basic example. Write the new tests to your DAFT repository folder `DAFT/testing_harness/testcases/`. To start using the new tests, add them to the BBB filesystem. Easiest way is to use `daft --update` while you are on the DAFT repository folder:
+```
+/DAFT$ daft --update
+```
+
+## 5. Troubleshooting
+### 5.1 Beaglebone Black booting
 Instead of allowing BBB to boot normally you can interrupt it by pressing space while booting. It will then enter U-Boot terminal. Use USB-serial cable or monitor and keyboard to do it. Then you can manually try to boot from nfs with these U-Boot commands:
 ```
 setenv autoload no

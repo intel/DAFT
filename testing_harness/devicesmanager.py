@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2013-2016 Intel, Inc.
+# Copyright (c) 2013-2017 Intel, Inc.
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
@@ -31,7 +31,6 @@ import aft.errors as errors
 import aft.config as config
 import aft.devicefactory as devicefactory
 from aft.logger import Logger as logger
-from aft.tester import Tester
 
 class DevicesManager(object):
     """Class handling devices connected to the same host PC"""
@@ -237,10 +236,9 @@ class DevicesManager(object):
         Args:
             args: AFT arguments
         Returns:
-            device, tester: Reserved machine and tester handles.
+            device: Reserved machine
         '''
         device = self.reserve_specific(args.device, model=args.machine)
-        tester = Tester(device)
 
         if args.record:
             device.record_serial()
@@ -250,7 +248,7 @@ class DevicesManager(object):
             device.write_image(args.file_name)
             print("Flashing successful.")
 
-        return device, tester
+        return device
 
     def try_flash_model(self, args):
         '''
@@ -259,16 +257,15 @@ class DevicesManager(object):
         Args:
             args: AFT arguments
         Returns:
-            device, tester: Reserved machine and tester handles.
+            device: Reserved machine
         '''
         device = self.reserve()
-        tester = Tester(device)
 
         if args.record:
             device.record_serial()
 
         if args.noflash:
-            return device, tester
+            return device
 
         flash_attempt = 0
         flash_retries = args.flash_retries
@@ -279,7 +276,7 @@ class DevicesManager(object):
                     str(flash_attempt) + " of " + str(flash_retries) + ".")
                 device.write_image(args.file_name)
                 print("Flashing successful.")
-                return device, tester
+                return device
 
             except KeyboardInterrupt:
                 raise
@@ -301,31 +298,31 @@ class DevicesManager(object):
                     print("Flashing failed, trying again " +
                         str(flash_retries - flash_attempt) + " more times")
 
-    def boot_device_to_mode(self, device, args):
+    def boot_device_to_mode(self, device, mode):
         '''
-        Boot specified device to mode specified by args.boot
+        Boot device to specified mode
         '''
         if device.__class__.__name__ == "EdisonDevice":
-            if args.boot == "test_mode":
+            if mode == "test_mode":
                 device._power_cycle()
             else:
                 print("Edison only has 'test_mode'")
                 return 1
 
         if device.__class__.__name__ == "BeagleBoneBlackDevice":
-            if args.boot == "test_mode":
-                device._enter_test_mode()
+            if mode == "test_mode":
+                device.enter_test_mode()
                 mode = device.parameters["test_mode"]
-            if args.boot == "service_mode":
-                device._enter_service_mode()
+            if mode == "service_mode":
+                device.enter_service_mode()
                 mode = device.parameters["service_mode"]
 
         if device.__class__.__name__ == "PCDevice":
-            if args.boot == "test_mode":
-                device._enter_mode(device._test_mode)
+            if mode == "test_mode":
+                device.enter_mode(device._test_mode)
                 mode = device._test_mode["name"]
-            if args.boot == "service_mode":
-                device._enter_mode(device._service_mode)
+            if mode == "service_mode":
+                device.enter_mode(device._service_mode)
                 mode = device._service_mode["name"]
 
         print("Succesfully booted to " + mode)

@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2015 Intel, Inc.
+# Copyright (c) 2013-2017 Intel, Inc.
 # Author Igor Stoppa <igor.stoppa@intel.com>
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Simo Kuusela <simo.kuusela@intel.com>
@@ -19,6 +19,7 @@ Tools for remote controlling a device over ssh.
 from aft.logger import Logger as logger
 import aft.tools.misc as tools
 import os
+import time
 try:
     import subprocess32
 except ImportError:
@@ -53,7 +54,8 @@ def push(remote_ip, source, destination, timeout = 60,
     """
     Transmit a file from local 'source' to remote 'destination' over SCP
     """
-    scp_args = ["scp", source,
+    scp_args = ["scp", "-o", "UserKnownHostsFile=/dev/null", "-o",
+                "StrictHostKeyChecking=no", source,
                 user + "@" + str(remote_ip) + ":" + destination]
     return tools.local_execute(scp_args, timeout, ignore_return_codes)
 
@@ -118,3 +120,47 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
         raise err
 
     return ret
+
+def dut_execute(command, timeout=60):
+    ssh_args = ["ssh",
+                "-i", "".join([os.path.expanduser("~"), "/.ssh/id_rsa_testing_harness"]),
+                "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "BatchMode=yes",
+                "-o", "LogLevel=ERROR",
+                "-o", "ConnectTimeout=15",
+                "root@192.168.7.2",
+                _get_proxy_settings(),]
+
+    logger.info("Executing " + command, filename="ssh.log")
+
+    process = subprocess32.Popen((ssh_args + command.split()),
+                                    universal_newlines=True,
+                                 stdout = subprocess32.PIPE,
+                                 stderr = subprocess32.STDOUT)
+
+    # Loop until process returns or timeout expires.
+    start = time.time()
+    output = ""
+    return_code = None
+    while time.time() < start + timeout and return_code == None:
+        return_code = process.poll()
+        if return_code == None:
+            try:
+                output += process.communicate(timeout = 1)[0]
+            except subprocess32.TimeoutExpired:
+                pass
+
+    if return_code == None:
+        # Time ran out but the process didn't end.
+        logger.error("Command raised exception: " + command, filename="ssh.log")
+        logger.error("Output: " + str(output), filename="ssh.log")
+        raise subprocess32.TimeoutExpired(cmd = command, output = output,
+                                          timeout = timeout)
+    if output.endswith("\n"):
+        output = output[:-1]
+
+    return return_code, output
+
+def scp_file_to_dut(source, destination):
+    return push("192.168.7.2", source, destination)
