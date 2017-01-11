@@ -370,7 +370,7 @@ rm /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
 ```
 Enabling the watchdog again is done by:
 ```
-ln -s /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
+ln -s /daft/bbb_fs/etc/systemd/system/watchdog.service /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
 ```
 
 ## 2.10 Adding more devices
