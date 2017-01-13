@@ -22,8 +22,13 @@
     * 2.9 [Using DAFT](#29-using-daft)
     * 2.10 [Adding more devices](#210-adding-more-devices)
 3. [Creating BeagleBone Black filesystem](#3-creating-beaglebone-black-filesystem)
-4. [Troubleshooting](#4-troubleshooting)
-    * 4.1 [Beaglebone Black booting](#41-beaglebone-black-booting)
+4. [DAFT and AFT settings and commandline interface](#4-daft-and-aft-settings-and-commandline-interface)
+    * 4.1 [DAFT settings](#41-daft-settings)
+    * 4.2 [DAFT commandline interface](#42-daft-commandline-interface)
+    * 4.3 [AFT settings](#43-aft-settings)
+    * 4.4 [AFT commandline interface](#44-aft-commandline-interface)
+5. [Troubleshooting](#5-troubleshooting)
+    * 5.1 [Beaglebone Black booting](#51-beaglebone-black-booting)
 
 [DAFT hardware images](#daft-hardware-images)
 
@@ -297,7 +302,7 @@ _Wiring diagram for hardware._
 ![](readme_pictures/connecting_relay.jpg)
 _How to connect the relay to the BBB._
 
-After everything else has been done, hardware can be connected together according to the pictures above and BBB can be booted from NFS. If there is a problem with booting it's most likely due to dnsmasq, TFTP, NFS or file permissions. Check [troubleshooting section](#4-troubleshooting) for more help if needed.
+After everything else has been done, hardware can be connected together according to the pictures above and BBB can be booted from NFS. If there is a problem with booting it's most likely due to dnsmasq, TFTP, NFS or file permissions. Check [troubleshooting section](#5-troubleshooting) for more help if needed.
 
 ## 2.8 Setting up DUT
 
@@ -488,8 +493,97 @@ Now you should have a working BBB filesystem that BBB can use to boot from with 
 ```
 setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.30-ti-r64; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.30-ti-r64/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
 ```
-## 4. Troubleshooting
-### 4.1 Beaglebone Black booting
+
+## 4. DAFT and AFT settings and commandline interface
+### 4.1 DAFT settings
+DAFT settings are located in `/etc/daft/daft.cfg` and on default are:
+```
+[daft]
+workspace_nfs_path = /home/tester/
+bbb_fs_path = /daft/bbb_fs/
+bbb_aft_path = /usr/local/lib/python3.4/dist-packages/aft-1.0.0-py3.4.egg/aft
+```
+Settings:
+* **workspace_nfs_path**: Path to the workspace directory that is shared with NFS to BBB and DUT.
+* **bbb_fs_path**: Path to the directory that contains the filesystem from which BBB boots from.
+* **bbb_aft_path**: Path to the directory that contains AFT code.
+
+DAFT device settings are located in `/etc/daft/devices.cfg` and on default are:
+```
+[Minnowboard1]
+bb_ip = 192.168.30.2
+
+[Joule1]
+bb_ip = 192.168.30.3
+```
+Settings:
+* **bb_ip**: IP address to the BBB handling the specific DUT.
+
+### 4.2 DAFT commandline interface
+Basic DAFT command:
+```
+daft <dut> <image_file>
+```
+DAFT commandline interface options:
+* **dut**: Type of DUT to flash. Should be one from the `/etc/daft/devices.cfg`.
+* **image_file**: Image file to flash to the DUT.
+* **--record**: Record serial output from DUT.
+* **--update**: Update AFT to the BBB filesystem. This should be ran while being on the root DAFT repository directory.
+
+### 4.3 AFT settings
+AFT settings are located in `/etc/daft/daft.cfg` and on default are:
+```
+[aft]
+lock_file = /var/lock/
+serial_log_name = serial.log
+aft_log_name = aft.log
+nfs_folder = /root/workspace
+```
+Settings:
+* **lock_file**: Path to directory that lock files are saved to. Lock file is used so multiple instances of AFT can't flash/test a DUT at the same time.
+* **serial_log_name**: Name for the serial log file.
+* **aft_log_name**: Name for the aft log file.
+* **nfs_folder**: Path to the directory that the workspace NFS is mounted to.
+
+AFT device settings are located in three files on the BBB filesystem in `/etc/aft/devices/`. The files are _platform.cfg_, _catalog.cfg_ and _topology.cfg_. The configuration of a single physical device is combined out of these files. The platform.cfg is the highest level configuration file. It is intended to store settings which are shared between all high-level device-types, ie. PC-devices or gadget-devices. The catalog.cfg is the configuration file describing each device type. These are the options shared by all devices of the same type. The topology.cfg file contains individual physical device specific information. Settings on these files:
+* **leases_file_name**: Path to the dnsmasq.leases file that contains IP addresses of connected devices.
+* **keyboard_emulator**: Keyboard emulator type. On default GadgetKeyboard which is the BBB keyboard emulation.
+* **cutter_type**: DUT power supply cutter/relay type. On default GpioCutter which is a relay controlled with BBB GPIO pins.
+* **gpio_pin**: GPIO pin that controls the cutter/relay if using GpioCutter.
+* **gpio_cutter_on**: GPIO pin value when relay should be closed. On default 1.
+* **gpio_cutter_off**: GPIO pin value when relay should be open. On default 0.
+* **pem_port**: Path to the keyboard emulator port.
+* **serial_port**: Path to the serial cable port.
+* **serial_bauds**: Bauds for serial recording of DUT.
+* **test_plan**: Test plan used with the device.
+* **target_device**: Path to the target device that the image to be tested is flashed to.
+* **service_mode**: String included in 'uname -a' when DUT is booted with support image.
+* **test_mode**: String included in 'uname -a' when DUT is booted with the image to be tested.
+* **service_mode_keystrokes**: Path to the keystrokes which boot DUT to service mode.
+* **test_mode_keystrokes**: Path to the keystrokes which boot DUT to test mode.
+* **platform**: On catalog.cfg file option to inherit settings from specific platform.
+* **model**: On topology.cfg file option to inherit settings from specific device type.
+
+### 4.4 AFT commandline interface
+AFT can be used on the BBB. Basic AFT command:
+```
+aft <dut> <image_file>
+```
+AFT commandline interface options:
+* **dut**: Type of DUT to flash. Should be one from the `/etc/aft/devices/catalog.cfg`.
+* **image_file**: Image file to flash to the DUT.
+* **--record**: Record serial output from DUT.
+* **--flash_retries**: Change how many times flashing will be tried. On default 2.
+* **--noflash**: Skip flashing image to the device eg. 'aft joule --noflash' would run only tests.
+* **--notest**: Skip testing image.
+* **--nopoweroff**: After aft run, don't turn off device.
+* **--boot**: Boot device to specific mode. Options are 'service_mode' and 'test_mode'. For example: 'aft joule --noflash --notest --boot=test_mode' would boot device to the flashed image.
+* **--verbose**: Increase aft run verbosity.
+* **--debug**: Change aft logging level to 'debug'.
+
+
+## 5. Troubleshooting
+### 5.1 Beaglebone Black booting
 Instead of allowing BBB to boot normally you can interrupt it by pressing space while booting. It will then enter U-Boot terminal. Use USB-serial cable or monitor and keyboard to do it. Then you can manually try to boot from nfs with these U-Boot commands:
 ```
 setenv autoload no
