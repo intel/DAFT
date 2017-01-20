@@ -183,9 +183,9 @@ Choose a workspace directory that BBB will use to get the image to flash and wri
 sudo vim /etc/exports
 ```
 <pre>
-<b>/your/workspace</b> 192.168.0.0/16(crossmnt,rw,root_squash,anonuid=<b>1001</b>,anongid=<b>100</b>,sync,no_subtree_check)
-/daft/support_img 192.168.0.0/16(crossmnt,rw,root_squash,anonuid=<b>1001</b>,anongid=<b>100</b>,sync,no_subtree_check)
-/daft/bbb_fs 192.168.0.0/16(crossmnt,ro,root_squash,anonuid=<b>1001</b>,anongid=<b>100</b>,sync,no_subtree_check)
+<b>/your/workspace</b> 192.168.30.0/24(crossmnt,rw,root_squash,anonuid=<b>1001</b>,anongid=<b>100</b>,sync,no_subtree_check)
+/daft/support_img 192.168.30.0/24(crossmnt,rw,root_squash,anonuid=<b>1001</b>,anongid=<b>100</b>,sync,no_subtree_check)
+/daft/bbb_fs 192.168.30.0/24(crossmnt,ro,root_squash,anonuid=<b>1001</b>,anongid=<b>100</b>,sync,no_subtree_check)
 </pre>
 Put changes in effect and restart and enable nfs-kernel-server:
 ```
@@ -252,7 +252,7 @@ cd; git clone https://github.com/01org/DAFT.git
 Install Python3 setuptools and the server side software:
 ```
 sudo apt install python3-setuptools
-cd DAFT/server; sudo python3 setup.py install
+cd DAFT/pc_host; sudo python3 setup.py install
 ```
 
 Change DAFT configuration file to use your [previously chosen](#234-nfs-server) workspace directory instead of **/home/tester/**:
