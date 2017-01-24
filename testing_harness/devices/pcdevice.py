@@ -318,10 +318,9 @@ class PCDevice(Device):
         lsblk = ssh.remote_execute(self.dev_ip, ["lsblk"])
         lsblk = lsblk.split()
         for line in lsblk:
-            if target in line:
+            if (target + "p") in line:
                 line = ''.join(x for x in line if x.isalnum())
-                if not line==target:
-                    partitions.append(line)
+                partitions.append(line)
 
         # Check through partitions if it contains '/home/root' directory
         for partition in partitions:
