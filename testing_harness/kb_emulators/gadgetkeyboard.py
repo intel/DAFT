@@ -11,8 +11,9 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 
-from time import sleep
+from time import sleep, time
 import os.path
+import signal
 
 from aft.logger import Logger as logger
 from aft.kb_emulators.kb_emulator import KeyboardEmulator
@@ -296,16 +297,21 @@ class GadgetKeyboard(KeyboardEmulator):
         usb_message[2] = hex_key
         usb_message[0] = modifier
 
-        time = 0
-        while time < timeout:
+        # Use signal.alarm and handler for times when writing to file hangs
+        def handler():
+            raise IOError
+
+        timeout = time() + 20
+        while time() < timeout:
             try:
+                signal.signal(signal.SIGALRM, handler)
+                signal.alarm(2)
                 with open(self.emulator, "w") as emulator:
                     emulator.write(usb_message.decode()) # Send the key
                     emulator.write(self.empty) # Stop the key being pressed
 
             except IOError:
                 logger.warning("Couldn't connect to host", "kb_emulator.log")
-                time += 1
                 sleep(1)
 
             else:
