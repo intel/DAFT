@@ -166,7 +166,7 @@ def execute_flashing(bb_dut, args, config):
         output = remote_execute(bb_dut["bb_ip"],
                                 ["cd", "/root/workspace" + current_dir,";aft",
                                 dut, img_path, record, "--notest"],
-                                timeout=2400, config = config)
+                                timeout=1200, config = config)
     finally:
         log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
                      "serial.log.raw"]
@@ -192,7 +192,7 @@ def execute_testing(bb_dut, args, config):
         output = remote_execute(bb_dut["bb_ip"],
                                 ["cd", "/root/workspace" + current_dir,";aft",
                                 dut, args.image_file, record, "--noflash"],
-                                timeout=2400, config = config)
+                                timeout=1200, config = config)
 
     finally:
         log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
