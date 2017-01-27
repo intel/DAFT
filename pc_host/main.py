@@ -174,7 +174,7 @@ def execute_flashing(bb_dut, args, config):
             if os.path.isfile(log):
                 os.rename(log, "flash_" + log)
 
-    print(output)
+    print(output, end="")
     print("Flashing took: " + time_used(start_time))
 
 def execute_testing(bb_dut, args, config):
@@ -201,7 +201,7 @@ def execute_testing(bb_dut, args, config):
             if os.path.isfile(log):
                 os.rename(log, "test_" + log)
 
-    print(output)
+    print(output, end="")
     print("Testing took: " + time_used(start_time))
 
 def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
