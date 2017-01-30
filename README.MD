@@ -443,7 +443,9 @@ git clone https://github.com/01org/DAFT.git
 cd DAFT/testing_harness
 python3 setup.py install
 cd
-cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness.sh ~/
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness.sh /usr/bin/
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness.service /etc/systemd/system/
+ln -s /etc/systemd/system/initialize_testing_harness.service  /etc/systemd/system/multi-user.target.wants/
 cp DAFT/testing_harness_image_extras/watchdog/watchdog.py /usr/bin/watchdog
 cp DAFT/testing_harness_image_extras/watchdog/watchdog.service /etc/systemd/system/
 cp -r DAFT/testing_harness_image_extras/kbsequences /root/
@@ -456,8 +458,6 @@ iptables -t nat -A POSTROUTING --out-interface eth0 -j MASQUERADE
 iptables -A FORWARD --in-interface usb0 -j ACCEPT
 iptables-save > /etc/iptables.rules
 cp -r /var/ /_var
-vim /etc/rc.local
-    /root/initialize_testing_harness.sh # Add this line to the file before 'exit 0'
 vim /etc/sysctl.conf
     net.ipv4.ip_forward = 1 # Add this line to the file
 vim /etc/network/interfaces

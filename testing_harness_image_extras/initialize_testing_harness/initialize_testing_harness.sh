@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # Copyright (c) 2016 Intel, Inc.
 # Author Simo Kuusela <simo.kuusela@intel.com>
 #
@@ -10,7 +12,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 
-#!/bin/bash
 
 set_up_overlay() {
   mkdir /ramdisk/upper
@@ -106,4 +107,3 @@ set_up_gadget
 set_up_usb_network
 set_up_gpio
 set_up_system
-
