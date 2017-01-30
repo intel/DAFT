@@ -1,5 +1,5 @@
 # Copyright (c) 2016 Intel, Inc.
-# Author Simo Kuusela <simo.kuus@intel.com>
+# Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
