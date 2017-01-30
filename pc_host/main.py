@@ -42,6 +42,9 @@ def main():
         print("Keyboard interrupt, stopping DAFT run")
         if beaglebone_dut:
             release_device(beaglebone_dut)
+            output = remote_execute(beaglebone_dut["bb_ip"],
+                                    ("killall -s SIGINT aft").split(),
+                                    timeout=10, config = config)
         return 0
 
     except ImageNameError:
