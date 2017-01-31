@@ -134,7 +134,7 @@ def get_bbb_config():
     for device in config.sections():
         device_config = dict(config.items(device))
         device_config["lockfile"] = device
-        device_config["dut"] = ''.join(x for x in device if not x.isdigit())
+        device_config["dut"] = device.rstrip('1234567890_')
         configurations.append(device_config)
     return configurations
 
