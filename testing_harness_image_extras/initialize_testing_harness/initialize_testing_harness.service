@@ -1,0 +1,8 @@
+[Unit]
+Description=Initialize testing harness
+ConditionFileIsExecutable=/usr/bin/initialize_testing_harness.sh
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/bin/initialize_testing_harness.sh
+RemainAfterExit=yes

@@ -1,1 +1,1 @@
-This script will be called on the testing harness image /etc/rc.local that will run at start up.
+The initialize_testing_harness.sh script is used on the testing harness to set up USB gadget emulation, GPIO pins and system so it's ready to run AFT. The script file should be placed to /usr/bin/. The service file should be placed to /etc/systemd/system/ and to enable it make a symlink to it in /etc/systemd/system/multi-user.target.wants/.
