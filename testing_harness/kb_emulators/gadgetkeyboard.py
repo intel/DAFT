@@ -13,6 +13,7 @@
 
 from time import sleep
 import os.path
+from multiprocessing import Process
 
 from aft.logger import Logger as logger
 from aft.kb_emulators.kb_emulator import KeyboardEmulator
@@ -22,9 +23,6 @@ class GadgetKeyboard(KeyboardEmulator):
     Keyboard emulator class which has methods for sending key strokes through
     usb port using Linux g_hid module.
     '''
-
-    # Empty message which will be sent to stop any keys being pressed
-    empty = "\x00\x00\x00\x00\x00\x00\x00\x00"
 
     # HID keyboard hex codes for modifier keys
     modifier_codes = {
@@ -284,7 +282,20 @@ class GadgetKeyboard(KeyboardEmulator):
             key: A key to send, for example: "a", "z", "3", "F2", "ENTER"
             timeout: how long sending a key will be tried until quitting [s]
         '''
-        usb_message = bytearray(self.empty.encode()) # Initialize usb message
+        def writer(path, message, empty):
+            while True:
+                try:
+                    with open(path, "w") as emulator:
+                        emulator.write(message.decode()) # Send the key
+                        emulator.write(empty) # Stop the key being pressed
+                except IOError:
+                    sleep(1)
+                else:
+                    return 0
+
+        # Empty message which will be sent to stop any keys being pressed
+        empty = "\x00\x00\x00\x00\x00\x00\x00\x00"
+        usb_message = bytearray(empty.encode()) # Initialize usb message
         hex_key, _modifier = self.key_to_hex(key) # Translate key to hex code
 
         # Override self.modifier if the key needs a specific one
@@ -296,27 +307,20 @@ class GadgetKeyboard(KeyboardEmulator):
         usb_message[2] = hex_key
         usb_message[0] = modifier
 
-        time = 0
-        while time < timeout:
-            try:
-                with open(self.emulator, "w") as emulator:
-                    emulator.write(usb_message.decode()) # Send the key
-                    emulator.write(self.empty) # Stop the key being pressed
+        # Do the writing in a subprocess as it hangs in some rare cases
+        writer = Process(target=writer, args=(self.emulator, usb_message, empty))
+        writer.start()
+        writer.join(20)
+        if writer.is_alive():
+            writer.terminate()
+            msg = "Keyboard emulator couldn't connect to host or it froze"
+            logger.error(msg, "kb_emulator.log")
+            raise TimeoutError(msg)
 
-            except IOError:
-                logger.warning("Couldn't connect to host", "kb_emulator.log")
-                time += 1
-                sleep(1)
-
-            else:
-                logger.info("Sent key: " + key.ljust(5) + "  hex code: " +
-                            format(hex_key, '#04x') + "  modifier: " +
-                            format(modifier, '#04x'), "kb_emulator.log")
-                return 0
-
-        msg = "Keyboard emulator couldn't connect to host"
-        logger.error(msg, "kb_emulator.log")
-        raise TimeoutError(msg)
+        logger.info("Sent key: " + key.ljust(5) + "  hex code: " +
+                    format(hex_key, '#04x') + "  modifier: " +
+                    format(modifier, '#04x'), "kb_emulator.log")
+        return 0
 
     def key_to_hex(self, key):
         """
