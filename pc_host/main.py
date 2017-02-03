@@ -27,7 +27,7 @@ def main():
     beaglebone_dut = None
 
     if args.update:
-        return update_aft(config)
+        return update(config)
 
     try:
         start_time = time.time()
@@ -60,11 +60,11 @@ def main():
                       beaglebone_dut["lockfile"])
         raise
 
-def update_aft(config):
+def update(config):
     '''
     Update Beaglebone AFT
     '''
-    if os.path.isdir("testing_harness"):
+    if os.path.isdir("testing_harness") and os.path.isdir("pc_host"):
         if os.path.isdir(config["bbb_fs_path"] + config["bbb_aft_path"]):
             try:
                 shutil.rmtree(config["bbb_fs_path"] + config["bbb_aft_path"])
@@ -73,14 +73,20 @@ def update_aft(config):
             shutil.copytree("testing_harness", config["bbb_fs_path"] +
                                                config["bbb_aft_path"])
             print("Updated AFT succesfully")
-            return 0
         else:
             print("Can't update AFT, didn't find " + config["bbb_fs_path"] +
                   config["bbb_aft_path"])
-            return 2
+            return 3
+
+        local_execute("cd pc_host;python3 setup.py install".split(), shell=True)
+        local_execute("cd pc_host; rm -r DAFT.egg-info build dist".split(),
+                      shell=True)
+        print("Updated DAFT succesfully")
+        return 0
+
     else:
-        print("Can't update AFT, didn't find \"testing_harness\" folder")
-        return 1
+        print("Can't update, didn't find 'pc_host' and 'testing_harness' directory")
+        return 2
 
 def get_daft_config():
     '''
@@ -230,7 +236,7 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
 
     return output
 
-def local_execute(command, timeout = 60, ignore_return_codes = None):
+def local_execute(command, timeout=60, ignore_return_codes=None, shell=False):
     """
     Execute a command on local machine. Returns combined stdout and stderr if
     return code is 0 or included in the list 'ignore_return_codes'. Otherwise
@@ -238,7 +244,8 @@ def local_execute(command, timeout = 60, ignore_return_codes = None):
     """
     process = subprocess.Popen(command, universal_newlines=True,
                                  stdout = subprocess.PIPE,
-                                 stderr = subprocess.STDOUT)
+                                 stderr = subprocess.STDOUT,
+                                 shell = shell)
     start = time.time()
     output = ""
     return_code = None
@@ -294,7 +301,7 @@ def parse_args():
         "--update",
         action="store_true",
         default=False,
-        help="Update AFT to Beaglebone filesystem")
+        help="Update AFT to Beaglebone filesystem and DAFT to PC host")
 
     return parser.parse_args()
 
