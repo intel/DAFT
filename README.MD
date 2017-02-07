@@ -265,7 +265,7 @@ workspace_nfs_path = <b>/home/tester/</b>
 bbb_fs_path = /daft/bbb_fs/
 </pre>
 
-Update AFT inside BBB filesystem:
+Now you can update both DAFT on the PC and AFT on the BBB filesystem with:
 ```
 cd ~/DAFT; daft --update
 ```
@@ -528,7 +528,7 @@ DAFT commandline interface options:
 * **dut**: Type of DUT to flash. Should be one from the `/etc/daft/devices.cfg`.
 * **image_file**: Image file to flash to the DUT.
 * **--record**: Record serial output from DUT.
-* **--update**: Update AFT to the BBB filesystem. This should be ran while being on the root DAFT repository directory.
+* **--update**: Update AFT on the BBB filesystem and DAFT on the PC. This should be ran while being on the root DAFT repository directory and with root permission.
 
 ### 4.3 AFT settings
 AFT settings are located in `/etc/daft/daft.cfg` and on default are:
