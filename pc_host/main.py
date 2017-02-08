@@ -114,6 +114,7 @@ def reserve_device(args):
     '''
     Reserve Beaglebone/DUT for flashing and testing
     '''
+    start_time = time.time()
     dut = args.dut
     config = get_bbb_config()
     while True:
@@ -127,6 +128,7 @@ def reserve_device(args):
                     if not f.read():
                         f.write("Locked\n")
                         print("Reserved " + device["lockfile"])
+                        print("Waiting took: " + time_used(start_time))
                         return device
         time.sleep(10)
 
