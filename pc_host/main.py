@@ -78,9 +78,10 @@ def update(config):
                   config["bbb_aft_path"])
             return 3
 
-        local_execute("cd pc_host;python3 setup.py install".split(), shell=True)
-        local_execute("cd pc_host; rm -r DAFT.egg-info build dist".split(),
-                      shell=True)
+        output = local_execute("python3 setup.py install".split(),
+                               cwd="pc_host/")
+        output = local_execute("rm -r DAFT.egg-info build dist".split(),
+                               cwd="pc_host/")
         print("Updated DAFT succesfully")
         return 0
 
@@ -238,7 +239,7 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
 
     return output
 
-def local_execute(command, timeout=60, ignore_return_codes=None, shell=False):
+def local_execute(command, timeout=60, ignore_return_codes=None, cwd=None):
     """
     Execute a command on local machine. Returns combined stdout and stderr if
     return code is 0 or included in the list 'ignore_return_codes'. Otherwise
@@ -247,7 +248,7 @@ def local_execute(command, timeout=60, ignore_return_codes=None, shell=False):
     process = subprocess.Popen(command, universal_newlines=True,
                                  stdout = subprocess.PIPE,
                                  stderr = subprocess.STDOUT,
-                                 shell = shell)
+                                 cwd = cwd)
     start = time.time()
     output = ""
     return_code = None
