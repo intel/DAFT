@@ -24,35 +24,6 @@ class QATestCase(BasicTestCase):
     """
     QA testcase executor.
     """
-    _DEVICE_PARAMETERS = {"Gigabyte".lower(): " --machine intel-corei7-64 " +
-                                              "--test-manifest iottest/testplan/iottest.manifest",
-                          "GalileoV2".lower(): " --machine intel-quark " +
-                                               "--test-manifest " +
-                                               "iottest/testplan/galileo.iottest.manifest",
-                          "Edison".lower(): " --machine edison " +
-                                            "--test-manifest iottest/testplan/iottest.manifest",
-                          "MinnowboardMAX".lower(): " --machine intel-corei7-64 " +
-                                                    "--test-manifest " +
-                                                    "iottest/testplan/minnowmax.iottest.manifest",
-                          "BeagleBoneBlack".lower(): " --machine beaglebone " +
-                                                     "--test-manifest " +
-                                                     "iottest/testplan/beaglebone.iottest.manifest",
-                          "MinnowboardTurbot".lower(): " --machine intel-corei7-64 " +
-                                                       "--test-manifest " +
-                                                       "iottest/testplan/minnowmax.iottest.manifest",
-                          "VirtualBox".lower(): " --machine intel-corei7-64 " +
-                                                    "--test-manifest " +
-                                                    "iottest/testplan/minnowmax.iottest.manifest",
-                          "generic_64".lower(): " --machine intel-corei7-64 " +
-                                                    "--test-manifest " +
-                                                    "iottest/testplan/minnowmax.iottest.manifest",
-                          "bxtc".lower(): " --machine intel-corei7-64 " +
-                                                    "--test-manifest " +
-                                                    "iottest/testplan/minnowmax.iottest.manifest",
-                          "bxks".lower(): " --machine intel-corei7-64 " +
-                                                    "--test-manifest " +
-                                                    "iottest/testplan/minnowmax.iottest.manifest"
-                          }
 
     def run(self, device):
         ip_address = device.get_ip()
@@ -60,14 +31,6 @@ class QATestCase(BasicTestCase):
         # Append --target-ip parameter
         if not "--target-ip" in self.parameters:
             self.parameters += " " + "--target-ip " + ip_address
-
-        if not "--pkg-arch" in self.parameters:
-            if device.model.lower() in self._DEVICE_PARAMETERS:
-                self.parameters += self._DEVICE_PARAMETERS[device.model.lower()]
-            else:
-                self.parameters += (" --machine intel-corei7-64 " +
-                                    "--test-manifest " +
-                                    "iottest/testplan/minnowmax.iottest.manifest")
 
         self.run_local_command()
         return self._result_has_zero_fails()
