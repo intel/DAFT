@@ -55,11 +55,14 @@ def main():
 
     except:
         if beaglebone_dut:
-            lockfile = "/etc/daft/lockfiles/" + beaglebone_dut["lockfile"]
-            with open(lockfile, "a") as f:
-                f.write("Blacklisted because flashing/testing failed\n")
-                print("FLashing/testing failed, blacklisted " +
-                      beaglebone_dut["lockfile"])
+            if args.noblacklisting:
+                release_device(beaglebone_dut)
+            else:
+                lockfile = "/etc/daft/lockfiles/" + beaglebone_dut["lockfile"]
+                with open(lockfile, "a") as f:
+                    f.write("Blacklisted because flashing/testing failed\n")
+                    print("FLashing/testing failed, blacklisted " +
+                          beaglebone_dut["lockfile"])
         raise
 
 def update(config):
@@ -313,6 +316,12 @@ def parse_args():
         action="store_true",
         default=False,
         help="Skip device testing")
+
+    parser.add_argument(
+        "--noblacklisting",
+        action="store_true",
+        default=False,
+        help="Don't blacklist device if flashing/testing fails")
 
     parser.add_argument(
         "--update",
