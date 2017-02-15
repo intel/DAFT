@@ -32,7 +32,8 @@ def main():
     try:
         start_time = time.time()
         beaglebone_dut = reserve_device(args)
-        execute_flashing(beaglebone_dut, args, config)
+        if not args.noflash:
+            execute_flashing(beaglebone_dut, args, config)
         execute_testing(beaglebone_dut, args, config)
         release_device(beaglebone_dut)
         print("DAFT run duration: " + time_used(start_time))
@@ -203,7 +204,7 @@ def execute_testing(bb_dut, args, config):
     try:
         output = remote_execute(bb_dut["bb_ip"],
                                 ["cd", "/root/workspace" + current_dir,";aft",
-                                dut, args.image_file, record, "--noflash"],
+                                dut, record, "--noflash"],
                                 timeout=1200, config = config)
 
     finally:
@@ -299,6 +300,12 @@ def parse_args():
         action="store_true",
         default=False,
         help="Record serial output from DUT while flashing/testing")
+
+    parser.add_argument(
+        "--noflash",
+        action="store_true",
+        default=False,
+        help="Skip device flashing")
 
     parser.add_argument(
         "--update",
