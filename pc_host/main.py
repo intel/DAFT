@@ -34,7 +34,8 @@ def main():
         beaglebone_dut = reserve_device(args)
         if not args.noflash:
             execute_flashing(beaglebone_dut, args, config)
-        execute_testing(beaglebone_dut, args, config)
+        if not args.notest:
+            execute_testing(beaglebone_dut, args, config)
         release_device(beaglebone_dut)
         print("DAFT run duration: " + time_used(start_time))
         return 0
@@ -306,6 +307,12 @@ def parse_args():
         action="store_true",
         default=False,
         help="Skip device flashing")
+
+    parser.add_argument(
+        "--notest",
+        action="store_true",
+        default=False,
+        help="Skip device testing")
 
     parser.add_argument(
         "--update",
