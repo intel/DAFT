@@ -578,7 +578,7 @@ Basic DAFT command:
 daft <dut> <image_file>
 ```
 DAFT commandline interface options:
-* **dut**: Type of DUT to flash. Should be one from the `/etc/daft/devices.cfg`.
+* **dut**: Type of DUT or sepcific DUT to flash. Should be one from the `/etc/daft/devices.cfg`.
 * **image_file**: Image file to flash to the DUT.
 * **--record**: Record serial output from DUT.
 * **--update**: Update AFT on the BBB filesystem and DAFT on the PC. This should be ran while being on the root DAFT repository directory and with root permission.

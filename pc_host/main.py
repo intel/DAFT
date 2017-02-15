@@ -58,11 +58,11 @@ def main():
             if args.noblacklisting:
                 release_device(beaglebone_dut)
             else:
-                lockfile = "/etc/daft/lockfiles/" + beaglebone_dut["lockfile"]
+                lockfile = "/etc/daft/lockfiles/" + beaglebone_dut["device"]
                 with open(lockfile, "a") as f:
                     f.write("Blacklisted because flashing/testing failed\n")
-                    print("FLashing/testing failed, blacklisted " +
-                          beaglebone_dut["lockfile"])
+                    print("Flashing or testing failed, blacklisted " +
+                          beaglebone_dut["device"])
         raise
 
 def update(config):
@@ -121,19 +121,20 @@ def reserve_device(args):
     Reserve Beaglebone/DUT for flashing and testing
     '''
     start_time = time.time()
-    dut = args.dut
+    dut = args.dut.lower()
     config = get_bbb_config()
     while True:
         for device in config:
-            if device["dut"].lower() == dut:
-                lockfile = "/etc/daft/lockfiles/" + device["lockfile"]
+            if device["device_type"].lower() == dut or \
+               device["device"].lower() == dut:
+                lockfile = "/etc/daft/lockfiles/" + device["device"]
                 write_mode = "w+"
                 if os.path.isfile(lockfile):
                     write_mode = "r+"
                 with open(lockfile, write_mode) as f:
                     if not f.read():
                         f.write("Locked\n")
-                        print("Reserved " + device["lockfile"])
+                        print("Reserved " + device["device"])
                         print("Waiting took: " + time_used(start_time))
                         return device
         time.sleep(10)
@@ -147,8 +148,8 @@ def get_bbb_config():
     configurations = []
     for device in config.sections():
         device_config = dict(config.items(device))
-        device_config["lockfile"] = device
-        device_config["dut"] = device.rstrip('1234567890_')
+        device_config["device"] = device
+        device_config["device_type"] = device.rstrip('1234567890_')
         configurations.append(device_config)
     return configurations
 
@@ -157,10 +158,10 @@ def release_device(beaglebone_dut):
     Release Beaglebone/DUT lock
     '''
     if beaglebone_dut:
-        lockfile = "/etc/daft/lockfiles/" + beaglebone_dut["lockfile"]
+        lockfile = "/etc/daft/lockfiles/" + beaglebone_dut["device"]
         with open(lockfile, "w") as f:
             f.write("")
-            print("Released " + beaglebone_dut["lockfile"])
+            print("Released " + beaglebone_dut["device"])
 
 def execute_flashing(bb_dut, args, config):
     '''
@@ -172,7 +173,7 @@ def execute_flashing(bb_dut, args, config):
 
     print("Executing flashing of DUT")
     start_time = time.time()
-    dut = bb_dut["dut"].lower()
+    dut = bb_dut["device_type"].lower()
     current_dir = os.getcwd().replace(config["workspace_nfs_path"], "")
     img_path = args.image_file.replace(config["workspace_nfs_path"],
                                        "/root/workspace")
@@ -200,7 +201,7 @@ def execute_testing(bb_dut, args, config):
     '''
     print("Executing testing of the DUT")
     start_time = time.time()
-    dut = bb_dut["dut"].lower()
+    dut = bb_dut["device_type"].lower()
     current_dir = os.getcwd().replace(config["workspace_nfs_path"], "")
     record = ""
     if args.record:
@@ -290,7 +291,7 @@ def parse_args():
         "dut",
         action="store",
         nargs="?",
-        help="Device type to test")
+        help="Device type or specific device to test")
 
     parser.add_argument(
         "image_file",
