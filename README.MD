@@ -584,7 +584,7 @@ DAFT commandline interface options:
 * **--update**: Update AFT on the BBB filesystem and DAFT on the PC. This should be ran while being on the root DAFT repository directory and with root permission.
 
 ### 4.3 AFT settings
-AFT settings are located in `/etc/daft/daft.cfg` and on default are:
+AFT settings are located on the BBB filesystem in `/etc/aft/aft.cfg` and on default are:
 ```
 [aft]
 lock_file = /var/lock/
