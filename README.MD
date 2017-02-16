@@ -422,7 +422,7 @@ Flash and test an image while recording serial output:
 daft minnowboard yocto-image.dsk --record
 ```
 
-If flashing or entering test mode fails DAFT will blacklist the BBB used by locking the device until `/etc/daft/lockfiles/<device>` is emptied or removed. Also be aware that BBB has a watchdog that checks periodically if it has connection to the _192.168.30.1_ server and also if sshd and dnsmasq services are running. If it doesn't it will automatically reboot BBB. Removing the watchdog can be done by:
+For more info about using DAFT and its settings check [DAFT and AFT settings and commandline interface](#4-daft-and-aft-settings-and-commandline-interface) section. If flashing or entering test mode fails DAFT will blacklist the BBB used by locking the device until `/etc/daft/lockfiles/<device>` is emptied or removed. Also be aware that BBB has a watchdog that checks periodically if it has connection to the _192.168.30.1_ server and also if sshd and dnsmasq services are running. If it doesn't it will automatically reboot BBB. Removing the watchdog can be done by:
 ```
 rm /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
 ```
@@ -582,6 +582,9 @@ DAFT commandline interface options:
 * **image_file**: Image file to flash to the DUT.
 * **--record**: Record serial output from DUT.
 * **--update**: Update AFT on the BBB filesystem and DAFT on the PC. This should be ran while being on the root DAFT repository directory and with root permission.
+* **--noflash**: Skip flashing of DUT.
+* **--notest**: Skip testing of DUT.
+* **--noblacklisting**: If flashing or testing fails don't blacklist the device.
 
 ### 4.3 AFT settings
 AFT settings are located in `/etc/daft/daft.cfg` and on default are:
