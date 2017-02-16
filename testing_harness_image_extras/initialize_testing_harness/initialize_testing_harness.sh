@@ -93,7 +93,6 @@ set_up_gpio() {
 }
 
 set_up_system() {
-  mkdir /var/run/sshd
   touch /var/lib/misc/dnsmasq.leases
   systemctl restart dnsmasq
   systemctl restart ssh
