@@ -502,7 +502,7 @@ ln -s /etc/systemd/system/initialize_testing_harness.service  /etc/systemd/syste
 cp DAFT/testing_harness_image_extras/watchdog/watchdog.py /usr/bin/watchdog
 cp DAFT/testing_harness_image_extras/watchdog/watchdog.service /etc/systemd/system/
 cp -r DAFT/testing_harness_image_extras/kbsequences /root/
-chmod +x initialize_testing_harness.sh
+chmod +x /usr/bin/initialize_testing_harness.sh
 chmod +x /usr/bin/watchdog
 mkdir support_image /ramdisk /config .ssh workspace
 systemctl enable dnsmasq
@@ -521,7 +521,7 @@ vim /etc/network/interfaces
     iface eth0 inet dhcp
 vim /etc/dnsmasq.conf
     # Remove everything but have these lines
-    dhcp-range=192.168.7.2,192.168.7.254,10m
+    dhcp-range=192.168.7.2,192.168.7.2,10m
     interface=usb0
 vim /etc/fstab
     # Remove everything but have these lines
@@ -584,7 +584,7 @@ DAFT commandline interface options:
 * **--update**: Update AFT on the BBB filesystem and DAFT on the PC. This should be ran while being on the root DAFT repository directory and with root permission.
 
 ### 4.3 AFT settings
-AFT settings are located in `/etc/daft/daft.cfg` and on default are:
+AFT settings are located on the BBB filesystem in `/etc/aft/aft.cfg` and on default are:
 ```
 [aft]
 lock_file = /var/lock/
