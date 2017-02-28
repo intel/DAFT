@@ -4,5 +4,6 @@ ConditionFileIsExecutable=/usr/bin/initialize_testing_harness.sh
 After=multi-user.target
 
 [Service]
+RemainAfterExit=true
 ExecStart=/usr/bin/initialize_testing_harness.sh
-RemainAfterExit=yes
+ExecStop=/usr/bin/stop_libcomposite.sh
