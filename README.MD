@@ -496,6 +496,7 @@ git clone https://github.com/01org/DAFT.git
 cd DAFT/testing_harness
 python3 setup.py install
 cd
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/stop_libcomposite.sh /usr/bin/
 cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness.sh /usr/bin/
 cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness.service /etc/systemd/system/
 ln -s /etc/systemd/system/initialize_testing_harness.service  /etc/systemd/system/multi-user.target.wants/
