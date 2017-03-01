@@ -238,12 +238,16 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
                 "-o", "ConnectTimeout=" + str(connect_timeout),
                 user + "@" + str(remote_ip)]
 
-    try:
-        output = local_execute(ssh_args + command, timeout, ignore_return_codes)
-    except subprocess.CalledProcessError as err:
-        raise err
-
-    return output
+    connection_retries = 3
+    for i in range(1, connection_retries + 1):
+        try:
+            output = local_execute(ssh_args + command, timeout, ignore_return_codes)
+        except subprocess.CalledProcessError as err:
+            if "Connection refused" in err.output and i < connection_retries:
+                time.sleep(2)
+                continue
+            raise err
+        return output
 
 def local_execute(command, timeout=60, ignore_return_codes=None, cwd=None):
     """
@@ -274,7 +278,7 @@ def local_execute(command, timeout=60, ignore_return_codes=None, cwd=None):
     if return_code in ignore_return_codes or return_code == 0:
         return output
     else:
-        print(output)
+        print(output, end="")
         raise subprocess.CalledProcessError(returncode = return_code,
                                               cmd = command, output = output)
 
