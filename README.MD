@@ -320,7 +320,7 @@ bbb_fs_path = /daft/bbb_fs/
 
 Now you can update both DAFT on the PC and AFT on the BBB filesystem with:
 ```
-cd ~/DAFT; daft --update
+cd ~/DAFT; sudo daft --update
 ```
 Finally change `/etc/daft/lockfiles` owner to your DAFT user:
 <pre>
@@ -331,7 +331,7 @@ sudo chown <b>user</b>:<b>group</b> /etc/daft/lockfiles
 ![](readme_pictures/relay_and_cable.jpg)
 _Relay with extension cable hooked up._
 
-First cut the DC plug extension cable in half from the middle (or power supplys one if you don't mind cutting it). At least some cables had trouble if they weren't cut short so it's recommended to shorten the cables first. Then solder the ground lines back together and use tape or heat shrink tube to cover it. Then solder or screw the DC line cables to the relay. If the relay has screw holes it's recommended to solder small tin beads to the cable ends and flatten them with pliers to get better contact. On default it's expected that the relay is normally closed but this can be changed by changing _gpio_cutter_on_ and _gpio_cutter_off_ values:
+First cut the DC plug extension cable in half from the middle (or power supplys one if you don't mind cutting it). At least some cables had trouble if they weren't cut short so it's recommended to shorten the cables first. Then solder the ground lines back together and use tape or heat shrink tube to cover it. Then solder or screw the DC line cables to the relay. If the relay has screw holes it's recommended to solder small tin beads to the cable ends and flatten them with pliers to get better contact. On default it's expected that the relay is normally closed (DUT is powered on) but this can be changed by changing _gpio_cutter_on_ and _gpio_cutter_off_ values:
 <pre>
 sudo vim /daft/bbb_fs/etc/aft/devices/platform.cfg
 </pre>
