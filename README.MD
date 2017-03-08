@@ -792,15 +792,13 @@ Settings:
 * **aft_log_name**: Name for the aft log file.
 * **nfs_folder**: Path to the directory that the workspace NFS is mounted to.
 
-AFT device settings are located in three files on the BBB filesystem in
-`/etc/aft/devices/`. The files are _platform.cfg_, _catalog.cfg_ and
-_topology.cfg_. The configuration of a single physical device is combined out of
-these files. The platform.cfg is the highest level configuration file. It is
-intended to store settings which are shared between all high-level device-types,
-ie. PC-devices or gadget-devices. The catalog.cfg is the configuration file
-describing each device type. These are the options shared by all devices of the
-same type. The topology.cfg file contains individual physical device specific
-information. Settings on these files:
+AFT device settings are located in two files on the BBB filesystem in
+`/etc/aft/devices/`. The files are _platform.cfg_ and _catalog.cfg_. The
+configuration of a device is combined out of these files. The platform.cfg is
+the highest level configuration file. It is intended to store settings which are
+shared between all high-level device-types,ie. PC-devices or gadget-devices. The
+catalog.cfg is the configuration file describing each device type. Settings on
+these files:
 * **leases_file_name**: Path to the dnsmasq.leases file that contains IP addresses
   of connected devices.
 * **keyboard_emulator**: Keyboard emulator type. On default GadgetKeyboard which
@@ -825,8 +823,6 @@ information. Settings on these files:
 * **test_mode_keystrokes**: Path to the keystrokes which boot DUT to test mode.
 * **platform**: On catalog.cfg file option to inherit settings from specific
   platform.
-* **model**: On topology.cfg file option to inherit settings from specific
-  device type.
 
 ### 4.4 AFT commandline interface
 

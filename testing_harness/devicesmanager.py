@@ -38,8 +38,8 @@ class DevicesManager(object):
 
     __PLATFORM_FILE_NAME = "/etc/aft/devices/platform.cfg"
 
-    # Construct all device objects of the correct machine type based on the topology config file.
-    # args = parsed command line arguments
+    # Construct the device object of the correct machine type based on the
+    # catalog config file.
     def __init__(self, args):
         """
         Constructor
@@ -78,22 +78,16 @@ class DevicesManager(object):
         """
         platform_config_file = self.__PLATFORM_FILE_NAME
         catalog_config_file = self._args.catalog
-        topology_config_file = self._args.topology
 
         platform_config = ConfigParser.SafeConfigParser()
         platform_config.read(platform_config_file)
         catalog_config = ConfigParser.SafeConfigParser()
         catalog_config.read(catalog_config_file)
-        topology_config = ConfigParser.SafeConfigParser()
-        topology_config.read(topology_config_file)
 
         configs = []
 
-        for device_title in topology_config.sections():
-
-            device_entry = dict(topology_config.items(device_title))
-
-            model = device_entry["model"]
+        for device_title in catalog_config.sections():
+            model = device_title
             catalog_entry = dict(catalog_config.items(model))
 
             platform = catalog_entry["platform"]
@@ -105,8 +99,8 @@ class DevicesManager(object):
             # more generic. This should be maintained
             settings.update(platform_entry)
             settings.update(catalog_entry)
-            settings.update(device_entry)
 
+            settings["model"] = device_title.lower()
             settings["name"] = device_title.lower()
             settings["serial_log_name"] = config.SERIAL_LOG_NAME
 
@@ -119,7 +113,7 @@ class DevicesManager(object):
         if len(configs) == 0:
             raise errors.AFTConfigurationError(
                 "Zero device configurations built - is this really correct? " +
-                "Check that paths for topology, catalog and platform files "
+                "Check that paths for catalog and platform files "
                 "are correct and that the files have some settings inside")
 
         logger.info("Built configuration sets for " + str(len(configs)) +

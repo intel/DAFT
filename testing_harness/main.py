@@ -97,12 +97,6 @@ def parse_args():
         default="/etc/aft/devices/catalog.cfg")
 
     parser.add_argument(
-        "--topology",
-        action="store",
-        help="Configuration file describing the (physically) attached devices",
-        default="/etc/aft/devices/topology.cfg")
-
-    parser.add_argument(
         "machine",
         action="store",
         nargs="?",
