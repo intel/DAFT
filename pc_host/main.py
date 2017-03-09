@@ -49,9 +49,11 @@ def main():
                                     timeout=10, config = config)
         return 0
 
+    except DeviceNameError:
+        return 6
     except ImageNameError:
         release_device(beaglebone_dut)
-        return 0
+        return 7
 
     except:
         if beaglebone_dut:
@@ -123,10 +125,12 @@ def reserve_device(args):
     start_time = time.time()
     dut = args.dut.lower()
     config = get_bbb_config()
+    dut_found = 0
     while True:
         for device in config:
             if device["device_type"].lower() == dut or \
                device["device"].lower() == dut:
+                dut_found = 1
                 lockfile = "/etc/daft/lockfiles/" + device["device"]
                 write_mode = "w+"
                 if os.path.isfile(lockfile):
@@ -137,6 +141,12 @@ def reserve_device(args):
                         print("Reserved " + device["device"])
                         print("Waiting took: " + time_used(start_time))
                         return device
+
+        if not dut_found:
+            print("Device name '" + dut + "', was not found in "
+                  "/etc/daft/devices.cfg")
+            raise DeviceNameError()
+
         time.sleep(10)
 
 def get_bbb_config():
@@ -283,6 +293,9 @@ def local_execute(command, timeout=60, ignore_return_codes=None, cwd=None):
                                               cmd = command, output = output)
 
 class ImageNameError(Exception):
+    pass
+
+class DeviceNameError(Exception):
     pass
 
 def parse_args():
