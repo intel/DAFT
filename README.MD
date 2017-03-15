@@ -8,30 +8,24 @@
     * 1.2.1 [Detailed DAFT run](#121-detailed-daft-run)
 2. [Creating DAFT setup](#2-creating-daft-setup)
     * 2.1 [Required hardware](#21-required-hardware)
-    * 2.2 [Setting up BeagleBone Black filesystem on the PC]
-          (#22-setting-up-beaglebone-black-filesystem-on-the-pc)
+    * 2.2 [Setting up BeagleBone Black filesystem on the PC](#22-setting-up-beaglebone-black-filesystem-on-the-pc)
     * 2.3 [Configuring Ubuntu PC](#23-configuring-ubuntu-pc)
         * 2.3.1 [Secondary network interface](#231-secondary-network-interface)
         * 2.3.2 [Dnsmasq](#232-dnsmasq)
         * 2.3.3 [TFTP server](#233-tftp-server)
         * 2.3.4 [NFS server](#234-nfs-server)
     * 2.4 [Configuring BeagleBone Black](#24-configuring-beaglebone-black)
-        * 2.4.1 [Changing BBB filesystem permissions]
-          (#241-changing-bbb-filesystem-permissions)
-        * 2.4.2 [Changing NFS workspace that BBB and DUT support image will mount]
-         (#242-changing-nfs-workspace-that-bbb-and-dut-support-image-will-mount)
-        * 2.4.3 [Setting BeagleBone Black to boot from NFS]
-          (#243-setting-beaglebone-black-to-boot-from-nfs)
-    * 2.5 [Install and configure DAFT software]
-      (#25-install-and-configure-daft-software)
+        * 2.4.1 [Changing BBB filesystem permissions](#241-changing-bbb-filesystem-permissions)
+        * 2.4.2 [Changing NFS workspace that BBB and DUT support image will mount](#242-changing-nfs-workspace-that-bbb-and-dut-support-image-will-mount)
+        * 2.4.3 [Setting BeagleBone Black to boot from NFS](#243-setting-beaglebone-black-to-boot-from-nfs)
+    * 2.5 [Install and configure DAFT software](#25-install-and-configure-daft-software)
     * 2.6 [Setting up relay](#26-setting-up-relay)
     * 2.7 [Connecting hardware](#27-connecting-hardware)
     * 2.8 [Setting up DUT](#28-setting-up-dut)
     * 2.9 [Using DAFT](#29-using-daft)
     * 2.10 [Adding more devices](#210-adding-more-devices)
 3. [Creating BeagleBone Black filesystem](#3-creating-beaglebone-black-filesystem)
-4. [DAFT and AFT settings and commandline interface]
-   (#4-daft-and-aft-settings-and-commandline-interface)
+4. [DAFT and AFT settings and commandline interface](#4-daft-and-aft-settings-and-commandline-interface)
     * 4.1 [DAFT settings](#41-daft-settings)
     * 4.2 [DAFT commandline interface](#42-daft-commandline-interface)
     * 4.3 [AFT settings](#43-aft-settings)
@@ -153,8 +147,7 @@ Fewest mandatory steps to create DAFT setup with one device under test (DUT) and
 BeagleBone Black (BBB):
 
 * [Get required hardware](#21-required-hardware)
-* [Set up BeagleBone Black filesystem on the PC]
-  (#22-setting-up-beaglebone-black-filesystem-on-the-pc)
+* [Set up BeagleBone Black filesystem on the PC](#22-setting-up-beaglebone-black-filesystem-on-the-pc)
 * [Configure required services on the PC](#23-configuring-ubuntu-pc)
 * [Configure BeagleBone Black](#24-configuring-beaglebone-black)
 * [Install and configure DAFT software](#25-install-and-configure-daft-software)
@@ -163,8 +156,7 @@ BeagleBone Black (BBB):
 * [Set up DUT](#28-setting-up-dut)
 * [Use DAFT](#29-using-daft)
 
-When the setup has been completed check this section on [adding more devices]
-(#210-adding-more-devices).
+When the setup has been completed check this section on [adding more devices](#210-adding-more-devices).
 
 ## 2.1 Required hardware
 
