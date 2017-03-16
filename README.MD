@@ -24,14 +24,16 @@
     * 2.8 [Setting up DUT](#28-setting-up-dut)
     * 2.9 [Using DAFT](#29-using-daft)
     * 2.10 [Adding more devices](#210-adding-more-devices)
-3. [Creating BeagleBone Black filesystem](#3-creating-beaglebone-black-filesystem)
-4. [DAFT and AFT settings and commandline interface](#4-daft-and-aft-settings-and-commandline-interface)
-    * 4.1 [DAFT settings](#41-daft-settings)
-    * 4.2 [DAFT commandline interface](#42-daft-commandline-interface)
-    * 4.3 [AFT settings](#43-aft-settings)
-    * 4.4 [AFT commandline interface](#44-aft-commandline-interface)
-5. [Troubleshooting](#5-troubleshooting)
-    * 5.1 [Beaglebone Black booting](#51-beaglebone-black-booting)
+3. [DAFT and AFT settings and commandline interface](#3-daft-and-aft-settings-and-commandline-interface)
+    * 3.1 [DAFT settings](#31-daft-settings)
+    * 3.2 [DAFT commandline interface](#32-daft-commandline-interface)
+    * 3.3 [AFT settings](#33-aft-settings)
+    * 3.4 [AFT commandline interface](#34-aft-commandline-interface)
+4. [Creating BeagleBone Black filesystem](#4-creating-beaglebone-black-filesystem)
+5. [Creating support image for DUT](#5-creating-support-image-for-dut)
+    * 5.1 [Ubuntu for PC like devices](#51-ubuntu-for-pc-like-devices)
+6. [Troubleshooting](#6-troubleshooting)
+    * 6.1 [Beaglebone Black booting](#61-beaglebone-black-booting)
 
 [DAFT hardware images](#daft-hardware-images)
 
@@ -203,11 +205,10 @@ filesystem to make them work.
 
 ## 2.2 Setting up BeagleBone Black filesystem on the PC
 
-TODO: Make guide for making DUT support image which is also needed for the system
-
-Make BBB filesystem from [scratch](#3-creating-beaglebone-black-filesystem) or
-download ready made one. To download ready made BBB filesystem and extract it to
-root use these commands:
+Make [BBB filesystem](#4-creating-beaglebone-black-filesystem) and
+[support image](#5-creating-support-image-for-dut) for DUT from scratch or
+download already made one. To download ready made BBB filesystem and extract it
+to root use these commands:
 ```
 cd /
 sudo wget address-to-bbb-fs
@@ -555,13 +556,13 @@ daft minnowboard yocto-image.dsk --record
 ```
 
 For more info about using DAFT and its settings check
-[DAFT and AFT settings and commandline interface]
-(#4-daft-and-aft-settings-and-commandline-interface) section. If flashing or
-entering test mode fails DAFT will blacklist the BBB used by locking the device
-until `/etc/daft/lockfiles/<device>` is emptied or removed. Also be aware that BBB
-has a watchdog that checks periodically if it has connection to the _192.168.30.1_
-server and also if sshd and dnsmasq services are running. If it doesn't it will
-automatically reboot BBB. Removing the watchdog can be done by:
+[DAFT and AFT settings and commandline interface](#3-daft-and-aft-settings-and-commandline-interface)
+section. If flashing or entering test mode fails DAFT will blacklist the BBB
+used by locking the device until `/etc/daft/lockfiles/<device>` is emptied or
+removed. Also be aware that BBB has a watchdog that checks periodically if it
+has connection to the _192.168.30.1_ server and also if sshd and dnsmasq
+services are running. If it doesn't it will automatically reboot BBB. Removing
+the watchdog can be done by:
 ```
 rm /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
 ```
@@ -599,7 +600,131 @@ bb_ip = 192.168.30.3
 bb_ip = 192.168.30.5</b>
 </pre>
 
-## 3. Creating BeagleBone Black filesystem
+## 3. DAFT and AFT settings and commandline interface
+
+### 3.1 DAFT settings
+
+DAFT settings are located in `/etc/daft/daft.cfg` and on default are:
+```
+[daft]
+workspace_nfs_path = /home/tester/
+bbb_fs_path = /daft/bbb_fs/
+bbb_aft_path = /usr/local/lib/python3.4/dist-packages/aft-1.0.0-py3.4.egg/aft
+```
+
+Settings:
+* **workspace_nfs_path**: Path to the workspace directory that is shared with NFS
+  to BBB and DUT.
+* **bbb_fs_path**: Path to the directory that contains the filesystem from which
+  BBB boots from.
+* **bbb_aft_path**: Path to the directory that contains AFT code.
+
+DAFT device settings are located in `/etc/daft/devices.cfg` and on default are:
+```
+[Minnowboard1]
+bb_ip = 192.168.30.2
+
+[Joule1]
+bb_ip = 192.168.30.3
+```
+
+Settings:
+* **bb_ip**: IP address to the BBB handling the specific DUT.
+
+### 3.2 DAFT commandline interface
+
+Basic DAFT command:
+```
+daft <dut> <image_file>
+```
+
+DAFT commandline interface options:
+* **dut**: Type of DUT or sepcific DUT to flash. Should be one from the
+  `/etc/daft/devices.cfg`.
+* **image_file**: Image file to flash to the DUT.
+* **--record**: Record serial output from DUT.
+* **--update**: Update AFT on the BBB filesystem and DAFT on the PC. This should
+  be ran while being on the root DAFT repository directory and with root
+  permission.
+* **--noflash**: Skip flashing of DUT.
+* **--notest**: Skip testing of DUT.
+* **--noblacklisting**: If flashing or testing fails don't blacklist the device.
+
+### 3.3 AFT settings
+
+AFT settings are located on the BBB filesystem in `/etc/aft/aft.cfg` and on
+default are:
+```
+[aft]
+lock_file = /var/lock/
+serial_log_name = serial.log
+aft_log_name = aft.log
+nfs_folder = /root/workspace
+```
+
+Settings:
+* **lock_file**: Path to directory that lock files are saved to. Lock file is
+  used so multiple instances of AFT can't flash/test a DUT at the same time.
+* **serial_log_name**: Name for the serial log file.
+* **aft_log_name**: Name for the aft log file.
+* **nfs_folder**: Path to the directory that the workspace NFS is mounted to.
+
+AFT device settings are located in two files on the BBB filesystem in
+`/etc/aft/devices/`. The files are _platform.cfg_ and _catalog.cfg_. The
+configuration of a device is combined out of these files. The platform.cfg is
+the highest level configuration file. It is intended to store settings which are
+shared between all high-level device-types,ie. PC-devices or gadget-devices. The
+catalog.cfg is the configuration file describing each device type. Settings on
+these files:
+* **leases_file_name**: Path to the dnsmasq.leases file that contains IP addresses
+  of connected devices.
+* **keyboard_emulator**: Keyboard emulator type. On default GadgetKeyboard which
+  is the BBB keyboard emulation.
+* **cutter_type**: DUT power supply cutter/relay type. On default GpioCutter which
+  is a relay controlled with BBB GPIO pins.
+* **gpio_pin**: GPIO pin that controls the cutter/relay if using GpioCutter.
+* **gpio_cutter_on**: GPIO pin value when relay should be closed. On default 1.
+* **gpio_cutter_off**: GPIO pin value when relay should be open. On default 0.
+* **pem_port**: Path to the keyboard emulator port.
+* **serial_port**: Path to the serial cable port.
+* **serial_bauds**: Bauds for serial recording of DUT.
+* **test_plan**: Test plan used with the device.
+* **target_device**: Path to the target device that the image to be tested is
+  flashed to.
+* **service_mode**: String included in 'uname -a' when DUT is booted with
+  support image.
+* **test_mode**: String included in 'uname -a' when DUT is booted with the image
+  to be tested.
+* **service_mode_keystrokes**: Path to the keystrokes which boot DUT to service
+  mode.
+* **test_mode_keystrokes**: Path to the keystrokes which boot DUT to test mode.
+* **platform**: On catalog.cfg file option to inherit settings from specific
+  platform.
+
+### 3.4 AFT commandline interface
+
+AFT can be used on the BBB. Basic AFT command:
+```
+aft <dut> <image_file>
+```
+
+AFT commandline interface options:
+* **dut**: Type of DUT to flash. Should be one from the
+  `/etc/aft/devices/catalog.cfg`.
+* **image_file**: Image file to flash to the DUT.
+* **--record**: Record serial output from DUT.
+* **--flash_retries**: Change how many times flashing will be tried. On default 2.
+* **--noflash**: Skip flashing image to the device eg. 'aft joule --noflash' would
+  run only tests.
+* **--notest**: Skip testing image.
+* **--nopoweroff**: After aft run, don't turn off device.
+* **--boot**: Boot device to specific mode. Options are 'service_mode' and
+  'test_mode'. For example: 'aft joule --noflash --notest --boot=test_mode'
+  would boot device to the flashed image.
+* **--verbose**: Increase aft run verbosity.
+* **--debug**: Change aft logging level to 'debug'.
+
+## 4. Creating BeagleBone Black filesystem
 
 Download BBB image from [here](https://beagleboard.org/latest-images)
 (bone-debian-8.6-lxqt-4gb-armhf-2016-11-06-4gb.img was used when writing this
@@ -715,133 +840,161 @@ with this U-Boot command:
 setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.30-ti-r64; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.30-ti-r64/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
 ```
 
-## 4. DAFT and AFT settings and commandline interface
+## 5. Creating support image for DUT
 
-### 4.1 DAFT settings
+### 5.1 Ubuntu for PC like devices
 
-DAFT settings are located in `/etc/daft/daft.cfg` and on default are:
+Support image made using this guide should work for any PC like devices but
+has only been tested with Minnowboard Turbot and Joule. Two USB-sticks, USB hub,
+keyboard, USB-ethernet dongle, monitor and Joule was used when writing this
+guide. First download
+[Ubuntu server 16.04.2 LTS](https://www.ubuntu.com/download/server). Ubuntu
+server is used as it's basically normal Ubuntu without graphical interface. Copy
+it to a USB-stick with `dd` (change **X** to match your USB-stick):
+<pre>
+sudo dd if=ubuntu-16.04.2-server-amd64.iso of=/dev/sd<b>X</b> bs=8M status=progress
+sync
+</pre>
+
+Connect USB hub, USB-sticks, keyboard and monitor to the DUT. Boot the DUT using
+the USB-stick with the Ubuntu server. Select install Ubuntu server. When
+installing it, you can choose whatever region, keyboard layout, user and
+password you like. Don't encrypt home directory. Select manual partitioning
+when you get to the partitioning section. Select your other USB-stick and create
+empty partition table on it. Then create new bootable EFI partition with size of
+512 MB. Then create EXT4 root partition with size of 2.5 GB. Then continue with
+the installation and ignore the warning about no swap partition. When asked you
+can leave proxy setting empty for now and also select no automatic updates. When
+choosing what software to install, only select OpenSSH server (note that space
+selects software and enter continues the install). Then you should be done with
+the install.
+
+Boot the newly installed Ubuntu, login and change `/etc/default/grub` to stop
+network interfaces getting renamed:
 ```
-[daft]
-workspace_nfs_path = /home/tester/
-bbb_fs_path = /daft/bbb_fs/
-bbb_aft_path = /usr/local/lib/python3.4/dist-packages/aft-1.0.0-py3.4.egg/aft
+sudo su
+vim /etc/default/grub
 ```
-
-Settings:
-* **workspace_nfs_path**: Path to the workspace directory that is shared with NFS
-  to BBB and DUT.
-* **bbb_fs_path**: Path to the directory that contains the filesystem from which
-  BBB boots from.
-* **bbb_aft_path**: Path to the directory that contains AFT code.
-
-DAFT device settings are located in `/etc/daft/devices.cfg` and on default are:
 ```
-[Minnowboard1]
-bb_ip = 192.168.30.2
-
-[Joule1]
-bb_ip = 192.168.30.3
+# Change this line
+GRUB_CMDLINE_LINUX="net.ifnames=0"
 ```
-
-Settings:
-* **bb_ip**: IP address to the BBB handling the specific DUT.
-
-### 4.2 DAFT commandline interface
-
-Basic DAFT command:
 ```
-daft <dut> <image_file>
-```
-
-DAFT commandline interface options:
-* **dut**: Type of DUT or sepcific DUT to flash. Should be one from the
-  `/etc/daft/devices.cfg`.
-* **image_file**: Image file to flash to the DUT.
-* **--record**: Record serial output from DUT.
-* **--update**: Update AFT on the BBB filesystem and DAFT on the PC. This should
-  be ran while being on the root DAFT repository directory and with root
-  permission.
-* **--noflash**: Skip flashing of DUT.
-* **--notest**: Skip testing of DUT.
-* **--noblacklisting**: If flashing or testing fails don't blacklist the device.
-
-### 4.3 AFT settings
-
-AFT settings are located on the BBB filesystem in `/etc/aft/aft.cfg` and on
-default are:
-```
-[aft]
-lock_file = /var/lock/
-serial_log_name = serial.log
-aft_log_name = aft.log
-nfs_folder = /root/workspace
+update-grub
 ```
 
-Settings:
-* **lock_file**: Path to directory that lock files are saved to. Lock file is
-  used so multiple instances of AFT can't flash/test a DUT at the same time.
-* **serial_log_name**: Name for the serial log file.
-* **aft_log_name**: Name for the aft log file.
-* **nfs_folder**: Path to the directory that the workspace NFS is mounted to.
-
-AFT device settings are located in two files on the BBB filesystem in
-`/etc/aft/devices/`. The files are _platform.cfg_ and _catalog.cfg_. The
-configuration of a device is combined out of these files. The platform.cfg is
-the highest level configuration file. It is intended to store settings which are
-shared between all high-level device-types,ie. PC-devices or gadget-devices. The
-catalog.cfg is the configuration file describing each device type. Settings on
-these files:
-* **leases_file_name**: Path to the dnsmasq.leases file that contains IP addresses
-  of connected devices.
-* **keyboard_emulator**: Keyboard emulator type. On default GadgetKeyboard which
-  is the BBB keyboard emulation.
-* **cutter_type**: DUT power supply cutter/relay type. On default GpioCutter which
-  is a relay controlled with BBB GPIO pins.
-* **gpio_pin**: GPIO pin that controls the cutter/relay if using GpioCutter.
-* **gpio_cutter_on**: GPIO pin value when relay should be closed. On default 1.
-* **gpio_cutter_off**: GPIO pin value when relay should be open. On default 0.
-* **pem_port**: Path to the keyboard emulator port.
-* **serial_port**: Path to the serial cable port.
-* **serial_bauds**: Bauds for serial recording of DUT.
-* **test_plan**: Test plan used with the device.
-* **target_device**: Path to the target device that the image to be tested is
-  flashed to.
-* **service_mode**: String included in 'uname -a' when DUT is booted with
-  support image.
-* **test_mode**: String included in 'uname -a' when DUT is booted with the image
-  to be tested.
-* **service_mode_keystrokes**: Path to the keystrokes which boot DUT to service
-  mode.
-* **test_mode_keystrokes**: Path to the keystrokes which boot DUT to test mode.
-* **platform**: On catalog.cfg file option to inherit settings from specific
-  platform.
-
-### 4.4 AFT commandline interface
-
-AFT can be used on the BBB. Basic AFT command:
+Now use `reboot` to reboot the Ubuntu. After reboot set up proxy settings if
+you need to:
 ```
-aft <dut> <image_file>
+export http_proxy=http://your.proxy.com:port
+export https_proxy=http://your.proxy.com:port
 ```
 
-AFT commandline interface options:
-* **dut**: Type of DUT to flash. Should be one from the
-  `/etc/aft/devices/catalog.cfg`.
-* **image_file**: Image file to flash to the DUT.
-* **--record**: Record serial output from DUT.
-* **--flash_retries**: Change how many times flashing will be tried. On default 2.
-* **--noflash**: Skip flashing image to the device eg. 'aft joule --noflash' would
-  run only tests.
-* **--notest**: Skip testing image.
-* **--nopoweroff**: After aft run, don't turn off device.
-* **--boot**: Boot device to specific mode. Options are 'service_mode' and
-  'test_mode'. For example: 'aft joule --noflash --notest --boot=test_mode'
-  would boot device to the flashed image.
-* **--verbose**: Increase aft run verbosity.
-* **--debug**: Change aft logging level to 'debug'.
+Change to root and use `dhclient` to connect to internet:
+```
+sudo su
+dhclient eth0
+```
 
-## 5. Troubleshooting
+Then install bmap-tools, nfs-common and parted:
+```
+apt update
+apt install bmap-tools nfs-common parted
+```
 
-### 5.1 Beaglebone Black booting
+Configure usb0 in `/etc/network/interfaces`:
+```
+vim /etc/network/interfaces
+```
+```
+# Add these lines
+auto usb0
+allow-hotplug usb0
+iface usb0 inet dhcp
+```
+
+Edit sshd settings:
+```
+vim /etc/ssh/sshd_config
+```
+```
+# Change this line
+PermitRootLogin yes
+# Add this line
+UseDNS no
+```
+
+Make some directories and files:
+```
+mkdir -p /mnt/img_data_nfs /mnt/super_target_root /mnt/target_root
+touch /root/.ssh/authorized_keys
+```
+
+Add your SSH key to `/root/.ssh/authorized_keys` with `ssh-copy-id`, `scp`,
+`ssh` or some other way you prefer. The key should be the same that BBB uses
+so it can log in with SSH.
+
+Change `/boot/efi/EFI` directory as Minnowboard on default looks for boot files
+from `/boot/efi/EFI/BOOT`:
+```
+cp -r /boot/efi/EFI/ubuntu /boot/efi/EFI/BOOT
+mv /boot/efi/EFI/BOOT/grubx64.efi /boot/efi/EFI/BOOT/bootx64.efi
+```
+
+Add nfs mount option to `/etc/fstab` and mount root as read-only:
+```
+vim /etc/fstab
+```
+<pre>
+# Change this line to include <b>ro</b>
+UUID=0b225574-0443-481b-ba4c-0f098441364a / ext4 <b>ro</b>,errors=remount-ro 0 1
+# Add this line
+192.168.30.1:/home/tester /mnt/img_data_nfs nfs rsize=8192,wsize=8192,timeo=14,intr,nolock,auto
+</pre>
+
+Now the image should be ready and you can `poweroff` the device and remove the
+USB-stick. Then connect the USB-stick to your PC and use `fdisk` to check the
+partitions (change **X** to match your USB-stick):
+<pre>
+sudo fdisk -l dev/sd<b>X</b>
+</pre>
+<pre>
+Disk /dev/sdg: 14.9 GiB, 16022241280 bytes, 31293440 sectors
+Units: sectors of 1 * 512 = <b>512 bytes</b>
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: 98662738-D145-45FE-82BB-CA80AE5073A2
+
+Device      Start     End Sectors  Size Type
+/dev/sdg1    2048  999423  997376  487M EFI System
+/dev/sdg2  999424 <b>5881855</b> 4882432  2.3G Linux filesystem
+</pre>
+
+Notice the unit size and end block of the last partition. Then use `dd` to copy
+the image from the USB-stick. Use the previous numbers but add 100 to end
+block number so we get some extra space for rewriting backup GPT partition
+table:
+<pre>
+sudo dd if=/dev/sd<b>X</b> of=ubuntu_support.img bs=<b>512</b> count=<b>5881955</b>
+</pre>
+
+Then fix the image by rewriting the backup GPT partition table:
+```
+sudo gdisk ubuntu_support.img
+
+Command (? for help): x
+Expert command (? for help): w
+Do you want to proceed? (Y/N): Y
+```
+
+Now you should have a nice small working support image to use with DAFT. The
+support image should be placed to `/daft/support_img/` and named as
+_support.img_.
+
+## 6. Troubleshooting
+
+### 6.1 Beaglebone Black booting
 
 Instead of allowing BBB to boot normally you can interrupt it by pressing space
 while booting. It will then enter U-Boot terminal. Use USB-serial cable or
