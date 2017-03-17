@@ -353,10 +353,27 @@ sudo vim /daft/bbb_fs/etc/fstab
 192.168.30.1:<b>/home/tester/</b> /root/workspace nfs rsize=8192,wsize=8192,timeo=14,intr,nolock,auto
 </pre>
 
-Then change DUT support image to also use it:
+Then change DUT support image to also use it. Use `fdisk` to check partitions
+and use the values from it for the `mount` offset value (multiply unit size
+and end block eg. 512*1050624):
+```
+sudo fdisk -l /daft/support_img/support.img
+```
+<pre>
+Disk support.img: 7,2 GiB, 7746879488 bytes, 15130624 sectors
+Units: sectors of 1 * 512 = <b>512 bytes</b>
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: 891A46A3-0ACF-42D6-8009-9024012A0EAD
+
+Device                 Start     End Sectors  Size Type
+working_support.img1    2048 1050623 1048576  512M EFI System
+working_support.img2 <b>1050624</b> 6983679 5933056  2,8G Linux filesystem
+</pre>
 <pre>
 sudo mkdir /tmp_daft
-sudo mount -o loop,offset=537919488 /daft/support_img/support.img /tmp_daft
+sudo mount -o loop,offset=<b>537919488</b> /daft/support_img/support.img /tmp_daft
 sudo vim /tmp_daft/etc/fstab
 </pre>
 <pre>
