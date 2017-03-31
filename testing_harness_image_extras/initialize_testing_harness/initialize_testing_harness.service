@@ -6,4 +6,3 @@ After=multi-user.target
 [Service]
 RemainAfterExit=true
 ExecStart=/usr/bin/initialize_testing_harness.sh
-ExecStop=/usr/bin/stop_libcomposite.sh
