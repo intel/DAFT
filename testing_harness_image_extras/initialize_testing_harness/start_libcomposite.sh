@@ -12,6 +12,14 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 
+# If no arguments given, use default support.img as mass storage emulation
+# file. Otherwise use the given argument.
+if [ -z "$1" ]; then
+  MASS_STORAGE_FILE="/root/support_image/support.img"
+else
+  MASS_STORAGE_FILE=$1
+fi
+
 set_up_gadget() {
   UDC=musb-hdrc.0.auto  # USB Device Driver found in /sys/class/udc/
 
@@ -57,7 +65,7 @@ set_up_gadget() {
   echo $CONFIG_NAME > configs/c.1/strings/0x409/configuration
 
   # Configure mass storage
-  echo "/root/support_image/support.img" > functions/mass_storage.0/lun.0/file
+  echo $MASS_STORAGE_FILE > functions/mass_storage.0/lun.0/file
   ln -s functions/mass_storage.0 configs/c.1
 
   # Configure HID keyboard
