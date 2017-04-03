@@ -55,13 +55,14 @@ def main(argv=None):
 
         if not args.notest:
             print("Testing " + str(device.name) + ".")
+            device_manager.boot_device_to_mode(device, "test_mode")
             tester.execute()
 
         if not args.nopoweroff:
             device.detach()
 
         if args.boot:
-            device_manager.boot_device_to_mode(device, args)
+            device_manager.boot_device_to_mode(device, args.boot)
 
         device_manager.release(device)
 

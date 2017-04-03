@@ -126,7 +126,6 @@ class PCDevice(Device):
             The return value of the test_case run()-method
             (implementation class specific)
         """
-        self._enter_mode(self._test_mode)
         return test_case.run(self)
 
     def get_ip(self):
