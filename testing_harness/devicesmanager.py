@@ -32,7 +32,7 @@ import aft.config as config
 import aft.devicefactory as devicefactory
 from aft.logger import Logger as logger
 from aft.tester import Tester
-from aft.tools.misc import local_execute
+from aft.tools.misc import local_execute, inject_ssh_keys_to_image
 
 class DevicesManager(object):
     """Class handling devices connected to the same host PC"""
@@ -245,6 +245,7 @@ class DevicesManager(object):
 
         if args.emulateusb:
             self.start_image_usb_emulation(args)
+            inject_ssh_keys_to_image(args.file_name)
             return device, tester
 
         if not args.noflash:
@@ -274,6 +275,7 @@ class DevicesManager(object):
 
         if args.emulateusb:
             self.start_image_usb_emulation(args)
+            inject_ssh_keys_to_image(args.file_name)
             return device, tester
 
         if args.noflash:
