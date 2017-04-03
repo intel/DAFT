@@ -32,10 +32,13 @@ def main():
     try:
         start_time = time.time()
         beaglebone_dut = reserve_device(args)
-        if not args.noflash:
-            execute_flashing(beaglebone_dut, args, config)
-        if not args.notest:
-            execute_testing(beaglebone_dut, args, config)
+        if args.emulateusb:
+            execute_usb_emulation(beaglebone_dut, args, config)
+        else:
+            if not args.noflash:
+                execute_flashing(beaglebone_dut, args, config)
+            if not args.notest:
+                execute_testing(beaglebone_dut, args, config)
         release_device(beaglebone_dut)
         print("DAFT run duration: " + time_used(start_time))
         return 0
@@ -184,6 +187,42 @@ def release_device(beaglebone_dut):
             f.write("")
             print("Released " + beaglebone_dut["device"])
 
+def execute_usb_emulation(bb_dut, args, config):
+    '''
+    Use testing harness USB emulation to boot the image and test it if
+    '--notest' argument hasn't been used.
+    '''
+    if not os.path.isfile(args.image_file):
+        print(args.image_file + " doesn't exist.")
+        raise ImageNameError()
+
+    print("Executing testing of DUT")
+    start_time = time.time()
+    dut = bb_dut["device_type"].lower()
+    current_dir = os.getcwd().replace(config["workspace_nfs_path"], "")
+    img_path = args.image_file.replace(config["workspace_nfs_path"],
+                                       "/root/workspace")
+    record = ""
+    if args.record:
+        record = "--record"
+    notest = ""
+    if args.notest:
+        notest = "--notest"
+    try:
+        output = remote_execute(bb_dut["bb_ip"],
+                                ["cd", "/root/workspace" + current_dir,";aft",
+                                dut, img_path, notest,  record, "--emulateusb"],
+                                timeout=1200, config = config)
+    finally:
+        log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
+                     "serial.log.raw"]
+        for log in log_files:
+            if os.path.isfile(log):
+                os.rename(log, "test_" + log)
+
+    print(output, end="")
+    print("Testing took: " + time_used(start_time))
+
 def execute_flashing(bb_dut, args, config):
     '''
     Execute flashing of the DUT
@@ -218,7 +257,7 @@ def execute_flashing(bb_dut, args, config):
 
 def execute_testing(bb_dut, args, config):
     '''
-    Execute flashing and testing of the DUT
+    Execute testing of the image with DUT
     '''
     print("Executing testing of the DUT")
     start_time = time.time()
@@ -348,6 +387,12 @@ def parse_args():
         action="store_true",
         default=False,
         help="Skip device testing")
+
+    parser.add_argument(
+        "--emulateusb",
+        action="store_true",
+        default=False,
+        help="Use the image in USB mass storage emulation instead of flashing")
 
     parser.add_argument(
         "--noblacklisting",

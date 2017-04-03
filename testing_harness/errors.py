@@ -21,6 +21,12 @@ class AFTConfigurationError(Exception):
     """
     pass
 
+class AFTImageNameError(Exception):
+    """
+    An error caused by non existing image file
+    """
+    pass
+
 class AFTConnectionError(Exception):
     """
     An error caused by failed (SSH) connection

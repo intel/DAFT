@@ -664,6 +664,9 @@ DAFT commandline interface options:
 * **--noflash**: Skip flashing of DUT.
 * **--notest**: Skip testing of DUT.
 * **--noblacklisting**: If flashing or testing fails don't blacklist the device.
+* **--emulateusb**: Use testing harness USB emulation to boot the image instead
+  of flashing it. You can use _--notest_ to only boot the image without running
+  automatic tests.
 
 ### 3.3 AFT settings
 
@@ -727,6 +730,9 @@ AFT commandline interface options:
 * **dut**: Type of DUT to flash. Should be one from the
   `/etc/aft/devices/catalog.cfg`.
 * **image_file**: Image file to flash to the DUT.
+* **--emulateusb**: Use testing harness USB emulation to boot the image instead
+  of flashing it. You can use _--notest_ to only boot the image without running
+  automatic tests.
 * **--record**: Record serial output from DUT.
 * **--flash_retries**: Change how many times flashing will be tried. On default 2.
 * **--noflash**: Skip flashing image to the device eg. 'aft joule --noflash' would
@@ -792,10 +798,13 @@ git clone https://github.com/01org/DAFT.git
 cd DAFT/testing_harness
 python3 setup.py install
 cd
-cp DAFT/testing_harness_image_extras/initialize_testing_harness/stop_libcomposite.sh /usr/bin/
-cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness.sh /usr/bin/
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/stop_libcomposite /usr/bin/
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/start_libcomposite /usr/bin/
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness /usr/bin/
 cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness.service /etc/systemd/system/
 ln -s /etc/systemd/system/initialize_testing_harness.service  /etc/systemd/system/multi-user.target.wants/
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/libcomposite.service /etc/systemd/system/
+ln -s /etc/systemd/system/libcomposite.service  /etc/systemd/system/multi-user.target.wants/
 cp DAFT/testing_harness_image_extras/watchdog/watchdog.py /usr/bin/watchdog
 cp DAFT/testing_harness_image_extras/watchdog/watchdog.service /etc/systemd/system/
 cp -r DAFT/testing_harness_image_extras/kbsequences /root/
