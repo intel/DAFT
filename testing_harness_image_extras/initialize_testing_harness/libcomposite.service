@@ -1,9 +1,9 @@
 [Unit]
 Description=Start USB mass storage, ethernet and keyboard emulation
-ConditionFileIsExecutable=/usr/bin/start_libcomposite.sh
+ConditionFileIsExecutable=/usr/bin/start_libcomposite
 After=initialize_testing_harness.service
 
 [Service]
 RemainAfterExit=true
-ExecStart=/usr/bin/start_libcomposite.sh
-ExecStop=/usr/bin/stop_libcomposite.sh
+ExecStart=/usr/bin/start_libcomposite
+ExecStop=/usr/bin/stop_libcomposite
