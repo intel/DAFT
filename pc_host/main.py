@@ -148,7 +148,7 @@ def reserve_device(args):
                         print("Reserved " + device["device"])
                         print("Waiting took: " + time_used(start_time))
                         return device
-                    if "Locked" in lockfile_contents:
+                    if "Locked\n" == lockfile_contents:
                         duts_blacklisted = 0
 
         if not dut_found:
