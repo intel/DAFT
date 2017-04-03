@@ -101,7 +101,7 @@ BBB testing harness AFT:
 - Find and use 'joule' settings
 - Reboot the device by turning off the relay with GPIO pin, wait a while, turn
   on the relay
-- Start sending keystrokes determined by `service_mode_keystrokes` in device
+- Start sending keystrokes determined by `boot_usb_keystrokes` in device
   settings
 - After the keystrokes has been sent, try connecting to the device with the IP
   address found in `/var/lib/misc/dnsmasq.leases`
@@ -129,7 +129,7 @@ BBB testing harness AFT:
 - Find and use 'joule' settings
 - Reboot the device by turning off the relay with GPIO pin, wait a while, turn on
   the relay
-- Start sending keystrokes determined by `test_mode_keystrokes` in device settings
+- Start sending keystrokes determined by `boot_internal_keystrokes` in device settings
 - After the keystrokes has been sent, try connecting to the device with the IP
   address found in `/var/lib/misc/dnsmasq.leases`
 - When there is a connection, run the tests determined by `test_plan` in the
@@ -520,8 +520,8 @@ target_device = /dev/mmcblk0
 root_partition = /dev/mmcblk0p3
 service_mode = Ubuntu
 test_mode = yocto
-service_mode_keystrokes = <b>/root/kbsequences/joule/boot_usb</b>
-test_mode_keystrokes = <b>/root/kbsequences/empty</b>
+boot_usb_keystrokes = <b>/root/kbsequences/joule/boot_usb</b>
+boot_internal_keystrokes = <b>/root/kbsequences/empty</b>
 serial_port = /dev/ttyUSB0
 
 [Minnowboard]
@@ -532,8 +532,8 @@ target_device = /dev/mmcblk0
 root_partition = /dev/mmcblk0p3
 service_mode = Ubuntu
 test_mode = yocto
-service_mode_keystrokes = <b>/root/kbsequences/minnowboard/boot_usb</b>
-test_mode_keystrokes = <b>/root/kbsequences/empty</b>
+boot_usb_keystrokes = <b>/root/kbsequences/minnowboard/boot_usb</b>
+boot_internal_keystrokes = <b>/root/kbsequences/empty</b>
 </pre>
 
 ## 2.8 Using DAFT
@@ -710,9 +710,9 @@ these files:
   support image.
 * **test_mode**: String included in 'uname -a' when DUT is booted with the image
   to be tested.
-* **service_mode_keystrokes**: Path to the keystrokes which boot DUT to service
+* **boot_usb_keystrokes**: Path to the keystrokes which boot DUT to service
   mode.
-* **test_mode_keystrokes**: Path to the keystrokes which boot DUT to test mode.
+* **boot_internal_keystrokes**: Path to the keystrokes which boot DUT to test mode.
 * **platform**: On catalog.cfg file option to inherit settings from specific
   platform.
 

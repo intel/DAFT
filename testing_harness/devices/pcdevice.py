@@ -78,10 +78,10 @@ class PCDevice(Device):
         self._test_mode_name = parameters["test_mode"]
         self._test_mode = {
             "name": self._test_mode_name,
-            "sequence": parameters["test_mode_keystrokes"]}
+            "sequence": parameters["boot_internal_keystrokes"]}
         self._service_mode = {
             "name": self._service_mode_name,
-            "sequence": parameters["service_mode_keystrokes"]}
+            "sequence": parameters["boot_usb_keystrokes"]}
         self._target_device = \
             parameters["target_device"]
         self.dev_ip = None
