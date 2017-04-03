@@ -295,7 +295,7 @@ class DevicesManager(object):
                     print("Flashing failed, trying again " +
                         str(flash_retries - flash_attempt) + " more times")
 
-    def boot_device_to_mode(self, device, mode):
+    def boot_device_to_mode(self, device, mode, mode_name=""):
         '''
         Boot specified device to mode specified by 'mode'
         '''
@@ -316,11 +316,13 @@ class DevicesManager(object):
 
         if device.__class__.__name__ == "PCDevice":
             if mode == "test_mode":
-                device._enter_mode(device._test_mode)
-                mode_name = device._test_mode["name"]
+                device._enter_mode(device._test_mode, mode_name)
+                if not mode_name:
+                    mode_name = device._test_mode["name"]
             if mode == "service_mode":
-                device._enter_mode(device._service_mode)
-                mode_name = device._service_mode["name"]
+                device._enter_mode(device._service_mode, mode_name)
+                if not mode_name:
+                    mode_name = device._service_mode["name"]
 
         print("Succesfully booted to " + mode_name)
 

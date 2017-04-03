@@ -138,7 +138,7 @@ class PCDevice(Device):
         return common.get_ip_for_pc_device(
             self.parameters["leases_file_name"])
 
-    def _enter_mode(self, mode):
+    def _enter_mode(self, mode, mode_name=""):
         """
         Try to put the device into the specified mode.
 
@@ -153,9 +153,11 @@ class PCDevice(Device):
             aft.errors.AFTDeviceError if device fails to enter the mode or if
             keyboard emulator fails to connect
         """
+        if not mode_name:
+            mode_name = mode["name"]
         # Sometimes booting to a mode fails.
         logger.info(
-            "Trying to enter " + mode["name"] + " mode up to " +
+            "Trying to enter " + mode_name + " mode up to " +
             str(self._RETRY_ATTEMPTS) + " times.")
 
         for _ in range(self._RETRY_ATTEMPTS):
@@ -174,10 +176,10 @@ class PCDevice(Device):
                 ip_address = self._wait_for_responsive_ip()
 
                 if ip_address:
-                    if self._verify_mode(mode["name"]):
+                    if self._verify_mode(mode_name):
                         return
                 else:
-                    logger.warning("Failed entering " + mode["name"] + " mode.")
+                    logger.warning("Failed entering " + mode_name + " mode.")
 
             except KeyboardInterrupt:
                 raise
@@ -187,10 +189,10 @@ class PCDevice(Device):
                 logger.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
 
         logger.critical(
-            "Unable to get the device in mode " + mode["name"])
+            "Unable to get the device in mode " + mode_name)
 
         raise errors.AFTDeviceError(
-            "Could not set the device in mode " + mode["name"])
+            "Could not set the device in mode " + mode_name)
 
     def _wait_for_responsive_ip(self):
         """
