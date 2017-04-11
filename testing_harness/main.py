@@ -53,15 +53,24 @@ def main(argv=None):
         else:
             device, tester = device_manager.try_flash_model(args)
 
+        if args.emulateusb:
+            device_manager.boot_device_to_mode(device, "service_mode",
+                                                device._test_mode["name"])
+
         if not args.notest:
+            if not args.emulateusb:
+                device_manager.boot_device_to_mode(device, "test_mode")
+
             print("Testing " + str(device.name) + ".")
             tester.execute()
 
-        if not args.nopoweroff:
-            device.detach()
+            if not args.nopoweroff:
+                device.detach()
+                if args.emulateusb:
+                    device_manager.stop_image_usb_emulation()
 
         if args.boot:
-            device_manager.boot_device_to_mode(device, args)
+            device_manager.boot_device_to_mode(device, args.boot)
 
         device_manager.release(device)
 
@@ -149,6 +158,12 @@ def parse_args():
         action="store_true",
         default=False,
         help="Do not power off the DUT after testing")
+
+    parser.add_argument(
+        "--emulateusb",
+        action="store_true",
+        default=False,
+        help="Use the image in USB mass storage emulation instead of flashing")
 
     parser.add_argument(
         "--boot",

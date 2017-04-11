@@ -32,6 +32,7 @@ import aft.config as config
 import aft.devicefactory as devicefactory
 from aft.logger import Logger as logger
 from aft.tester import Tester
+from aft.tools.misc import local_execute, inject_ssh_keys_to_image
 
 class DevicesManager(object):
     """Class handling devices connected to the same host PC"""
@@ -239,6 +240,14 @@ class DevicesManager(object):
         if args.record:
             device.record_serial()
 
+        if not self.check_libcomposite_service_running():
+            self.stop_image_usb_emulation()
+
+        if args.emulateusb:
+            self.start_image_usb_emulation(args)
+            inject_ssh_keys_to_image(args.file_name)
+            return device, tester
+
         if not args.noflash:
             print("Flashing " + str(device.name) + ".")
             device.write_image(args.file_name)
@@ -260,6 +269,14 @@ class DevicesManager(object):
 
         if args.record:
             device.record_serial()
+
+        if not self.check_libcomposite_service_running():
+            self.stop_image_usb_emulation()
+
+        if args.emulateusb:
+            self.start_image_usb_emulation(args)
+            inject_ssh_keys_to_image(args.file_name)
+            return device, tester
 
         if args.noflash:
             return device, tester
@@ -295,34 +312,76 @@ class DevicesManager(object):
                     print("Flashing failed, trying again " +
                         str(flash_retries - flash_attempt) + " more times")
 
-    def boot_device_to_mode(self, device, args):
+    def check_libcomposite_service_running(self):
+        """
+        Check if libcomposite.service is running. Return 1 if running, else 0
+        """
+        try:
+            out = local_execute("systemctl status libcomposite.service".split())
+            if "Active: active" in out:
+                return 1
+            return 0
+        except:
+            return 0
+
+    def start_image_usb_emulation(self, args):
+        """
+        Start using the image with USB mass storage emulation
+        """
+        if self.check_libcomposite_service_running():
+            local_execute("systemctl stop libcomposite.service".split())
+
+        # dnsmasq.leases file needs to be cleared and dnsmasq.service restarted
+        # or there will be no free IP address to give for DUT if different
+        # images are used in quick succession
+        local_execute("systemctl stop dnsmasq.service".split())
+        with open("/var/lib/misc/dnsmasq.leases", "w") as f:
+            f.write("")
+        local_execute("systemctl start dnsmasq.service".split())
+
+        image_file = os.path.abspath(args.file_name)
+        if not os.path.isfile(image_file):
+            print("Image file doesn't exist")
+            raise errors.AFTImageNameError("Image file doesn't exist")
+        local_execute(("start_libcomposite " + image_file).split())
+
+    def stop_image_usb_emulation(self):
+        """
+        Stop using the image with USB mass storage emulation
+        """
+        local_execute("stop_libcomposite".split())
+        local_execute("systemctl start libcomposite.service".split())
+
+    def boot_device_to_mode(self, device, mode, mode_name=""):
         '''
-        Boot specified device to mode specified by args.boot
+        Boot specified device to mode specified by 'mode'
         '''
         if device.__class__.__name__ == "EdisonDevice":
-            if args.boot == "test_mode":
+            if mode == "test_mode":
                 device._power_cycle()
             else:
                 print("Edison only has 'test_mode'")
                 return 1
 
         if device.__class__.__name__ == "BeagleBoneBlackDevice":
-            if args.boot == "test_mode":
+            if mode == "test_mode":
                 device._enter_test_mode()
-                mode = device.parameters["test_mode"]
-            if args.boot == "service_mode":
+                mode_name_ = device.parameters["test_mode"]
+            if mode == "service_mode":
                 device._enter_service_mode()
-                mode = device.parameters["service_mode"]
+                mode_name = device.parameters["service_mode"]
 
         if device.__class__.__name__ == "PCDevice":
-            if args.boot == "test_mode":
-                device._enter_mode(device._test_mode)
-                mode = device._test_mode["name"]
-            if args.boot == "service_mode":
-                device._enter_mode(device._service_mode)
-                mode = device._service_mode["name"]
+            if mode == "test_mode":
+                device._enter_mode(device._test_mode, mode_name)
+                if not mode_name:
+                    mode_name = device._test_mode["name"]
+            if mode == "service_mode":
+                device._enter_mode(device._service_mode, mode_name)
+                if not mode_name:
+                    mode_name = device._service_mode["name"]
 
-        print("Succesfully booted to " + mode)
+        print("Succesfully booted to " + mode_name)
 
     def get_configs(self):
         return self.device_configs

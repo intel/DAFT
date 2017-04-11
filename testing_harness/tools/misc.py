@@ -20,6 +20,7 @@ try:
 except ImportError:
     import subprocess as subprocess32
 import time
+import os
 
 def local_execute(command, timeout = 60, ignore_return_codes = None):
     """
@@ -61,3 +62,31 @@ def subprocess_killer(process):
     A function to kill subprocesses, intended to be used as 'atexit' handle.
     """
     process.terminate()
+
+def inject_ssh_keys_to_image(image_file):
+    '''
+    Find images partition that has /home/root and inject ssh keys to it
+    '''
+    possible_roots = []
+    block_size = 512
+    output = local_execute(("fdisk -l " + image_file).split())
+    for line in output.split("\n"):
+        if "Sector size" in line:
+            block_size = int(line.split()[-2])
+        if "Linux" in line:
+            _start_block = int(line.split()[1])
+            possible_roots.append(_start_block)
+    os.makedirs("daft_tmp_dir")
+    auth_keys_path = "daft_tmp_dir/home/root/.ssh/authorized_keys"
+    for start_block in possible_roots:
+        offset = str(block_size * start_block)
+        local_execute(("mount -o loop,offset=" + offset + " " + image_file + \
+                      " daft_tmp_dir").split())
+        if os.path.exists("daft_tmp_dir/home/root"):
+            local_execute(("touch " + auth_keys_path).split())
+            with open(auth_keys_path, "a") as authorized_keys:
+                with open("/root/.ssh/id_rsa_testing_harness.pub", "r")as key:
+                    authorized_keys.write("\n" + key.read())
+                    authorized_keys.flush()
+        local_execute("umount daft_tmp_dir".split())
+    os.rmdir("daft_tmp_dir")

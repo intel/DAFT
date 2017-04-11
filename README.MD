@@ -101,7 +101,7 @@ BBB testing harness AFT:
 - Find and use 'joule' settings
 - Reboot the device by turning off the relay with GPIO pin, wait a while, turn
   on the relay
-- Start sending keystrokes determined by `service_mode_keystrokes` in device
+- Start sending keystrokes determined by `boot_usb_keystrokes` in device
   settings
 - After the keystrokes has been sent, try connecting to the device with the IP
   address found in `/var/lib/misc/dnsmasq.leases`
@@ -129,7 +129,7 @@ BBB testing harness AFT:
 - Find and use 'joule' settings
 - Reboot the device by turning off the relay with GPIO pin, wait a while, turn on
   the relay
-- Start sending keystrokes determined by `test_mode_keystrokes` in device settings
+- Start sending keystrokes determined by `boot_internal_keystrokes` in device settings
 - After the keystrokes has been sent, try connecting to the device with the IP
   address found in `/var/lib/misc/dnsmasq.leases`
 - When there is a connection, run the tests determined by `test_plan` in the
@@ -520,8 +520,8 @@ target_device = /dev/mmcblk0
 root_partition = /dev/mmcblk0p3
 service_mode = Ubuntu
 test_mode = yocto
-service_mode_keystrokes = <b>/root/kbsequences/joule/boot_usb</b>
-test_mode_keystrokes = <b>/root/kbsequences/empty</b>
+boot_usb_keystrokes = <b>/root/kbsequences/joule/boot_usb</b>
+boot_internal_keystrokes = <b>/root/kbsequences/empty</b>
 serial_port = /dev/ttyUSB0
 
 [Minnowboard]
@@ -532,8 +532,8 @@ target_device = /dev/mmcblk0
 root_partition = /dev/mmcblk0p3
 service_mode = Ubuntu
 test_mode = yocto
-service_mode_keystrokes = <b>/root/kbsequences/minnowboard/boot_usb</b>
-test_mode_keystrokes = <b>/root/kbsequences/empty</b>
+boot_usb_keystrokes = <b>/root/kbsequences/minnowboard/boot_usb</b>
+boot_internal_keystrokes = <b>/root/kbsequences/empty</b>
 </pre>
 
 ## 2.8 Using DAFT
@@ -664,6 +664,9 @@ DAFT commandline interface options:
 * **--noflash**: Skip flashing of DUT.
 * **--notest**: Skip testing of DUT.
 * **--noblacklisting**: If flashing or testing fails don't blacklist the device.
+* **--emulateusb**: Use testing harness USB emulation to boot the image instead
+  of flashing it. You can use _--notest_ to only boot the image without running
+  automatic tests.
 
 ### 3.3 AFT settings
 
@@ -710,9 +713,9 @@ these files:
   support image.
 * **test_mode**: String included in 'uname -a' when DUT is booted with the image
   to be tested.
-* **service_mode_keystrokes**: Path to the keystrokes which boot DUT to service
+* **boot_usb_keystrokes**: Path to the keystrokes which boot DUT to service
   mode.
-* **test_mode_keystrokes**: Path to the keystrokes which boot DUT to test mode.
+* **boot_internal_keystrokes**: Path to the keystrokes which boot DUT to test mode.
 * **platform**: On catalog.cfg file option to inherit settings from specific
   platform.
 
@@ -727,6 +730,9 @@ AFT commandline interface options:
 * **dut**: Type of DUT to flash. Should be one from the
   `/etc/aft/devices/catalog.cfg`.
 * **image_file**: Image file to flash to the DUT.
+* **--emulateusb**: Use testing harness USB emulation to boot the image instead
+  of flashing it. You can use _--notest_ to only boot the image without running
+  automatic tests.
 * **--record**: Record serial output from DUT.
 * **--flash_retries**: Change how many times flashing will be tried. On default 2.
 * **--noflash**: Skip flashing image to the device eg. 'aft joule --noflash' would
@@ -792,10 +798,13 @@ git clone https://github.com/01org/DAFT.git
 cd DAFT/testing_harness
 python3 setup.py install
 cd
-cp DAFT/testing_harness_image_extras/initialize_testing_harness/stop_libcomposite.sh /usr/bin/
-cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness.sh /usr/bin/
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/stop_libcomposite /usr/bin/
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/start_libcomposite /usr/bin/
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness /usr/bin/
 cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testing_harness.service /etc/systemd/system/
 ln -s /etc/systemd/system/initialize_testing_harness.service  /etc/systemd/system/multi-user.target.wants/
+cp DAFT/testing_harness_image_extras/initialize_testing_harness/libcomposite.service /etc/systemd/system/
+ln -s /etc/systemd/system/libcomposite.service  /etc/systemd/system/multi-user.target.wants/
 cp DAFT/testing_harness_image_extras/watchdog/watchdog.py /usr/bin/watchdog
 cp DAFT/testing_harness_image_extras/watchdog/watchdog.service /etc/systemd/system/
 cp -r DAFT/testing_harness_image_extras/kbsequences /root/

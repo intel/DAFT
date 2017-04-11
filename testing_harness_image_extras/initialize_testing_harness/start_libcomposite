@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2016 Intel, Inc.
+# Copyright (c) 2017 Intel, Inc.
 # Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -12,12 +12,13 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 
-
-set_up_overlay() {
-  mkdir /ramdisk/upper
-  mkdir /ramdisk/work
-  mount -t overlay -o lowerdir=/_var,upperdir=/ramdisk/upper,workdir=/ramdisk/work overlay /var
-}
+# If no arguments given, use default support.img as mass storage emulation
+# file. Otherwise use the given argument.
+if [ -z "$1" ]; then
+  MASS_STORAGE_FILE="/root/support_image/support.img"
+else
+  MASS_STORAGE_FILE=$1
+fi
 
 set_up_gadget() {
   UDC=musb-hdrc.0.auto  # USB Device Driver found in /sys/class/udc/
@@ -64,7 +65,7 @@ set_up_gadget() {
   echo $CONFIG_NAME > configs/c.1/strings/0x409/configuration
 
   # Configure mass storage
-  echo "/root/support_image/support.img" > functions/mass_storage.0/lun.0/file
+  echo $MASS_STORAGE_FILE > functions/mass_storage.0/lun.0/file
   ln -s functions/mass_storage.0 configs/c.1
 
   # Configure HID keyboard
@@ -86,23 +87,5 @@ set_up_usb_network() {
   ifconfig usb0 192.168.7.1
 }
 
-set_up_gpio() {
-  echo 60 > /sys/class/gpio/export
-  echo out > /sys/class/gpio/gpio60/direction
-  echo 0 > /sys/class/gpio/gpio60/value
-}
-
-set_up_system() {
-  touch /var/lib/misc/dnsmasq.leases
-  systemctl restart dnsmasq
-  systemctl restart ssh
-  chmod 777 /var/run/screen
-  iptables-restore < /etc/iptables.rules
-  dmesg -n 1
-}
-
-set_up_overlay
 set_up_gadget
 set_up_usb_network
-set_up_gpio
-set_up_system

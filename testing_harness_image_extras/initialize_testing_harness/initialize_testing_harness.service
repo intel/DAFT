@@ -1,9 +1,8 @@
 [Unit]
 Description=Initialize testing harness
-ConditionFileIsExecutable=/usr/bin/initialize_testing_harness.sh
+ConditionFileIsExecutable=/usr/bin/initialize_testing_harness
 After=multi-user.target
 
 [Service]
 RemainAfterExit=true
-ExecStart=/usr/bin/initialize_testing_harness.sh
-ExecStop=/usr/bin/stop_libcomposite.sh
+ExecStart=/usr/bin/initialize_testing_harness
