@@ -100,12 +100,6 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--catalog",
-        action="store",
-        help="Configuration file describing the supported device types",
-        default="/etc/aft/devices/catalog.cfg")
-
-    parser.add_argument(
         "machine",
         action="store",
         nargs="?",
@@ -172,6 +166,22 @@ def parse_args():
         action="store",
         choices=["test_mode", "service_mode"],
         help="Boot device to specific mode")
+
+    parser.add_argument(
+        "--catalog",
+        action="store",
+        help="Configuration file describing the supported device types",
+        default="/etc/aft/devices/catalog.cfg")
+
+    parser.add_argument(
+        "--testplan",
+        type=str,
+        nargs="?",
+        action="store",
+        default="",
+        help="Specify a test plan to use from /etc/aft/test_plan/. Use the " +
+             "test plan name without .cfg extension. On default the test " +
+             "plan for the device in AFT device settings is used.")
 
     parser.add_argument(
         "--verbose",

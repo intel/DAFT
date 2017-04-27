@@ -667,6 +667,9 @@ DAFT commandline interface options:
 * **--emulateusb**: Use testing harness USB emulation to boot the image instead
   of flashing it. You can use _--notest_ to only boot the image without running
   automatic tests.
+* **--testplan**: Specify a test plan to use from bbb_fs/etc/aft/test_plan/.
+  Use the test plan name without .cfg extension. On default the test plan for
+  the device in AFT device settings is used.
 
 ### 3.3 AFT settings
 
@@ -735,14 +738,18 @@ AFT commandline interface options:
   of flashing it. You can use _--notest_ to only boot the image without running
   automatic tests.
 * **--record**: Record serial output from DUT.
-* **--flash_retries**: Change how many times flashing will be tried. On default 2.
-* **--noflash**: Skip flashing image to the device eg. 'aft joule --noflash' would
-  run only tests.
+* **--flash_retries**: Change how many times flashing will be tried.
+  On default 2.
+* **--noflash**: Skip flashing image to the device eg. 'aft joule --noflash'
+  would run only tests.
 * **--notest**: Skip testing image.
 * **--nopoweroff**: After aft run, don't turn off device.
 * **--boot**: Boot device to specific mode. Options are 'service_mode' and
   'test_mode'. For example: 'aft joule --noflash --notest --boot=test_mode'
   would boot device to the flashed image.
+* **--testplan**: Specify a test plan to use from bbb_fs/etc/aft/test_plan/.
+    Use the test plan name without .cfg extension. On default the test plan for
+    the device in AFT device settings is used.
 * **--verbose**: Increase aft run verbosity.
 * **--debug**: Change aft logging level to 'debug'.
 

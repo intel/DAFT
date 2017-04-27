@@ -264,12 +264,15 @@ def execute_testing(bb_dut, args, config):
     dut = bb_dut["device_type"].lower()
     current_dir = os.getcwd().replace(config["workspace_nfs_path"], "")
     record = ""
+    testplan = ""
     if args.record:
         record = "--record"
+    if args.testplan:
+        testplan = "--testplan=" + args.testplan
     try:
         output = remote_execute(bb_dut["bb_ip"],
                                 ["cd", "/root/workspace" + current_dir,";aft",
-                                dut, record, "--noflash"],
+                                dut, record, testplan, "--noflash"],
                                 timeout=1200, config = config)
 
     finally:
@@ -393,6 +396,16 @@ def parse_args():
         action="store_true",
         default=False,
         help="Use the image in USB mass storage emulation instead of flashing")
+
+    parser.add_argument(
+        "--testplan",
+        type=str,
+        nargs="?",
+        action="store",
+        default="",
+        help="Specify a test plan to use from bbb_fs/etc/aft/test_plan/. Use " +
+             "the test plan name without .cfg extension. On default the test " +
+             "plan for the device in AFT device settings is used.")
 
     parser.add_argument(
         "--noblacklisting",
