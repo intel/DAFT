@@ -694,12 +694,12 @@ the highest level configuration file. It is intended to store settings which are
 shared between all high-level device-types,ie. PC-devices or gadget-devices. The
 catalog.cfg is the configuration file describing each device type. Settings on
 these files:
-* **leases_file_name**: Path to the dnsmasq.leases file that contains IP addresses
-  of connected devices.
+* **leases_file_name**: Path to the dnsmasq.leases file that contains IP
+  addresses of connected devices.
 * **keyboard_emulator**: Keyboard emulator type. On default GadgetKeyboard which
   is the BBB keyboard emulation.
-* **cutter_type**: DUT power supply cutter/relay type. On default GpioCutter which
-  is a relay controlled with BBB GPIO pins.
+* **cutter_type**: DUT power supply cutter/relay type. On default GpioCutter
+  which is a relay controlled with BBB GPIO pins.
 * **gpio_pin**: GPIO pin that controls the cutter/relay if using GpioCutter.
 * **gpio_cutter_on**: GPIO pin value when relay should be closed. On default 1.
 * **gpio_cutter_off**: GPIO pin value when relay should be open. On default 0.
@@ -715,7 +715,8 @@ these files:
   to be tested.
 * **boot_usb_keystrokes**: Path to the keystrokes which boot DUT to service
   mode.
-* **boot_internal_keystrokes**: Path to the keystrokes which boot DUT to test mode.
+* **boot_internal_keystrokes**: Path to the keystrokes which boot DUT to test
+  mode.
 * **platform**: On catalog.cfg file option to inherit settings from specific
   platform.
 
