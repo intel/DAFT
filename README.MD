@@ -667,6 +667,9 @@ DAFT commandline interface options:
 * **--emulateusb**: Use testing harness USB emulation to boot the image instead
   of flashing it. You can use _--notest_ to only boot the image without running
   automatic tests.
+* **--testplan**: Specify a test plan to use from bbb_fs/etc/aft/test_plan/.
+  Use the test plan name without .cfg extension. On default the test plan for
+  the device in AFT device settings is used.
 
 ### 3.3 AFT settings
 
@@ -694,12 +697,12 @@ the highest level configuration file. It is intended to store settings which are
 shared between all high-level device-types,ie. PC-devices or gadget-devices. The
 catalog.cfg is the configuration file describing each device type. Settings on
 these files:
-* **leases_file_name**: Path to the dnsmasq.leases file that contains IP addresses
-  of connected devices.
+* **leases_file_name**: Path to the dnsmasq.leases file that contains IP
+  addresses of connected devices.
 * **keyboard_emulator**: Keyboard emulator type. On default GadgetKeyboard which
   is the BBB keyboard emulation.
-* **cutter_type**: DUT power supply cutter/relay type. On default GpioCutter which
-  is a relay controlled with BBB GPIO pins.
+* **cutter_type**: DUT power supply cutter/relay type. On default GpioCutter
+  which is a relay controlled with BBB GPIO pins.
 * **gpio_pin**: GPIO pin that controls the cutter/relay if using GpioCutter.
 * **gpio_cutter_on**: GPIO pin value when relay should be closed. On default 1.
 * **gpio_cutter_off**: GPIO pin value when relay should be open. On default 0.
@@ -715,7 +718,8 @@ these files:
   to be tested.
 * **boot_usb_keystrokes**: Path to the keystrokes which boot DUT to service
   mode.
-* **boot_internal_keystrokes**: Path to the keystrokes which boot DUT to test mode.
+* **boot_internal_keystrokes**: Path to the keystrokes which boot DUT to test
+  mode.
 * **platform**: On catalog.cfg file option to inherit settings from specific
   platform.
 
@@ -734,14 +738,18 @@ AFT commandline interface options:
   of flashing it. You can use _--notest_ to only boot the image without running
   automatic tests.
 * **--record**: Record serial output from DUT.
-* **--flash_retries**: Change how many times flashing will be tried. On default 2.
-* **--noflash**: Skip flashing image to the device eg. 'aft joule --noflash' would
-  run only tests.
+* **--flash_retries**: Change how many times flashing will be tried.
+  On default 2.
+* **--noflash**: Skip flashing image to the device eg. 'aft joule --noflash'
+  would run only tests.
 * **--notest**: Skip testing image.
 * **--nopoweroff**: After aft run, don't turn off device.
 * **--boot**: Boot device to specific mode. Options are 'service_mode' and
   'test_mode'. For example: 'aft joule --noflash --notest --boot=test_mode'
   would boot device to the flashed image.
+* **--testplan**: Specify a test plan to use from bbb_fs/etc/aft/test_plan/.
+    Use the test plan name without .cfg extension. On default the test plan for
+    the device in AFT device settings is used.
 * **--verbose**: Increase aft run verbosity.
 * **--debug**: Change aft logging level to 'debug'.
 

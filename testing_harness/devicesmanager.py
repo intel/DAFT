@@ -235,6 +235,8 @@ class DevicesManager(object):
             device, tester: Reserved machine and tester handles.
         '''
         device = self.reserve_specific(args.device, model=args.machine)
+        if args.testplan:
+            device.test_plan = args.testplan
         tester = Tester(device)
 
         if args.record:
@@ -265,6 +267,8 @@ class DevicesManager(object):
             device, tester: Reserved machine and tester handles.
         '''
         device = self.reserve()
+        if args.testplan:
+            device.test_plan = args.testplan
         tester = Tester(device)
 
         if args.record:
