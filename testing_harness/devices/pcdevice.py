@@ -73,7 +73,6 @@ class PCDevice(Device):
                                        kb_emulator=kb_emulator)
 
         self._leases_file_name = parameters["leases_file_name"]
-        self.default_root_patition = parameters["root_partition"]
         self._service_mode_name = parameters["service_mode"]
         self._test_mode_name = parameters["test_mode"]
         self._test_mode = {
