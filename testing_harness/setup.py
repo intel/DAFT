@@ -20,8 +20,7 @@ from setuptools import setup
 
 DEVICE_FILES = ["default_config/devices/platform.cfg",
                 "default_config/devices/catalog.cfg"]
-TEST_PLANS = ["default_config/test_plan/iot_qatest.cfg",
-              "default_config/test_plan/iot_gtest.cfg"]
+TEST_PLANS = ["default_config/test_plan/iot_qatest.cfg"]
 CONFIG_FILES = ["default_config/aft.cfg"]
 
 CONFIG_FILTER = lambda filename : not \
