@@ -16,8 +16,6 @@
 Factory module for creation of AFT device instances and their cutter objects
 """
 
-import aft.devices.beagleboneblackdevice
-import aft.devices.edisondevice
 import aft.devices.pcdevice
 import aft.cutters.clewarecutter
 import aft.cutters.usbrelay
@@ -29,8 +27,6 @@ import aft.kb_emulators.km232keyboard
 import aft.kb_emulators.gadgetkeyboard
 
 _DEVICE_CLASSES = {
-    "beagleboneblack" : aft.devices.beagleboneblackdevice.BeagleBoneBlackDevice,
-    "edison"          : aft.devices.edisondevice.EdisonDevice,
     "pc"              : aft.devices.pcdevice.PCDevice,
 }
 _CUTTER_CLASSES = {
