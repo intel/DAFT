@@ -851,8 +851,9 @@ vim /root/.ssh/config
 Now make _id_rsa_testing_harness_ and _id_rsa_testing_harness.pub_ SSH-keys with
 `ssh-keygen -t dsa` or copy some other keys to `/root/.ssh/` but use the previous
 names for them. The _id_rsa_testing_harness.pub_ SSH-key should be added to
-`/root/.ssh/known_hosts` and also to DUT support images _known_hosts_ file. This
-SSH-key will also be injected to _known_hosts_ on the images that are flashed.
+`/root/.ssh/authorized_keys` and also to DUT support images _authorized_keys_ file.
+The _authorized_keys_ file from support image will also be copied to
+_authorized_keys_ on the images that are flashed.
 After this the image should work with DAFT. Poweroff the BBB and connect the USB
 stick to PC. Mount it and copy the filesystem from it (change /dev/sdX1 to match
 your USB stick):
