@@ -21,6 +21,7 @@ import argparse
 import subprocess
 import configparser
 
+
 def main():
     args = parse_args()
     config = get_daft_config()
@@ -49,8 +50,20 @@ def main():
             release_device(beaglebone_dut)
             output = remote_execute(beaglebone_dut["bb_ip"],
                                     ("killall -s SIGINT aft").split(),
-                                    timeout=10, config = config)
+                                    timeout=10, config=config)
         return 0
+
+    except FlashImageError:
+        if beaglebone_dut:
+            if args.noblacklisting:
+                release_device(beaglebone_dut)
+            else:
+                lockfile = "/etc/daft/lockfiles/" + beaglebone_dut["device"]
+                with open(lockfile, "a") as f:
+                    f.write("Blacklisted because flashing/testing failed\n")
+                    print("Flashing or testing failed, blacklisted " +
+                          beaglebone_dut["device"])
+        return 8
 
     except DevicesBlacklistedError:
         return 5
@@ -62,15 +75,10 @@ def main():
 
     except:
         if beaglebone_dut:
-            if args.noblacklisting:
-                release_device(beaglebone_dut)
-            else:
-                lockfile = "/etc/daft/lockfiles/" + beaglebone_dut["device"]
-                with open(lockfile, "a") as f:
-                    f.write("Blacklisted because flashing/testing failed\n")
-                    print("Flashing or testing failed, blacklisted " +
-                          beaglebone_dut["device"])
+            release_device(beaglebone_dut)
+
         raise
+
 
 def update(config):
     '''
@@ -83,7 +91,7 @@ def update(config):
             except FileNotFoundError:
                 pass
             shutil.copytree("testing_harness", config["bbb_fs_path"] +
-                                               config["bbb_aft_path"])
+                            config["bbb_aft_path"])
             print("Updated AFT succesfully")
         else:
             print("Can't update AFT, didn't find " + config["bbb_fs_path"] +
@@ -101,6 +109,7 @@ def update(config):
         print("Can't update, didn't find 'pc_host' and 'testing_harness' directory")
         return 2
 
+
 def get_daft_config():
     '''
     Read and parse DAFT configuration file and return result as dictionary
@@ -113,6 +122,7 @@ def get_daft_config():
     config["bbb_fs_path"] = os.path.normpath(config["bbb_fs_path"])
     return config
 
+
 def time_used(start_time):
     '''
     Calculate and return time taken from start time
@@ -122,6 +132,7 @@ def time_used(start_time):
     seconds = int(round(seconds))
     time_taken = str(minutes) + "min " + str(seconds) + "s"
     return time_taken
+
 
 def reserve_device(args):
     '''
@@ -135,7 +146,7 @@ def reserve_device(args):
         duts_blacklisted = 1
         for device in config:
             if device["device_type"].lower() == dut or \
-               device["device"].lower() == dut:
+                            device["device"].lower() == dut:
                 dut_found = 1
                 lockfile = "/etc/daft/lockfiles/" + device["device"]
                 write_mode = "w+"
@@ -153,15 +164,16 @@ def reserve_device(args):
 
         if not dut_found:
             print("Device name '" + dut + "', was not found in "
-                  "/etc/daft/devices.cfg")
+                                          "/etc/daft/devices.cfg")
             raise DeviceNameError()
 
         if duts_blacklisted:
             print("All devices named '" + dut + "' are blacklisted in "
-                  "/etc/daft/lockfiles.")
+                                                "/etc/daft/lockfiles.")
             raise DevicesBlacklistedError()
 
         time.sleep(10)
+
 
 def get_bbb_config():
     '''
@@ -177,6 +189,7 @@ def get_bbb_config():
         configurations.append(device_config)
     return configurations
 
+
 def release_device(beaglebone_dut):
     '''
     Release Beaglebone/DUT lock
@@ -186,6 +199,7 @@ def release_device(beaglebone_dut):
         with open(lockfile, "w") as f:
             f.write("")
             print("Released " + beaglebone_dut["device"])
+
 
 def execute_usb_emulation(bb_dut, args, config):
     '''
@@ -210,9 +224,9 @@ def execute_usb_emulation(bb_dut, args, config):
         notest = "--notest"
     try:
         output = remote_execute(bb_dut["bb_ip"],
-                                ["cd", "/root/workspace" + current_dir,";aft",
-                                dut, img_path, notest,  record, "--emulateusb"],
-                                timeout=1200, config = config)
+                                ["cd", "/root/workspace" + current_dir, ";aft",
+                                 dut, img_path, notest, record, "--emulateusb"],
+                                timeout=1200, config=config)
     finally:
         log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
                      "serial.log.raw"]
@@ -222,6 +236,7 @@ def execute_usb_emulation(bb_dut, args, config):
 
     print(output, end="")
     print("Testing took: " + time_used(start_time))
+
 
 def execute_flashing(bb_dut, args, config):
     '''
@@ -242,9 +257,12 @@ def execute_flashing(bb_dut, args, config):
         record = "--record"
     try:
         output = remote_execute(bb_dut["bb_ip"],
-                                ["cd", "/root/workspace" + current_dir,";aft",
-                                dut, img_path, record, "--notest"],
-                                timeout=1200, config = config)
+                                ["cd", "/root/workspace" + current_dir, ";aft",
+                                 dut, img_path, record, "--notest"],
+                                timeout=1200, config=config)
+    except:
+        raise FlashImageError()
+
     finally:
         log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
                      "serial.log.raw"]
@@ -254,6 +272,7 @@ def execute_flashing(bb_dut, args, config):
 
     print(output, end="")
     print("Flashing took: " + time_used(start_time))
+
 
 def execute_testing(bb_dut, args, config):
     '''
@@ -271,9 +290,9 @@ def execute_testing(bb_dut, args, config):
         testplan = "--testplan=" + args.testplan
     try:
         output = remote_execute(bb_dut["bb_ip"],
-                                ["cd", "/root/workspace" + current_dir,";aft",
-                                dut, record, testplan, "--noflash"],
-                                timeout=1200, config = config)
+                                ["cd", "/root/workspace" + current_dir, ";aft",
+                                 dut, record, testplan, "--noflash"],
+                                timeout=1200, config=config)
 
     finally:
         log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
@@ -285,8 +304,9 @@ def execute_testing(bb_dut, args, config):
     print(output, end="")
     print("Testing took: " + time_used(start_time))
 
-def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
-                   user = "root", connect_timeout = 15, config = None):
+
+def remote_execute(remote_ip, command, timeout=60, ignore_return_codes=None,
+                   user="root", connect_timeout=15, config=None):
     """
     Execute a Bash command over ssh on a remote device with IP 'remote_ip'.
     Returns combines stdout and stderr if there are no errors. On error raises
@@ -312,6 +332,7 @@ def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
             raise err
         return output
 
+
 def local_execute(command, timeout=60, ignore_return_codes=None, cwd=None):
     """
     Execute a command on local machine. Returns combined stdout and stderr if
@@ -319,9 +340,9 @@ def local_execute(command, timeout=60, ignore_return_codes=None, cwd=None):
     raises a subprocess error.
     """
     process = subprocess.Popen(command, universal_newlines=True,
-                                 stdout = subprocess.PIPE,
-                                 stderr = subprocess.STDOUT,
-                                 cwd = cwd)
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT,
+                               cwd=cwd)
     start = time.time()
     output = ""
     return_code = None
@@ -329,30 +350,37 @@ def local_execute(command, timeout=60, ignore_return_codes=None, cwd=None):
         return_code = process.poll()
         if return_code == None:
             try:
-                output += process.communicate(timeout = 1)[0]
+                output += process.communicate(timeout=1)[0]
             except subprocess.TimeoutExpired:
                 pass
     if return_code == None:
         # Time ran out but the process didn't end.
-        raise subprocess.TimeoutExpired(cmd = command, output = output,
-                                          timeout = timeout)
+        raise subprocess.TimeoutExpired(cmd=command, output=output,
+                                        timeout=timeout)
     if ignore_return_codes == None:
         ignore_return_codes = []
     if return_code in ignore_return_codes or return_code == 0:
         return output
     else:
         print(output, end="")
-        raise subprocess.CalledProcessError(returncode = return_code,
-                                              cmd = command, output = output)
+        raise subprocess.CalledProcessError(returncode=return_code,
+                                            cmd=command, output=output)
+
+class FlashImageError(Exception):
+    pass
+
 
 class ImageNameError(Exception):
     pass
 
+
 class DeviceNameError(Exception):
     pass
 
+
 class DevicesBlacklistedError(Exception):
     pass
+
 
 def parse_args():
     """
@@ -370,8 +398,8 @@ def parse_args():
         "image_file",
         action="store",
         nargs="?",
-        help = "Image to write: a local file, compatible with the selected " +
-        "device.")
+        help="Image to write: a local file, compatible with the selected " +
+             "device.")
 
     parser.add_argument(
         "--record",
@@ -420,6 +448,7 @@ def parse_args():
         help="Update AFT to Beaglebone filesystem and DAFT to PC host")
 
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     sys.exit(main())
