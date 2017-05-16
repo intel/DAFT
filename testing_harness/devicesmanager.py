@@ -360,21 +360,6 @@ class DevicesManager(object):
         '''
         Boot specified device to mode specified by 'mode'
         '''
-        if device.__class__.__name__ == "EdisonDevice":
-            if mode == "test_mode":
-                device._power_cycle()
-            else:
-                print("Edison only has 'test_mode'")
-                return 1
-
-        if device.__class__.__name__ == "BeagleBoneBlackDevice":
-            if mode == "test_mode":
-                device._enter_test_mode()
-                mode_name_ = device.parameters["test_mode"]
-            if mode == "service_mode":
-                device._enter_service_mode()
-                mode_name = device.parameters["service_mode"]
-
         if device.__class__.__name__ == "PCDevice":
             if mode == "test_mode":
                 device._enter_mode(device._test_mode, mode_name)
