@@ -60,16 +60,20 @@ def main():
         release_device(beaglebone_dut)
         return 7
 
-    except:
+    except FlashImageError:
         if beaglebone_dut:
             if args.noblacklisting:
                 release_device(beaglebone_dut)
             else:
                 lockfile = "/etc/daft/lockfiles/" + beaglebone_dut["device"]
                 with open(lockfile, "a") as f:
-                    f.write("Blacklisted because flashing/testing failed\n")
-                    print("Flashing or testing failed, blacklisted " +
+                    f.write("Blacklisted because flashing failed\n")
+                    print("Flashing failed, blacklisted " +
                           beaglebone_dut["device"])
+
+    except:
+        if beaglebone_dut:
+            release_device(beaglebone_dut)
         raise
 
 def update(config):
@@ -245,6 +249,13 @@ def execute_flashing(bb_dut, args, config):
                                 ["cd", "/root/workspace" + current_dir,";aft",
                                 dut, img_path, record, "--notest"],
                                 timeout=1200, config = config)
+
+    except KeyboardInterrupt:
+        raise
+
+    except:
+        raise FlashImageError()
+
     finally:
         log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
                      "serial.log.raw"]
@@ -352,6 +363,9 @@ class DeviceNameError(Exception):
     pass
 
 class DevicesBlacklistedError(Exception):
+    pass
+
+class FlashImageError(Exception):
     pass
 
 def parse_args():
