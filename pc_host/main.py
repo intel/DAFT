@@ -32,13 +32,16 @@ def main():
     try:
         start_time = time.time()
         beaglebone_dut = reserve_device(args)
-        if args.emulateusb:
-            execute_usb_emulation(beaglebone_dut, args, config)
+        if args.setout:
+            dut_setout(beaglebone_dut, args, config)
         else:
-            if not args.noflash:
-                execute_flashing(beaglebone_dut, args, config)
-            if not args.notest:
-                execute_testing(beaglebone_dut, args, config)
+            if args.emulateusb:
+                execute_usb_emulation(beaglebone_dut, args, config)
+            else:
+                if not args.noflash:
+                    execute_flashing(beaglebone_dut, args, config)
+                if not args.notest:
+                    execute_testing(beaglebone_dut, args, config)
         release_device(beaglebone_dut)
         print("DAFT run duration: " + time_used(start_time))
         return 0
@@ -223,6 +226,38 @@ def execute_usb_emulation(bb_dut, args, config):
     print(output, end="")
     print("Testing took: " + time_used(start_time))
 
+def dut_setout(bb_dut, args, config):
+    '''
+    Flash DUT and reboot it in test mode
+    '''
+    if not os.path.isfile(args.image_file):
+        print(args.image_file + " doesn't exist.")
+        raise ImageNameError()
+
+    print("Executing flashing of DUT")
+    start_time = time.time()
+    dut = bb_dut["device_type"].lower()
+    current_dir = os.getcwd().replace(config["workspace_nfs_path"], "")
+    img_path = args.image_file.replace(config["workspace_nfs_path"],
+                                       "/root/workspace")
+    record = ""
+    if args.record:
+        record = "--record"
+    try:
+        output = remote_execute(bb_dut["bb_ip"],
+                                ["cd", "/root/workspace" + current_dir,";aft",
+                                dut, img_path, record, "--notest", "--boot", "test_mode"],
+                                timeout=1200, config = config)
+    finally:
+        log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
+                     "serial.log.raw"]
+        for log in log_files:
+            if os.path.isfile(log):
+                os.rename(log, "flash_" + log)
+
+    print(output, end="")
+    print("Flashing took: " + time_used(start_time))
+
 def execute_flashing(bb_dut, args, config):
     '''
     Execute flashing of the DUT
@@ -264,15 +299,12 @@ def execute_testing(bb_dut, args, config):
     dut = bb_dut["device_type"].lower()
     current_dir = os.getcwd().replace(config["workspace_nfs_path"], "")
     record = ""
-    testplan = ""
     if args.record:
         record = "--record"
-    if args.testplan:
-        testplan = "--testplan=" + args.testplan
     try:
         output = remote_execute(bb_dut["bb_ip"],
                                 ["cd", "/root/workspace" + current_dir,";aft",
-                                dut, record, testplan, "--noflash"],
+                                dut, record, "--noflash"],
                                 timeout=1200, config = config)
 
     finally:
@@ -386,6 +418,12 @@ def parse_args():
         help="Skip device flashing")
 
     parser.add_argument(
+        "--setout",
+        action="store_true",
+        default=False,
+        help="Flash DUT and reboot it in test mode without running test stuff")
+
+    parser.add_argument(
         "--notest",
         action="store_true",
         default=False,
@@ -396,16 +434,6 @@ def parse_args():
         action="store_true",
         default=False,
         help="Use the image in USB mass storage emulation instead of flashing")
-
-    parser.add_argument(
-        "--testplan",
-        type=str,
-        nargs="?",
-        action="store",
-        default="",
-        help="Specify a test plan to use from bbb_fs/etc/aft/test_plan/. Use " +
-             "the test plan name without .cfg extension. On default the test " +
-             "plan for the device in AFT device settings is used.")
 
     parser.add_argument(
         "--noblacklisting",
