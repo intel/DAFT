@@ -167,27 +167,27 @@ def make_directory(directory):
         if not os.path.isdir(directory):
             raise
 
-def verify_device_mode(ip, mode):
+def verify_device_mode(ip, mode_name):
     """
     Check that the device with given ip is responsive to ssh and is in the
     specified mode.
 
-    The mode is checked by checking that the mode arg is present in the
+    The mode is checked by checking that the mode_name arg is present in the
     /proc/version file
 
     Args:
         ip (str): The device ip address
-        mode (str): The mode we want to check for
+        mode_name (str): Word to check for in /proc/version
 
     Returns:
         True if the device is in the desired mode, False otherwise
     """
     try:
         sshout = ssh.remote_execute(ip, ["cat", "/proc/version"])
-        if mode in sshout:
-            logger.info("Found device in " + mode + " mode.")
+        if mode_name in sshout:
+            logger.info("Found " + mode_name + " in DUT /proc/version")
             return True
-        logger.info("Device is not in " + mode + " mode")
+        logger.info("Didn't find " + mode_name + " in DUT /proc/version")
         logger.debug("/cat/proc/version: " + str(sshout))
         return False
 

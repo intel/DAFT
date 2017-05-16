@@ -50,6 +50,24 @@ class Device(with_metaclass(abc.ABCMeta, object)):
         Writes the specified image to the device.
         """
 
+    @abc.abstractmethod
+    def boot_internal_test_mode(self):
+        """
+        Boot the DUT from internal memory/SD card, expect target image
+        """
+
+    @abc.abstractmethod
+    def boot_usb_test_mode(self):
+        """
+        Boot the DUT from USB, expect target image
+        """
+
+    @abc.abstractmethod
+    def boot_usb_service_mode(self):
+        """
+        Boot the DUT from USB, expect support image
+        """
+
     def record_serial(self):
         """
         Start a serialrecorder.py subprocess and add its killer
