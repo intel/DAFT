@@ -26,11 +26,9 @@ class QATestCase(BasicTestCase):
     """
 
     def run(self, device):
-        ip_address = device.get_ip()
-
         # Append --target-ip parameter
         if not "--target-ip" in self.parameters:
-            self.parameters += " " + "--target-ip " + ip_address
+            self.parameters += " --target-ip " + device.dev_ip
 
         self.run_local_command()
         return self._result_has_zero_fails()
