@@ -34,6 +34,8 @@ def main():
         beaglebone_dut = reserve_device(args)
         if args.emulateusb:
             execute_usb_emulation(beaglebone_dut, args, config)
+        elif args.setout:
+            dut_setout(beaglebone_dut, args, config)
         else:
             if not args.noflash:
                 execute_flashing(beaglebone_dut, args, config)
@@ -296,6 +298,38 @@ def execute_testing(bb_dut, args, config):
     print(output, end="")
     print("Testing took: " + time_used(start_time))
 
+def dut_setout(bb_dut, args, config):
+    '''
+    Flash DUT and reboot it in test mode
+    '''
+    if not os.path.isfile(args.image_file):
+        print(args.image_file + " doesn't exist.")
+        raise ImageNameError()
+
+    print("Executing flashing of DUT")
+    start_time = time.time()
+    dut = bb_dut["device_type"].lower()
+    current_dir = os.getcwd().replace(config["workspace_nfs_path"], "")
+    img_path = args.image_file.replace(config["workspace_nfs_path"],
+                                       "/root/workspace")
+    record = ""
+    if args.record:
+        record = "--record"
+    try:
+        output = remote_execute(bb_dut["bb_ip"],
+                                ["cd", "/root/workspace" + current_dir,";aft",
+                                dut, img_path, record, "--notest", "--boot", "test_mode"],
+                                timeout=1200, config = config)
+    finally:
+        log_files = ["aft.log", "serial.log", "ssh.log", "kb_emulator.log",
+                     "serial.log.raw"]
+        for log in log_files:
+            if os.path.isfile(log):
+                os.rename(log, "flash_" + log)
+
+    print(output, end="")
+    print("Flashing took: " + time_used(start_time))
+
 def remote_execute(remote_ip, command, timeout = 60, ignore_return_codes = None,
                    user = "root", connect_timeout = 15, config = None):
     """
@@ -432,6 +466,12 @@ def parse_args():
         action="store_true",
         default=False,
         help="Update AFT to Beaglebone filesystem and DAFT to PC host")
+
+    parser.add_argument(
+        "--setout",
+        action="store_true",
+        default=False,
+        help="Flash DUT and reboot it in test mode without running test stuff")
 
     return parser.parse_args()
 
