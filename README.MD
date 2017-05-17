@@ -823,6 +823,7 @@ systemctl enable dnsmasq
 systemctl enable watchdog
 iptables -t nat -A POSTROUTING --out-interface eth0 -j MASQUERADE
 iptables -A FORWARD --in-interface usb0 -j ACCEPT
+iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 2233 -j DNAT --to 192.168.7.2:22
 iptables-save > /etc/iptables.rules
 cp -r /var/ /_var
 vim /etc/sysctl.conf
