@@ -334,15 +334,7 @@ class DevicesManager(object):
         """
         if self.check_libcomposite_service_running():
             local_execute("systemctl stop libcomposite.service".split())
-
-        # dnsmasq.leases file needs to be cleared and dnsmasq.service restarted
-        # or there will be no free IP address to give for DUT if different
-        # images are used in quick succession
-        local_execute("systemctl stop dnsmasq.service".split())
-        with open("/var/lib/misc/dnsmasq.leases", "w") as f:
-            f.write("")
-        local_execute("systemctl start dnsmasq.service".split())
-
+        self.free_dnsmasq_leases()
         image_file = os.path.abspath(args.file_name)
         if not os.path.isfile(image_file):
             print("Image file doesn't exist")
@@ -353,8 +345,21 @@ class DevicesManager(object):
         """
         Stop using the image with USB mass storage emulation
         """
+        self.free_dnsmasq_leases()
         local_execute("stop_libcomposite".split())
         local_execute("systemctl start libcomposite.service".split())
+
+    def free_dnsmasq_leases(self):
+        """
+        dnsmasq.leases file needs to be cleared and dnsmasq.service restarted
+        or there will be no IP address to give for DUT if same
+        image is used in quick succession with and without --emulateusb
+        """
+        local_execute("systemctl stop dnsmasq.service".split())
+        with open("/var/lib/misc/dnsmasq.leases", "w") as f:
+            f.write("")
+            f.flush()
+        local_execute("systemctl start dnsmasq.service".split())
 
     def boot_device_to_mode(self, device, mode, mode_name=""):
         '''
