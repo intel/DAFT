@@ -340,6 +340,7 @@ class DevicesManager(object):
             print("Image file doesn't exist")
             raise errors.AFTImageNameError("Image file doesn't exist")
         local_execute(("start_libcomposite " + image_file).split())
+        logger.info("Started USB mass storage emulation using " + image_file)
 
     def stop_image_usb_emulation(self):
         """
@@ -348,6 +349,7 @@ class DevicesManager(object):
         self.free_dnsmasq_leases()
         local_execute("stop_libcomposite".split())
         local_execute("systemctl start libcomposite.service".split())
+        logger.info("Stopped USB mass storage emulation with an image")
 
     def free_dnsmasq_leases(self):
         """
@@ -360,6 +362,7 @@ class DevicesManager(object):
             f.write("")
             f.flush()
         local_execute("systemctl start dnsmasq.service".split())
+        logger.info("Freed dnsmasq leases")
 
     def boot_device_to_mode(self, device, mode, mode_name=""):
         '''
