@@ -72,6 +72,7 @@ def main():
                     f.write("Blacklisted because flashing failed\n")
                     print("Flashing failed, blacklisted " +
                           beaglebone_dut["device"])
+        raise
 
     except:
         if beaglebone_dut:
