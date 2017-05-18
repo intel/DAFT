@@ -661,6 +661,7 @@ DAFT commandline interface options:
 * **--update**: Update AFT on the BBB filesystem and DAFT on the PC. This should
   be ran while being on the root DAFT repository directory and with root
   permission.
+* **--setout**: Flash DUT and reboot it in test mode without running test stuff
 * **--noflash**: Skip flashing of DUT.
 * **--notest**: Skip testing of DUT.
 * **--noblacklisting**: If flashing or testing fails don't blacklist the device.
