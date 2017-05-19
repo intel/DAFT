@@ -817,7 +817,6 @@ ln -s /etc/systemd/system/libcomposite.service  /etc/systemd/system/multi-user.t
 cp DAFT/testing_harness_image_extras/watchdog/watchdog.py /usr/bin/watchdog
 cp DAFT/testing_harness_image_extras/watchdog/watchdog.service /etc/systemd/system/
 cp -r DAFT/testing_harness_image_extras/kbsequences /root/
-chmod +x /usr/bin/initialize_testing_harness.sh
 chmod +x /usr/bin/watchdog
 mkdir support_image /ramdisk /config .ssh workspace
 systemctl enable dnsmasq
