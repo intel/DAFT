@@ -67,7 +67,8 @@ def main(argv=None):
             if not args.nopoweroff:
                 device.detach()
                 if args.emulateusb:
-                    device_manager.stop_image_usb_emulation()
+                    device_manager.stop_image_usb_emulation(
+                                                    device.leases_file_name)
 
         if args.boot:
             device_manager.boot_device_to_mode(device, args.boot)

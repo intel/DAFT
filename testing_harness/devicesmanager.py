@@ -243,10 +243,10 @@ class DevicesManager(object):
             device.record_serial()
 
         if not self.check_libcomposite_service_running():
-            self.stop_image_usb_emulation()
+            self.stop_image_usb_emulation(device.leases_file_name)
 
         if args.emulateusb:
-            self.start_image_usb_emulation(args)
+            self.start_image_usb_emulation(args, device.leases_file_name)
             inject_ssh_keys_to_image(args.file_name)
             return device, tester
 
@@ -275,10 +275,10 @@ class DevicesManager(object):
             device.record_serial()
 
         if not self.check_libcomposite_service_running():
-            self.stop_image_usb_emulation()
+            self.stop_image_usb_emulation(device.leases_file_name)
 
         if args.emulateusb:
-            self.start_image_usb_emulation(args)
+            self.start_image_usb_emulation(args, device.leases_file_name)
             inject_ssh_keys_to_image(args.file_name)
             return device, tester
 
@@ -328,13 +328,13 @@ class DevicesManager(object):
         except:
             return 0
 
-    def start_image_usb_emulation(self, args):
+    def start_image_usb_emulation(self, args, leases_file):
         """
         Start using the image with USB mass storage emulation
         """
         if self.check_libcomposite_service_running():
             local_execute("systemctl stop libcomposite.service".split())
-        self.free_dnsmasq_leases()
+        self.free_dnsmasq_leases(leases_file)
         image_file = os.path.abspath(args.file_name)
         if not os.path.isfile(image_file):
             print("Image file doesn't exist")
@@ -342,23 +342,23 @@ class DevicesManager(object):
         local_execute(("start_libcomposite " + image_file).split())
         logger.info("Started USB mass storage emulation using " + image_file)
 
-    def stop_image_usb_emulation(self):
+    def stop_image_usb_emulation(self, leases_file):
         """
         Stop using the image with USB mass storage emulation
         """
-        self.free_dnsmasq_leases()
+        self.free_dnsmasq_leases(leases_file)
         local_execute("stop_libcomposite".split())
         local_execute("systemctl start libcomposite.service".split())
         logger.info("Stopped USB mass storage emulation with an image")
 
-    def free_dnsmasq_leases(self):
+    def free_dnsmasq_leases(self, leases_file):
         """
         dnsmasq.leases file needs to be cleared and dnsmasq.service restarted
         or there will be no IP address to give for DUT if same
         image is used in quick succession with and without --emulateusb
         """
         local_execute("systemctl stop dnsmasq.service".split())
-        with open("/var/lib/misc/dnsmasq.leases", "w") as f:
+        with open(leases_file, "w") as f:
             f.write("")
             f.flush()
         local_execute("systemctl start dnsmasq.service".split())
