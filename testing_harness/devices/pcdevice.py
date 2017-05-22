@@ -74,15 +74,9 @@ class PCDevice(Device):
 
         self.leases_file_name = parameters["leases_file_name"]
         self._service_mode_name = parameters["service_mode"]
-        self._test_mode_name = parameters["test_mode"]
-        self._test_mode = {
-            "name": self._test_mode_name,
-            "sequence": parameters["boot_internal_keystrokes"]}
-        self._service_mode = {
-            "name": self._service_mode_name,
-            "sequence": parameters["boot_usb_keystrokes"]}
-        self._target_device = \
-            parameters["target_device"]
+        self._boot_internal_keystrokes = parameters["boot_internal_keystrokes"]
+        self._boot_usb_keystrokes = parameters["boot_usb_keystrokes"]
+        self._target_device = parameters["target_device"]
         self.dev_ip = None
         self._uses_hddimg = None
 
@@ -106,7 +100,7 @@ class PCDevice(Device):
         # Bubblegum fix to support both .hddimg and .hdddirect at the same time
         self._uses_hddimg = os.path.splitext(file_name)[-1] == ".hddimg"
 
-        self._enter_mode(self._service_mode)
+        self._enter_mode("service_mode", self._boot_usb_keystrokes)
         file_on_nfs = os.path.abspath(file_name).replace(
             config.NFS_FOLDER,
             self._IMG_NFS_MOUNT_POINT)
@@ -137,27 +131,32 @@ class PCDevice(Device):
         return common.get_ip_for_pc_device(
             self.parameters["leases_file_name"])
 
-    def _enter_mode(self, mode, mode_name=""):
+    def boot_internal_test_mode(self):
+        self._enter_mode("test_mode", self._boot_internal_keystrokes)
+
+    def boot_usb_test_mode(self):
+        self._enter_mode("test_mode", self._boot_usb_keystrokes)
+
+    def boot_usb_service_mode(self):
+        self._enter_mode("service_mode", self._boot_usb_keystrokes)
+
+    def _enter_mode(self, target, keystrokes):
         """
         Try to put the device into the specified mode.
-
         Args:
-            mode (Dictionary):
-                Dictionary that contains the mode specific information
-
-        Returns:
-            None
-
+            keystrokes (string): Path to keystrokes file for booting
+            target (string): Boot target: 'test_mode' or 'service_mode'
         Raises:
             aft.errors.AFTDeviceError if device fails to enter the mode or if
             keyboard emulator fails to connect
         """
-        if not mode_name:
-            mode_name = mode["name"]
+        if not (target=="test_mode" or target=="service_mode"):
+            raise errors.AFTDeviceError("Bad argument: target=" + target +
+            " for pcdevice.py: _enter_mode function")
+
         # Sometimes booting to a mode fails.
-        logger.info(
-            "Trying to enter " + mode_name + " mode up to " +
-            str(self._RETRY_ATTEMPTS) + " times.")
+        logger.info("Trying to enter " + target + " up to " +
+                    str(self._RETRY_ATTEMPTS) + " times.")
 
         for _ in range(self._RETRY_ATTEMPTS):
             try:
@@ -165,9 +164,9 @@ class PCDevice(Device):
 
                 if self.kb_emulator:
                     logger.info("Using " + type(self.kb_emulator).__name__ +
-                                " to send keyboard sequence " + mode["sequence"])
+                                " to send keyboard sequence " + keystrokes)
 
-                    self.kb_emulator.send_keystrokes(mode["sequence"])
+                    self.kb_emulator.send_keystrokes(keystrokes)
 
                 else:
                     logger.warning("No keyboard emulator defined for the device")
@@ -175,10 +174,16 @@ class PCDevice(Device):
                 ip_address = self._wait_for_responsive_ip()
 
                 if ip_address:
-                    if self._verify_mode(mode_name):
+                    if target == "test_mode" and not \
+                      self._verify_mode(self._service_mode_name):
+                        logger.info("Correctly booted target image")
+                        return
+                    if target == "service_mode" and \
+                      self._verify_mode(self._service_mode_name):
+                        logger.info("Correctly booted support image")
                         return
                 else:
-                    logger.warning("Failed entering " + mode_name + " mode.")
+                    logger.warning("Failed entering " + target + ".")
 
             except KeyboardInterrupt:
                 raise
@@ -188,10 +193,10 @@ class PCDevice(Device):
                 logger.error(str(_err[0]).split("'")[1] + ": " + str(_err[1]))
 
         logger.critical(
-            "Unable to get the device in mode " + mode_name)
+            "Unable to get the device in mode " + target)
 
         raise errors.AFTDeviceError(
-            "Could not set the device in mode " + mode_name)
+            "Could not set the device in mode " + target)
 
     def _wait_for_responsive_ip(self):
         """

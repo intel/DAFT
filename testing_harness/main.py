@@ -54,12 +54,11 @@ def main(argv=None):
             device, tester = device_manager.try_flash_model(args)
 
         if args.emulateusb:
-            device_manager.boot_device_to_mode(device, "service_mode",
-                                                device._test_mode["name"])
+            device.boot_usb_test_mode()
 
         if not args.notest:
             if not args.emulateusb:
-                device_manager.boot_device_to_mode(device, "test_mode")
+                device.boot_internal_test_mode()
 
             print("Testing " + str(device.name) + ".")
             tester.execute()
@@ -70,8 +69,12 @@ def main(argv=None):
                     device_manager.stop_image_usb_emulation(
                                                     device.leases_file_name)
 
-        if args.boot:
-            device_manager.boot_device_to_mode(device, args.boot)
+        if not args.emulateusb:
+            if args.boot == "test_mode":
+                device.boot_internal_test_mode()
+
+            elif args.boot == "service_mode":
+                device.boot_usb_service_mode()
 
         device_manager.release(device)
 

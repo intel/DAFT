@@ -519,7 +519,6 @@ test_plan = iot_qatest
 target_device = /dev/mmcblk0
 root_partition = /dev/mmcblk0p3
 service_mode = Ubuntu
-test_mode = yocto
 boot_usb_keystrokes = <b>/root/kbsequences/joule/boot_usb</b>
 boot_internal_keystrokes = <b>/root/kbsequences/empty</b>
 serial_port = /dev/ttyUSB0
@@ -531,7 +530,6 @@ test_plan = iot_qatest
 target_device = /dev/mmcblk0
 root_partition = /dev/mmcblk0p3
 service_mode = Ubuntu
-test_mode = yocto
 boot_usb_keystrokes = <b>/root/kbsequences/minnowboard/boot_usb</b>
 boot_internal_keystrokes = <b>/root/kbsequences/empty</b>
 </pre>
@@ -713,10 +711,8 @@ these files:
 * **test_plan**: Test plan used with the device.
 * **target_device**: Path to the target device that the image to be tested is
   flashed to.
-* **service_mode**: String included in 'uname -a' when DUT is booted with
+* **service_mode**: String included in _/proc/version_ when DUT is booted with
   support image.
-* **test_mode**: String included in 'uname -a' when DUT is booted with the image
-  to be tested.
 * **boot_usb_keystrokes**: Path to the keystrokes which boot DUT to service
   mode.
 * **boot_internal_keystrokes**: Path to the keystrokes which boot DUT to test
