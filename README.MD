@@ -5,7 +5,6 @@
 1. [Overview](#1-overview)
     * 1.1. [DAFT setup](#11-daft-setup)
     * 1.2. [How it works](#12-how-it-works)
-    * 1.2.1 [Detailed DAFT run](#121-detailed-daft-run)
 2. [Creating DAFT setup](#2-creating-daft-setup)
     * 2.1 [Required hardware](#21-required-hardware)
     * 2.2 [Setting up BeagleBone Black filesystem on the host PC](#22-setting-up-beaglebone-black-filesystem-on-the-host-pc)
@@ -28,6 +27,7 @@
     * 3.2 [DAFT commandline interface](#32-daft-commandline-interface)
     * 3.3 [AFT settings](#33-aft-settings)
     * 3.4 [AFT commandline interface](#34-aft-commandline-interface)
+    * 3.5 [Detailed DAFT run example](#35-detailed-daft-run-example)
 4. [Creating BeagleBone Black filesystem](#4-creating-beaglebone-black-filesystem)
 5. [Creating support image for DUT](#5-creating-support-image-for-dut)
     * 5.1 [Ubuntu for PC like devices](#51-ubuntu-for-pc-like-devices)
@@ -78,69 +78,6 @@ done successfully the new image is booted and tests are executed. Tests aren't
 strictly part of DAFT but rather DAFT includes tools and libraries to interact
 with the device so own test can be written or existing test suites can be
 integrated.
-
-### 1.2.1 Detailed DAFT run
-
-More detailed example of a DAFT run:
-
-host PC:
-- run `daft joule image.wic --record` on the DAFT workspace
-
-host PC DAFT:
-- Parse DAFT config file `/etc/daft/daft.cfg`
-- Parse devices config file `/etc/daft/devices.cfg`
-- Look for 'joule' devices and try to find one that isn't reserved in
-  `/etc/daft/lockfiles/`
-- If a free joule is found, lock it by writing to a file in `/etc/daft/lockfiles/`
-- Use the `bb_ip` from the `devices.cfg` to ssh to the correct BBB and run
-  `aft joule image.wic --record --notest` on it to flash the image
-
-BBB testing harness AFT:
-- Parse AFT config file from `/etc/aft/aft.cfg`
-- Parse devices config files from `/etc/aft/devices/`
-- Find and use 'joule' settings
-- Reboot the device by turning off the relay with GPIO pin, wait a while, turn
-  on the relay
-- Start sending keystrokes determined by `boot_usb_keystrokes` in device
-  settings
-- After the keystrokes has been sent, try connecting to the device with the IP
-  address found in `/var/lib/misc/dnsmasq.leases`
-- When there is a connection, use ssh to run commands on the DUT support image
-
-DUT support image:
-- Mount the NFS in `/etc/fstab`, this is the NFS from host PC that BBB has
-  forwarded with iptables
-- Flash the image file determined in the arguments to the path determined by
-  `target_device` in the AFT device config files
-- Find the root partition of the flashed image and add ssh-keys to the image
-
-BBB testing harness AFT:
-- After the commands has been run, flashing should be successful and relay can be
-  turned off
-- Return to DAFT on the host PC
-
-host PC DAFT:
-- Rename all the log files with 'flash_' prefix
-- Using ssh run `aft joule --record --noflash` on the BBB to test the flashed image
-
-BBB testing harness AFT:
-- Parse AFT config file from `/etc/aft/aft.cfg`
-- Parse devices config files from `/etc/aft/devices/`
-- Find and use 'joule' settings
-- Reboot the device by turning off the relay with GPIO pin, wait a while, turn on
-  the relay
-- Start sending keystrokes determined by `boot_internal_keystrokes` in device settings
-- After the keystrokes has been sent, try connecting to the device with the IP
-  address found in `/var/lib/misc/dnsmasq.leases`
-- When there is a connection, run the tests determined by `test_plan` in the
-  device config files
-- After the tests has been run, relay can be turned off
-- Return to DAFT on the host PC
-
-host PC DAFT:
-- Rename all the log files with 'test_' prefix
-- Release the 'joule' device by emptying the lockfile in `/etc/daft/lockfiles/`
-- DAFT run is done
 
 # 2. Creating DAFT setup
 
@@ -615,6 +552,9 @@ bb_ip = 192.168.30.5</b>
 
 ## 3. DAFT and AFT settings and commandline interface
 
+This section includes information about DAFT and AFT config files, CLI and also
+example DAFT run where all the steps that DAFT makes are explained.
+
 ### 3.1 DAFT settings
 
 DAFT settings are located in `/etc/daft/daft.cfg` and on default are:
@@ -749,6 +689,69 @@ AFT commandline interface options:
     the device in AFT device settings is used.
 * **--verbose**: Increase aft run verbosity.
 * **--debug**: Change aft logging level to 'debug'.
+
+### 3.5 Detailed DAFT run example
+
+More detailed example of a DAFT run:
+
+host PC:
+- run `daft joule image.wic --record` on the DAFT workspace
+
+host PC DAFT:
+- Parse DAFT config file `/etc/daft/daft.cfg`
+- Parse devices config file `/etc/daft/devices.cfg`
+- Look for 'joule' devices and try to find one that isn't reserved in
+  `/etc/daft/lockfiles/`
+- If a free joule is found, lock it by writing to a file in `/etc/daft/lockfiles/`
+- Use the `bb_ip` from the `devices.cfg` to ssh to the correct BBB and run
+  `aft joule image.wic --record --notest` on it to flash the image
+
+BBB testing harness AFT:
+- Parse AFT config file from `/etc/aft/aft.cfg`
+- Parse devices config files from `/etc/aft/devices/`
+- Find and use 'joule' settings
+- Reboot the device by turning off the relay with GPIO pin, wait a while, turn
+  on the relay
+- Start sending keystrokes determined by `boot_usb_keystrokes` in device
+  settings
+- After the keystrokes has been sent, try connecting to the device with the IP
+  address found in `/var/lib/misc/dnsmasq.leases`
+- When there is a connection, use ssh to run commands on the DUT support image
+
+DUT support image:
+- Mount the NFS in `/etc/fstab`, this is the NFS from host PC that BBB has
+  forwarded with iptables
+- Flash the image file determined in the arguments to the path determined by
+  `target_device` in the AFT device config files
+- Find the root partition of the flashed image and add ssh-keys to the image
+
+BBB testing harness AFT:
+- After the commands has been run, flashing should be successful and relay can be
+  turned off
+- Return to DAFT on the host PC
+
+host PC DAFT:
+- Rename all the log files with 'flash_' prefix
+- Using ssh run `aft joule --record --noflash` on the BBB to test the flashed image
+
+BBB testing harness AFT:
+- Parse AFT config file from `/etc/aft/aft.cfg`
+- Parse devices config files from `/etc/aft/devices/`
+- Find and use 'joule' settings
+- Reboot the device by turning off the relay with GPIO pin, wait a while, turn on
+  the relay
+- Start sending keystrokes determined by `boot_internal_keystrokes` in device settings
+- After the keystrokes has been sent, try connecting to the device with the IP
+  address found in `/var/lib/misc/dnsmasq.leases`
+- When there is a connection, run the tests determined by `test_plan` in the
+  device config files
+- After the tests has been run, relay can be turned off
+- Return to DAFT on the host PC
+
+host PC DAFT:
+- Rename all the log files with 'test_' prefix
+- Release the 'joule' device by emptying the lockfile in `/etc/daft/lockfiles/`
+- DAFT run is done
 
 ## 4. Creating BeagleBone Black filesystem
 
