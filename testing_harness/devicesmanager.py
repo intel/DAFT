@@ -225,38 +225,6 @@ class DevicesManager(object):
             if os.path.isfile(path):
                 os.unlink(path)
 
-    def try_flash_specific(self, args):
-        '''
-        Reserve and flash specific device.
-
-        Args:
-            args: AFT arguments
-        Returns:
-            device, tester: Reserved machine and tester handles.
-        '''
-        device = self.reserve_specific(args.device, model=args.machine)
-        if args.testplan:
-            device.test_plan = args.testplan
-        tester = Tester(device)
-
-        if args.record:
-            device.record_serial()
-
-        if not self.check_libcomposite_service_running():
-            self.stop_image_usb_emulation(device.leases_file_name)
-
-        if args.emulateusb:
-            self.start_image_usb_emulation(args, device.leases_file_name)
-            inject_ssh_keys_to_image(args.file_name)
-            return device, tester
-
-        if not args.noflash:
-            print("Flashing " + str(device.name) + ".")
-            device.write_image(args.file_name)
-            print("Flashing successful.")
-
-        return device, tester
-
     def try_flash_model(self, args):
         '''
         Reserve and flash a machine. By default it tries to flash 2 times,

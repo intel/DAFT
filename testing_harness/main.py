@@ -47,11 +47,7 @@ def main(argv=None):
             logger.level(logging.DEBUG)
 
         device_manager = DevicesManager(args)
-
-        if args.device:
-            device, tester = device_manager.try_flash_specific(args)
-        else:
-            device, tester = device_manager.try_flash_model(args)
+        device, tester = device_manager.try_flash_model(args)
 
         if args.emulateusb:
             device.boot_usb_test_mode()
@@ -115,14 +111,6 @@ def parse_args():
         nargs="?",
         help = "Image to write: a local file, compatible with the selected " +
         "machine.")
-
-    parser.add_argument(
-        "--device",
-        type=str,
-        nargs="?",
-        action="store",
-        default="",
-        help="Specify the individual physical device by name.")
 
     parser.add_argument(
         "--flash_retries",
