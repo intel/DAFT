@@ -1,0 +1,75 @@
+\documentclass[a4paper,11pt]{article}
+\frenchspacing
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+%\usepackage{url}
+\usepackage{hyperref}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+%Magic to fix underscores and then to turn dashes to actual dashes
+%instead of minus signs inside listing environment.
+\usepackage{listings}
+\usepackage{titlesec}
+\makeatletter
+\def\lst@filenamerpl{_\textunderscore}
+\lst@CCPutMacro\lst@ProcessOther {"2D}{\lst@ttfamily{-{}}{-{}}}
+\@empty\z@\@empty
+\makeatother
+\usepackage{enumitem}
+\setlist{itemsep=3pt,topsep=3pt}
+ 
+\newcommand{\note}{\textbf{Note: }}
+\newcommand{\cmd}[1]{\texttt{#1}}
+\newcommand{\bl}{\textbackslash}
+
+% Modify the way paragraph command is formatted, so that it can be used to simulate
+% subsubsubsection
+\setcounter{secnumdepth}{4}
+
+\titleformat{\paragraph}
+{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+\titlespacing*{\paragraph}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
+\begin{document}
+
+\definecolor{lightgray}{RGB}{200,200,200}
+
+\lstset{basicstyle=\tiny, breaklines=true,
+columns=fullflexible, numbers=left, numberstyle=\tiny\color{lightgray}, frame=single, rulecolor=\color{lightgray}}
+
+\title{Distributed Automatic Flasher Tester - DAFT}
+\author{
+	Simo Kuusela
+}
+\maketitle
+
+\pagebreak
+
+\tableofcontents
+
+\pagebreak
+
+\section{Start here}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\linewidth]{hardware_setup.png}
+	\caption{Testing hardware wiring diagram}
+\end{figure}
+
+\subsection{Simple setup}
+The absolutely mandatory steps to take for a simplest working system with just one Minnowboard Turbot as device under test (DUT) and Beaglebone Black (BBB) testing harness:
+\begin{enumerate}
+	\item Setup Beaglebone Black as instructed in section \ref{bbb}
+	\item Pick a Cleware powercutter and using the instructions on section \ref{clewarecutters}, install the associated software.
+	\item Setup AFT as instructed in section \ref{aft}
+	\item Setup PEM as instructed in section \ref{pem}
+	\item Create an Arduino keyboard emulator using the instructions in \ref{pemarduino}
+	\item Using \cmd{dd} create a bootable Debian USB-stick for MinnowBoard MAX as instructed in section \ref{pc}.
+	\item Following instructions in the first two subsections of section \ref{minnowboard}, set up the testing hardware.
+	\item Configure AFT using the instructions from appendix \ref{app:aft}.
+\end{enumerate}
+
+\end{document}
