@@ -22,6 +22,10 @@ set_up_gpio() {
   echo 60 > /sys/class/gpio/export
   echo out > /sys/class/gpio/gpio60/direction
   echo 0 > /sys/class/gpio/gpio60/value
+
+  # These are for Refkit GPIO test
+  echo 20 > /sys/class/gpio/export
+  echo in > /sys/class/gpio/gpio20/direction
 }
 
 set_up_system() {
