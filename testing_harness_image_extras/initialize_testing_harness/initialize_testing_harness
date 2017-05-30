@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2016 Intel, Inc.
+# Copyright (c) 2017 Intel, Inc.
 # Author Simo Kuusela <simo.kuusela@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -13,12 +13,18 @@
 # See the GNU General Public License for more details.
 
 set_up_overlay() {
+  # BBB mounts the system as read-only but we need to be able to make changes
+  # to /var so mount an overlay to it using tmpfs. This means that /var becomes
+  # writable and any changes to /var will be made only to RAM and when BBB is
+  # rebooted everything will be reseted.
   mkdir /ramdisk/upper
   mkdir /ramdisk/work
   mount -t overlay -o lowerdir=/_var,upperdir=/ramdisk/upper,workdir=/ramdisk/work overlay /var
 }
 
 set_up_gpio() {
+  # Initialize GPIO pins
+  # This GPIO pin is used for controlling relay that powers the DUT on/off
   echo 60 > /sys/class/gpio/export
   echo out > /sys/class/gpio/gpio60/direction
   echo 0 > /sys/class/gpio/gpio60/value

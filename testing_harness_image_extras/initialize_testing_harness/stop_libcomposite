@@ -12,6 +12,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 
+# Remove all the files and directories used by USB emulation and stop it
 echo "" > /config/usb_gadget/gadget/UDC
 rm /config/usb_gadget/gadget/configs/c.1/*0
 rmdir /config/usb_gadget/gadget/configs/c.1/strings/0x409
