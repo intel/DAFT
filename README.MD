@@ -564,18 +564,7 @@ For more info about using DAFT and its settings check
 [DAFT and AFT settings and commandline interface](#3-daft-and-aft-settings-and-commandline-interface)
 section. If flashing fails DAFT will blacklist the BBB
 used by locking the device until `/etc/daft/lockfiles/<device>` is emptied or
-removed. Also be aware that BBB has a watchdog that checks periodically if it
-has connection to the _192.168.30.1_ server and also if sshd and dnsmasq
-services are running. If it doesn't it will automatically reboot BBB. Removing
-the watchdog can be done by:
-```
-rm /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
-```
-
-Enabling the watchdog again is done by
-```
-ln -s /daft/bbb_fs/etc/systemd/system/watchdog.service /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
-```
+removed.
 
 ## 2.10 Adding more devices
 
@@ -877,12 +866,8 @@ cp DAFT/testing_harness_image_extras/initialize_testing_harness/initialize_testi
 ln -s /etc/systemd/system/initialize_testing_harness.service  /etc/systemd/system/multi-user.target.wants/
 cp DAFT/testing_harness_image_extras/initialize_testing_harness/libcomposite.service /etc/systemd/system/
 ln -s /etc/systemd/system/libcomposite.service  /etc/systemd/system/multi-user.target.wants/
-cp DAFT/testing_harness_image_extras/watchdog/watchdog.py /usr/bin/watchdog
-cp DAFT/testing_harness_image_extras/watchdog/watchdog.service /etc/systemd/system/
 cp -r DAFT/testing_harness_image_extras/kbsequences /root/
-chmod +x /usr/bin/watchdog
 mkdir support_image /ramdisk /config .ssh workspace
-systemctl enable watchdog
 iptables -t nat -A POSTROUTING --out-interface eth0 -j MASQUERADE
 iptables -A FORWARD --in-interface usb0 -j ACCEPT
 iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 2233 -j DNAT --to 192.168.7.2:22
