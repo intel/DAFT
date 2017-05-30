@@ -5,34 +5,38 @@
 1. [Overview](#1-overview)
     * 1.1. [DAFT setup](#11-daft-setup)
     * 1.2. [How it works](#12-how-it-works)
-    * 1.2.1 [Detailed DAFT run](#121-detailed-daft-run)
 2. [Creating DAFT setup](#2-creating-daft-setup)
     * 2.1 [Required hardware](#21-required-hardware)
-    * 2.2 [Setting up BeagleBone Black filesystem on the host PC](#22-setting-up-beaglebone-black-filesystem-on-the-host-pc)
-    * 2.3 [Configuring host PC](#23-configuring-host-pc)
-        * 2.3.1 [Secondary network interface](#231-secondary-network-interface)
-        * 2.3.2 [Dnsmasq](#232-dnsmasq)
-        * 2.3.3 [TFTP server](#233-tftp-server)
-        * 2.3.4 [NFS server](#234-nfs-server)
-        * 2.3.5 [Changing BBB filesystem permissions](#235-changing-bbb-filesystem-permissions)
-        * 2.3.6 [Changing NFS workspace that BBB and DUT support image will mount](#236-changing-nfs-workspace-that-bbb-and-dut-support-image-will-mount)
-        * 2.3.7 [Install and configure DAFT software](#237-install-and-configure-daft-software)
-    * 2.4 [Setting BeagleBone Black to boot from NFS](#24-setting-beaglebone-black-to-boot-from-nfs)
-    * 2.5 [Setting up relay](#25-setting-up-relay)
-    * 2.6 [Connecting hardware](#26-connecting-hardware)
-    * 2.7 [Setting up DUT](#27-setting-up-dut)
-    * 2.8 [Using DAFT](#28-using-daft)
-    * 2.9 [Adding more devices](#29-adding-more-devices)
+    * 2.2 [BBB booting](#22-bbb-booting)
+    * 2.3 [Setting up BeagleBone Black filesystem on the host PC](#23-setting-up-beaglebone-black-filesystem-on-the-host-pc)
+    * 2.4 [Configuring host PC](#24-configuring-host-pc)
+        * 2.4.1 [Secondary network interface](#241-secondary-network-interface)
+        * 2.4.2 [DHCP server](#242-dhcp-server)
+        * 2.4.3 [TFTP server](#243-tftp-server)
+        * 2.4.4 [NFS server](#244-nfs-server)
+        * 2.4.5 [Changing BBB filesystem permissions](#245-changing-bbb-filesystem-permissions)
+        * 2.4.6 [Changing NFS workspace that BBB and DUT support image will mount](#246-changing-nfs-workspace-that-bbb-and-dut-support-image-will-mount)
+        * 2.4.7 [Install and configure DAFT software](#247-install-and-configure-daft-software)
+    * 2.5 [Setting BeagleBone Black to boot from NFS](#25-setting-beaglebone-black-to-boot-from-nfs)
+    * 2.6 [Setting up relay](#26-setting-up-relay)
+    * 2.7 [Connecting hardware](#27-connecting-hardware)
+    * 2.8 [Setting up DUT](#28-setting-up-dut)
+    * 2.9 [Using DAFT](#29-using-daft)
+    * 2.10 [Adding more devices](#210-adding-more-devices)
 3. [DAFT and AFT settings and commandline interface](#3-daft-and-aft-settings-and-commandline-interface)
     * 3.1 [DAFT settings](#31-daft-settings)
     * 3.2 [DAFT commandline interface](#32-daft-commandline-interface)
     * 3.3 [AFT settings](#33-aft-settings)
     * 3.4 [AFT commandline interface](#34-aft-commandline-interface)
+    * 3.5 [Detailed DAFT run](#35-detailed-daft-run)
 4. [Creating BeagleBone Black filesystem](#4-creating-beaglebone-black-filesystem)
 5. [Creating support image for DUT](#5-creating-support-image-for-dut)
     * 5.1 [Ubuntu for PC like devices](#51-ubuntu-for-pc-like-devices)
 6. [Troubleshooting](#6-troubleshooting)
     * 6.1 [Beaglebone Black booting](#61-beaglebone-black-booting)
+    * 6.2 [DHCP problems](#62-dhcp-problems)
+    * 6.3 [TFTP problems](#63-tftp-problems)
+    * 6.4 [NFS problems](#64-nfs-problems)
 
 [DAFT hardware images](#daft-hardware-images)
 
@@ -46,7 +50,7 @@ testing of an OS image on a real device. Its goal is to both standardize and
 simplify the testing on a variety of devices, while keeping minimal the cost and
 the complexity of the setup. In particular, it strives to use only inexpensive
 off-the shelf hardware components and to keep one single configuration that can
-be used by both large testing farms and individual testers/developers.
+be used by both large testing farms and individual testers/developers. This guide explains how to setup and use DAFT. Note that this guide was written for Ubuntu so you might have to do additional steps in other distributions.
 
 ## 1.1 DAFT setup
 
@@ -65,6 +69,7 @@ DAFT is also split code wise with _testing_harness_ including the code BBB uses
 and _pc_host_ including the code the PC uses. The program that BBB uses is
 called AFT (Automatic Flasher Tester) and the program that the PC uses is DAFT.
 
+
 ## 1.2 How it works
 
 At the highest level DAFT is called from the command line with the device type
@@ -79,68 +84,8 @@ strictly part of DAFT but rather DAFT includes tools and libraries to interact
 with the device so own test can be written or existing test suites can be
 integrated.
 
-### 1.2.1 Detailed DAFT run
 
-More detailed example of a DAFT run:
 
-host PC:
-- run `daft joule image.wic --record` on the DAFT workspace
-
-host PC DAFT:
-- Parse DAFT config file `/etc/daft/daft.cfg`
-- Parse devices config file `/etc/daft/devices.cfg`
-- Look for 'joule' devices and try to find one that isn't reserved in
-  `/etc/daft/lockfiles/`
-- If a free joule is found, lock it by writing to a file in `/etc/daft/lockfiles/`
-- Use the `bb_ip` from the `devices.cfg` to ssh to the correct BBB and run
-  `aft joule image.wic --record --notest` on it to flash the image
-
-BBB testing harness AFT:
-- Parse AFT config file from `/etc/aft/aft.cfg`
-- Parse devices config files from `/etc/aft/devices/`
-- Find and use 'joule' settings
-- Reboot the device by turning off the relay with GPIO pin, wait a while, turn
-  on the relay
-- Start sending keystrokes determined by `boot_usb_keystrokes` in device
-  settings
-- After the keystrokes has been sent, try connecting to the device with the IP
-  address found in `/var/lib/misc/dnsmasq.leases`
-- When there is a connection, use ssh to run commands on the DUT support image
-
-DUT support image:
-- Mount the NFS in `/etc/fstab`, this is the NFS from host PC that BBB has
-  forwarded with iptables
-- Flash the image file determined in the arguments to the path determined by
-  `target_device` in the AFT device config files
-- Find the root partition of the flashed image and add ssh-keys to the image
-
-BBB testing harness AFT:
-- After the commands has been run, flashing should be successful and relay can be
-  turned off
-- Return to DAFT on the host PC
-
-host PC DAFT:
-- Rename all the log files with 'flash_' prefix
-- Using ssh run `aft joule --record --noflash` on the BBB to test the flashed image
-
-BBB testing harness AFT:
-- Parse AFT config file from `/etc/aft/aft.cfg`
-- Parse devices config files from `/etc/aft/devices/`
-- Find and use 'joule' settings
-- Reboot the device by turning off the relay with GPIO pin, wait a while, turn on
-  the relay
-- Start sending keystrokes determined by `boot_internal_keystrokes` in device settings
-- After the keystrokes has been sent, try connecting to the device with the IP
-  address found in `/var/lib/misc/dnsmasq.leases`
-- When there is a connection, run the tests determined by `test_plan` in the
-  device config files
-- After the tests has been run, relay can be turned off
-- Return to DAFT on the host PC
-
-host PC DAFT:
-- Rename all the log files with 'test_' prefix
-- Release the 'joule' device by emptying the lockfile in `/etc/daft/lockfiles/`
-- DAFT run is done
 
 # 2. Creating DAFT setup
 
@@ -148,16 +93,17 @@ Fewest mandatory steps to create DAFT setup with one device under test (DUT) and
 BeagleBone Black (BBB):
 
 * [Get required hardware](#21-required-hardware)
-* [Set up BeagleBone Black filesystem on the PC](#22-setting-up-beaglebone-black-filesystem-on-the-host-pc)
-* [Configure host PC](#23-configuring-host-pc)
-* [Set BeagleBone Black to boot from NFS](#24-setting-beaglebone-black-to-boot-from-nfs)
-* [Set up relay](#25-setting-up-relay)
-* [Connect hardware together](#26-connecting-hardware)
-* [Set up DUT](#27-setting-up-dut)
-* [Use DAFT](#28-using-daft)
+* [BBB booting](#22-bbb-booting)
+* [Set up BeagleBone Black filesystem on the PC](#23-setting-up-beaglebone-black-filesystem-on-the-host-pc)
+* [Configure host PC](#24-configuring-host-pc)
+* [Set BeagleBone Black to boot from NFS](#25-setting-beaglebone-black-to-boot-from-nfs)
+* [Set up relay](#26-setting-up-relay)
+* [Connect hardware together](#27-connecting-hardware)
+* [Set up DUT](#28-setting-up-dut)
+* [Use DAFT](#29-using-daft)
 
 When the setup has been completed check the section on
-[adding more devices](#29-adding-more-devices).
+[adding more devices](#210-adding-more-devices).
 
 ## 2.1 Required hardware
 
@@ -174,7 +120,7 @@ List of hardware needed for DAFT setup:
 * Secondary network interface for PC if it doesn't have one
     * Easiest option is USB ethernet adapter, cheapest is PCI network card
 * BeagleBone Black
-* Micro SD card for [BBB U-Boot](#24-setting-beaglebone-black-to-boot-from-nfs)
+* Micro SD card for [BBB U-Boot](#25-setting-beaglebone-black-to-boot-from-nfs)
   (optional)
 * Ethernet cable
 * USB to USB-mini cable
@@ -192,7 +138,7 @@ List of hardware needed for DAFT setup:
       doesn't have to drive the coil
 * 3x Dupont cables to connect relay to BBB
 * DC plug extension cable (recommended)
-    * [So you don't have to cut power supply cable](#25-setting-up-relay)
+    * [So you don't have to cut power supply cable](#26-setting-up-relay)
     * Flat extension cables that have easily separable ground and DC cables are
       recommended
 
@@ -202,7 +148,28 @@ the setup was also tested to work with Gigabyte NUC, Intel Edison, BeagleBone
 Black and Intel Galileo V2 but they might require some work on the BeagleBone
 filesystem to make them work.
 
-## 2.2 Setting up BeagleBone Black filesystem on the host PC
+## 2.2 BBB booting
+
+This section will give you an overview of the BBB booting components, boot sequence and how it relates to the PC Host. This should give you a good understanding of why we need to setup various different services and what is their role.
+
+![](readme_pictures/BBB_booting.png)
+
+_BeagleBone Black booting with the PC Host._
+
+The above diagram shows the steps when setting up the BBB and booting it:
+1. Connect the PC Host to the BBB via serial.
+   1. Open a "Screen" from your terminal to the serial (usually its something like `ttyUSB0`). You can use the following   command: `sudo screen /dev/ttyUSB0 115200 -ixon,-ixof` but remember to replace the <b>/dev/ttyUSB0</b> with your own path.
+   2. Now boot the BBB by supplying it power with a 5V charger.
+   3. If you are having problems when booting BBB, refer to the troubleshooting section [Beaglebone Black booting](#61-beaglebone-black-booting)
+2. Get an IP adress for the BBB from the DHCP server.
+3. Get the BBB bootsystem kernel via TFTP. The BBB will fetch the bootsystem kernel from the PC Host via TFTP.
+4. BBB executes the kernel, which is the bootsystem core and is needed to be able to boot the rest of the system via NFS.
+5. Boot the rest of the system via NFS.
+
+
+
+
+## 2.3 Setting up BeagleBone Black filesystem on the host PC
 
 Make [BBB filesystem](#4-creating-beaglebone-black-filesystem) and
 [support image](#5-creating-support-image-for-dut) for DUT from scratch or
@@ -214,15 +181,15 @@ sudo wget address-to-bbb-fs
 sudo tar -xzf bbb_nfs.tar.gz
 ```
 
-## 2.3 Configuring host PC
+## 2.4 Configuring host PC
 
 Service wise there is different ways to do everything but the end goal is
 to have static IP address on the secondary network interface (_192.168.30.1_)
-and to have DHCP, TFTP and NFS server running on that network. This guide has
+and to have DHCP, TFTP and NFS server running on that network. It is very important that you are careful especially with the DHCP server so that you don't accidentally configure it to the wrong interface (you should never configure the DHCP server to the interface from which your PC Host gets its internet, unless you know exactly what you are doing. This guide has
 been written using Ubuntu so on different distro you might have to do things
 differently.
 
-### 2.3.1 Secondary network interface
+### 2.4.1 Secondary network interface
 
 Configure the secondary network interface to have static _192.168.30.1_ IP
 address. Use `ifconfig` to determine which one is the secondary network interface.
@@ -247,9 +214,9 @@ Restart the network interface (change **eth1** to previously determined one):
 sudo ifdown <b>eth1</b> && sudo ifup <b>eth1</b>
 </pre>
 
-### 2.3.2 Dnsmasq
+### 2.4.2 DHCP server
 
-First install dnsmasq:
+A service called <b>dnsmasq</b> has the required dhcp server so first install dnsmasq:
 ```
 sudo apt install dnsmasq
 ```
@@ -266,8 +233,9 @@ Restart and enable dnsmasq so it automatically starts after reboot:
 ```
 sudo systemctl restart dnsmasq; sudo systemctl enable dnsmasq
 ```
+Refer to [DHCP problems](#62-dhcp-problems) if you are having issues with this.
 
-### 2.3.3 TFTP server
+### 2.4.3 TFTP server
 
 First install required packages:
 ```
@@ -296,8 +264,8 @@ Restart and enable xinetd service:
 ```
 sudo systemctl restart xinetd; sudo systemctl enable xinetd
 ```
-
-### 2.3.4 NFS server
+Note here that not all distros have xinetd service. In that case you might have to install something else. Refer to [TFTP problems](#63-tftp-problems) if there are problems.
+### 2.4.4 NFS server
 
 First install nfs-kernel-server:
 ```
@@ -329,10 +297,11 @@ Put changes in effect and restart and enable nfs-kernel-server:
 sudo exportfs -ra
 sudo systemctl restart nfs-kernel-server; sudo systemctl enable nfs-kernel-server
 ```
+Refer to [NFS problems](#64-nfs-problems) if you have issues with NFS.
 
-### 2.3.5 Changing BBB filesystem permissions
+### 2.4.5 Changing BBB filesystem permissions
 
-Previously on the [NFS chapter](#234-nfs-server) we chose a user that DAFT will be
+Previously on the [NFS chapter](#244-nfs-server) we chose a user that DAFT will be
 used with. We will need to change the owner of `/daft/bbb_fs` and
 `/daft/support_img` to that user and users group. It's done with:
 <pre>
@@ -340,9 +309,9 @@ sudo chown -R <b>user</b>:<b>group</b> /daft/*
 sudo chown root:root /daft/bbb_fs/root/.ssh/config
 </pre>
 
-### 2.3.6 Changing NFS workspace that BBB and DUT support image will mount
+### 2.4.6 Changing NFS workspace that BBB and DUT support image will mount
 
-On the [NFS chapter](#234-nfs-server) we chose a workspace for BBB to use. We need
+On the [NFS chapter](#244-nfs-server) we chose a workspace for BBB to use. We need
 to change **/home/tester** in `/daft/bbb_fs/etc/fstab` to that one:
 ```
 sudo vim /daft/bbb_fs/etc/fstab
@@ -383,7 +352,7 @@ Unmount the image and remove the temporary folder:
 sudo umount /tmp_daft; sudo rmdir /tmp_daft
 </pre>
 
-## 2.3.7 Install and configure DAFT software
+## 2.4.7 Install and configure DAFT software
 
 Clone DAFT github repository:
 ```
@@ -396,7 +365,7 @@ sudo apt install python3-setuptools
 cd DAFT/pc_host; sudo python3 setup.py install
 ```
 
-Change DAFT configuration file to use your [previously chosen](#234-nfs-server)
+Change DAFT configuration file to use your [previously chosen](#244-nfs-server)
 workspace directory instead of **/home/tester/**:
 <pre>
 sudo vim /etc/daft/daft.cfg
@@ -417,12 +386,12 @@ Finally change `/etc/daft/lockfiles` owner to your DAFT user:
 sudo chown <b>user</b>:<b>group</b> /etc/daft/lockfiles
 </pre>
 
-## 2.4 Setting BeagleBone Black to boot from NFS
+## 2.5 Setting BeagleBone Black to boot from NFS
 
 Setting BBB to boot from NFS is done by changing `/uEnv.txt` file contents on a
-BBB image to this:
+BBB image (this means the uEnv.txt file in the BBB itself and not in the NFS files) to this:
 ```
-bootcmd=setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.30-ti-r64; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.30-ti-r64/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
+bootcmd=setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.9-ti-r25; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
 uenvcmd=boot
 ```
 
@@ -450,7 +419,7 @@ unxz <b>bone-debian</b>.img.xz
 sudo dd if=<b>bone-debian</b>.img of=/dev/sd<b>X</b> bs=8M status=progress
 </pre>
 
-## 2.5 Setting up relay
+## 2.6 Setting up relay
 
 ![](readme_pictures/relay_and_cable.jpg)
 _Relay with extension cable hooked up._
@@ -479,7 +448,7 @@ pem_port = /dev/hidg0
 serial_bauds = 115200
 </pre>
 
-## 2.6 Connecting hardware
+## 2.7 Connecting hardware
 
 ![](readme_pictures/daft_diagram.png)
 
@@ -493,7 +462,7 @@ to the pictures above and BBB can be booted from NFS. If there is a problem with
 booting it's most likely due to dnsmasq, TFTP, NFS or file permissions. Check
 [troubleshooting section](#5-troubleshooting) for more help if needed.
 
-## 2.7 Setting up DUT
+## 2.8 Setting up DUT
 
 On default it's expected that the DUT has specific boot order set in BIOS so with
 keyboard emulation we can choose the right device to boot from. The first boot
@@ -534,13 +503,16 @@ boot_usb_keystrokes = <b>/root/kbsequences/minnowboard/boot_usb</b>
 boot_internal_keystrokes = <b>/root/kbsequences/empty</b>
 </pre>
 
-## 2.8 Using DAFT
+## 2.9 Using DAFT
+
 
 After BBB has been booted successfully check _dnsmasq.leases_ file to see BBB IP
 address:
 ```
 cat /var/lib/misc/dnsmasq.leases
 ```
+In some distros the location of this file might be different. In that case you can use `arp -n` in the terminal to do the same thing.
+
 <pre>
 1481817223 b0:d5:cc:f4:8c:41 <b>192.168.30.61</b> DAFT_BBB *
 </pre>
@@ -568,9 +540,29 @@ Flash and test an image while recording serial output:
 daft minnowboard yocto-image.dsk --record
 ```
 
+
+
+Next, we'll take a look at what happens when we run DAFT. This is a high level overview. For more detailed DAFT run refer to [Detailed DAFT run](#35-detailed-daft-run)
+
+![](readme_pictures/daft_run.png)
+
+_Running daft._
+
+1. Start daft by executing the following command in the PC Host: `daft DUT PATH/TO/IMG.img`. Replace DUT with the desired DUT e.g. `minnowboard` or `joule` and `PATH/TO/IMG.img` with the image you want to flash. You can also run the command directly in BBB but then it won't lock the DUTs. Running daft in BBB is done with the command `aft DUT PATH/TO/IMG.img`. In case you want to only flash or test or boot the DUT refer to [DAFT commandline interface](#32-daft-commandline-interface) to add correct options for DAFT.
+2. DAFT then checks if the device is blacklisted or locked in the lockfiles. If not, then it locks it so other simultaneous DAFT runs won't use the same DUT. Or if you call DAFT explicitly e.g. `daft joule1`, it will only look for that device.
+3. BBB reboots the DUT and proceeds to start the support image in the DUT. The support image is needed so that the target image can be flashed to the SD card or to another memory storage. BBB emulates itself as multiple components to enable automated and simple function:
+   1. As a keyboard (to get through DUT BIOS and to select the correct device to boot from).
+   2. As a USB drive (so that the DUT can boot the support image).
+   3. As an ethernet interface (ethernet is needed so the BBB can connect to the DUT and run commands on it required when flashing or testing).
+4. When the support image boots, it gets an IP address from the BBBs DHCP server (NOT THE PC HOSTS). If you want to, you can SSH to the DUT from the PC Host by first doing a SSH to the BBB and then another SSH to the DUT.
+5. Flash the target image fetched from the PC Host via NFS to the DUTs memory storage. The DUT doesn't connect directly to the PC Host but instead through the BBB, which forwards the connection both ways.
+6. Boot the flashed image and run the tests on DUT.
+
+
+
 For more info about using DAFT and its settings check
 [DAFT and AFT settings and commandline interface](#3-daft-and-aft-settings-and-commandline-interface)
-section. If flashing or entering test mode fails DAFT will blacklist the BBB
+section. If flashing fails DAFT will blacklist the BBB
 used by locking the device until `/etc/daft/lockfiles/<device>` is emptied or
 removed. Also be aware that BBB has a watchdog that checks periodically if it
 has connection to the _192.168.30.1_ server and also if sshd and dnsmasq
@@ -580,12 +572,12 @@ the watchdog can be done by:
 rm /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
 ```
 
-Enabling the watchdog again is done by:
+Enabling the watchdog again is done by
 ```
 ln -s /daft/bbb_fs/etc/systemd/system/watchdog.service /daft/bbb_fs/etc/systemd/system/multi-user.target.wants/watchdog.service
 ```
 
-## 2.9 Adding more devices
+## 2.10 Adding more devices
 
 ![](readme_pictures/daft_setup_three_devices.png)
 
@@ -613,7 +605,17 @@ bb_ip = 192.168.30.3
 bb_ip = 192.168.30.5</b>
 </pre>
 
+After these are configured, you call them the same way you'd call a single device. DAFT automatically checks which devices are in use and which are not by locking and unlocking them in
+```
+/etc/daft/lockfiles/
+```
+So you don't have to call the DUTs explicitly `daft minnowboard1 PATH/TO/DUT.img` but instead you can just call `daft minnowboard PATH/TO/DUT.img`.
+
+
 ## 3. DAFT and AFT settings and commandline interface
+
+This section includes information about DAFT and AFT config files, CLI and also an example DAFT run where all the steps that DAFT takes are explained.
+
 
 ### 3.1 DAFT settings
 
@@ -669,6 +671,7 @@ DAFT commandline interface options:
 * **--testplan**: Specify a test plan to use from bbb_fs/etc/aft/test_plan/.
   Use the test plan name without .cfg extension. On default the test plan for
   the device in AFT device settings is used.
+
 
 ### 3.3 AFT settings
 
@@ -750,14 +753,78 @@ AFT commandline interface options:
 * **--verbose**: Increase aft run verbosity.
 * **--debug**: Change aft logging level to 'debug'.
 
+### 3.5 Detailed DAFT run
+
+More detailed example of a DAFT run:
+
+host PC:
+- run `daft joule image.wic --record` on the DAFT workspace
+
+host PC DAFT:
+- Parse DAFT config file `/etc/daft/daft.cfg`
+- Parse devices config file `/etc/daft/devices.cfg`
+- Look for 'joule' devices and try to find one that isn't reserved in
+  `/etc/daft/lockfiles/`
+- If a free joule is found, lock it by writing to a file in `/etc/daft/lockfiles/`
+- Use the `bb_ip` from the `devices.cfg` to ssh to the correct BBB and run
+  `aft joule image.wic --record --notest` on it to flash the image
+
+BBB testing harness AFT:
+- Parse AFT config file from `/etc/aft/aft.cfg`
+- Parse devices config files from `/etc/aft/devices/`
+- Find and use 'joule' settings
+- Reboot the device by turning off the relay with GPIO pin, wait a while, turn
+  on the relay
+- Start sending keystrokes determined by `boot_usb_keystrokes` in device
+  settings
+- After the keystrokes has been sent, try connecting to the device with the IP
+  address found in `/var/lib/misc/dnsmasq.leases`
+- When there is a connection, use ssh to run commands on the DUT support image
+
+DUT support image:
+- Mount the NFS in `/etc/fstab`, this is the NFS from host PC that BBB has
+  forwarded with iptables
+- Flash the image file determined in the arguments to the path determined by
+  `target_device` in the AFT device config files
+- Find the root partition of the flashed image and add ssh-keys to the image
+
+BBB testing harness AFT:
+- After the commands has been run, flashing should be successful and relay can be
+  turned off
+- Return to DAFT on the host PC
+
+host PC DAFT:
+- Rename all the log files with 'flash_' prefix
+- Using ssh run `aft joule --record --noflash` on the BBB to test the flashed image
+
+BBB testing harness AFT:
+- Parse AFT config file from `/etc/aft/aft.cfg`
+- Parse devices config files from `/etc/aft/devices/`
+- Find and use 'joule' settings
+- Reboot the device by turning off the relay with GPIO pin, wait a while, turn on
+  the relay
+- Start sending keystrokes determined by `boot_internal_keystrokes` in device settings
+- After the keystrokes has been sent, try connecting to the device with the IP
+  address found in `/var/lib/misc/dnsmasq.leases`
+- When there is a connection, run the tests determined by `test_plan` in the
+  device config files
+- After the tests has been run, relay can be turned off
+- Return to DAFT on the host PC
+
+host PC DAFT:
+- Rename all the log files with 'test_' prefix
+- Release the 'joule' device by emptying the lockfile in `/etc/daft/lockfiles/`
+- DAFT run is done
+
+
 ## 4. Creating BeagleBone Black filesystem
 
 Download BBB image from [here](https://beagleboard.org/latest-images)
-(bone-debian-8.6-lxqt-4gb-armhf-2016-11-06-4gb.img was used when writing this
+(bone-debian-8.4-lxqt-4gb-armhf-2016-05-13-4gb.img was used when writing this
 guide). Use `dd` to copy it to USB stick. SD card could also be used but working
 with USB stick is faster (change /dev/sdX to match your USB stick):
 ```
-sudo dd if=bone-debian-8.6-lxqt-4gb-armhf-2016-11-06-4gb.img of=/dev/sdX bs=8M status=progress
+sudo dd if=bone-debian-8.4-lxqt-4gb-armhf-2016-05-13-4gb.img of=/dev/sdX bs=8M status=progress
 sync
 ```
 
@@ -780,7 +847,7 @@ Connect the USB stick to BBB and boot it. Use USB-serial cable or monitor and
 keyboard and stop the U-Boot from doing default boot by pressing space. Use this
 command to boot from USB stick:
 ```
-setenv bootargs 'console=ttyO0,115200n8, root=/dev/sda1 rootwait rootfstype=ext4 rw'; usb start; ext4load usb 0:1 0x81000000 /boot/vmlinuz-4.4.30-ti-r64; ext4load usb 0:1 0x80000000 /boot/dtbs/4.4.30-ti-r64/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
+setenv bootargs 'console=ttyO0,115200n8, root=/dev/sda1 rootwait rootfstype=ext4 rw'; usb start; ext4load usb 0:1 0x81000000 /boot/vmlinuz-4.4.9-ti-r25; ext4load usb 0:1 0x80000000 /boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
 ```
 
 When BBB has booted do all of these commands to make all the changes needed for
@@ -793,9 +860,9 @@ rm am335x_evm.sh autoconfigure_usb0.sh capemgr.sh
 cd
 rm /etc/systemd/system/multi-user.target.wants/connman.service
 vim /etc/apt/apt.conf.d/03-proxy-https
-    'Acquire::http::Proxy "http://yourproxyaddress:proxyport";' # Add this line to the file
+    Acquire::http::Proxy "http://yourproxyaddress:proxyport"; # Add this line to the file
 apt update
-apt install nfs-common dnsmasq python3-setuptools python3-pip
+apt install nfs-common dnsmasq python3-setuptools python3-pip expect
 pip3 --proxy http://yourproxyaddress:proxyport install pyserial netifaces unittest-xml-reporting
 git config --global https.proxy http://yourproxyaddress:proxyport
 git config --global http.proxy http://yourproxyaddress:proxyport
@@ -815,7 +882,6 @@ cp DAFT/testing_harness_image_extras/watchdog/watchdog.service /etc/systemd/syst
 cp -r DAFT/testing_harness_image_extras/kbsequences /root/
 chmod +x /usr/bin/watchdog
 mkdir support_image /ramdisk /config .ssh workspace
-systemctl enable dnsmasq
 systemctl enable watchdog
 iptables -t nat -A POSTROUTING --out-interface eth0 -j MASQUERADE
 iptables -A FORWARD --in-interface usb0 -j ACCEPT
@@ -867,7 +933,7 @@ Now you should have a working BBB filesystem that BBB can use to boot from with
 NFS. You should be able to move/copy the folder to `/daft/` and boot from it
 with this U-Boot command:
 ```
-setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.30-ti-r64; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.30-ti-r64/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
+setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.9-ti-r25; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
 ```
 
 ## 5. Creating support image for DUT
@@ -1049,6 +1115,25 @@ U-Boot is quite clunky with the pathnames so try different paths like
 `/bbb_fs/boot/*`, `daft/bbb_fs/boot/*` or `/daft/bbb_fs/boot/*`. If it starts
 booting but gets stuck it's probably a problem with NFS or file permissions.
 
+If you get an error when you try to tftp the files, check that the kernel files `vmlinuz` and `dtbs` e.g. `vmlinuz-4.4.9-ti-r25` match the ones you have.
+
+
+### 6.2 DHCP problems
+If you are having problems with the DHCP server, you can try the following steps:
+1. Check that your dnsmasq service is on. This is done by executing the following command `systemctl status dnsmasq`. If it is not, you need to start it with `systemctl start dnsmasq`. If it still isn't working, check that you have completed all the steps when configuring the [DHCP server](#242-dhcp-server).
+2. Make sure your firewall isn't blocking the connection. DHCP uses UDP and the ports 67 and 68, so make sure they are open. (e.g. if you have iptables firewall you can check the situation with `sudo iptables -L`.)
+
+### 6.3 TFTP problems
+If you are having problems with TFTP, you can try the following steps:
+1. Check that your TFTP server is on. Then check that you have completed all the steps in [TFTP server](#243-tftp-server). Note that if you are not using Ubuntu, you might have to install and setup something else (e.g. in Fedora you have to install a different tftp server because there is no xinetd).
+2. Again check that PC Hosts firewall isn't blocking the connection.
+
+### 6.4 NFS problems
+If you are having problems with NFS, you can try the following steps:
+1. Check that your NFS server is on. Then and check that you have completed all the steps in Refer to [NFS server](#244-nfs-server). Note that if you are not using Ubuntu, you might have to configure some additional things. Search for help in the web for your distro.
+2. Again check that PC Hosts firewall isn't blocking the connection.
+
+We have noticed that in some other distros different than Ubuntu getting the BBB to boot from NFS can be very problematic. If you cannot get it to work, you can always boot the BBB from USB drive. Refer to [Creating BeagleBone Black filesystem](#4-creating-beaglebone-black-filesystem) for more info.
 ## DAFT hardware images
 
 ### USB-serial
