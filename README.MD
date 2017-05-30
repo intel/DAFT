@@ -1118,6 +1118,8 @@ If you are having problems with NFS, you can try the following steps:
 1. Check that your NFS server is on. Then and check that you have completed all the steps in Refer to [NFS server](#244-nfs-server). Note that if you are not using Ubuntu, you might have to configure some additional things. Search for help in the web for your distro.
 2. Again check that PC Hosts firewall isn't blocking the connection.
 
+Note that it's not possible to export anything via NFS in an encrypted file system volume.
+
 We have noticed that in some other distros different than Ubuntu getting the BBB to boot from NFS can be very problematic. If you cannot get it to work, you can always boot the BBB from USB drive. Refer to [Creating BeagleBone Black filesystem](#4-creating-beaglebone-black-filesystem) for more info.
 ## DAFT hardware images
 
