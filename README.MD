@@ -1116,6 +1116,8 @@ have to change `/daft/bbb_fs` and `bbb_fs/boot/*` paths in the boot commands.
 U-Boot is quite clunky with the pathnames so try different paths like
 `/bbb_fs/boot/*`, `daft/bbb_fs/boot/*` or `/daft/bbb_fs/boot/*`. If it starts
 booting but gets stuck it's probably a problem with NFS or file permissions.
+For file permissions take a look at [Changing BBB filesystem permissions](#245-changing-bbb-filesystem-permissions)
+and for NFS take a look at [NFS problems](#64-nfs-problems).
 
 If you get an error when you try to tftp the files, check that the kernel files `vmlinuz` and `dtbs` e.g. `vmlinuz-4.4.9-ti-r25` match the ones you have.
 
@@ -1127,12 +1129,16 @@ If you are having problems with the DHCP server, you can try the following steps
 
 ### 6.4 TFTP problems
 If you are having problems with TFTP, you can try the following steps:
-1. Check that your TFTP server is on. Then check that you have completed all the steps in [TFTP server](#243-tftp-server). Note that if you are not using Ubuntu, you might have to install and setup something else (e.g. in Fedora you have to install a different tftp server because there is no xinetd).
+1. Check that your TFTP server is on.
+`systemctl status xinetd`
+Then check that you have completed all the steps in [TFTP server](#243-tftp-server). Note that if you are not using Ubuntu, you might have to install and setup something else (e.g. in Fedora you have to install a different tftp server because there is no xinetd).
 2. Again check that PC Hosts firewall isn't blocking the connection.
 
 ### 6.5 NFS problems
 If you are having problems with NFS, you can try the following steps:
-1. Check that your NFS server is on. Then and check that you have completed all the steps in Refer to [NFS server](#244-nfs-server). Note that if you are not using Ubuntu, you might have to configure some additional things. Search for help in the web for your distro.
+1. Check that your NFS server is on.
+`systemctl status nfs-kernel-server`
+Then check that you have completed all the steps in Refer to [NFS server](#244-nfs-server). Note that if you are not using Ubuntu, you might have to configure some additional things. Search for help in the web for your distro.
 2. Again check that PC Hosts firewall isn't blocking the connection.
 
 Note that it's not possible to export anything via NFS in an encrypted file system volume.
