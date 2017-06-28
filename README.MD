@@ -14,9 +14,10 @@
         * 2.4.2 [DHCP server](#242-dhcp-server)
         * 2.4.3 [TFTP server](#243-tftp-server)
         * 2.4.4 [NFS server](#244-nfs-server)
-        * 2.4.5 [Changing BBB filesystem permissions](#245-changing-bbb-filesystem-permissions)
-        * 2.4.6 [Changing NFS workspace that BBB and DUT support image will mount](#246-changing-nfs-workspace-that-bbb-and-dut-support-image-will-mount)
-        * 2.4.7 [Install and configure DAFT software](#247-install-and-configure-daft-software)
+        * 2.4.5 [NTP server](#245-ntp-server)
+        * 2.4.6 [Changing BBB filesystem permissions](#246-changing-bbb-filesystem-permissions)
+        * 2.4.7 [Changing NFS workspace that BBB and DUT support image will mount](#247-changing-nfs-workspace-that-bbb-and-dut-support-image-will-mount)
+        * 2.4.8 [Install and configure DAFT software](#248-install-and-configure-daft-software)
     * 2.5 [Setting BeagleBone Black to boot from NFS](#25-setting-beaglebone-black-to-boot-from-nfs)
     * 2.6 [Setting up relay](#26-setting-up-relay)
     * 2.7 [Connecting hardware](#27-connecting-hardware)
@@ -299,7 +300,51 @@ sudo systemctl restart nfs-kernel-server; sudo systemctl enable nfs-kernel-serve
 ```
 Refer to [NFS problems](#64-nfs-problems) if you have issues with NFS.
 
-### 2.4.5 Changing BBB filesystem permissions
+### 2.4.5 NTP server
+
+This step is partially optional, if you don't care that the BBBs time is incorrect or you have another method for correcting it, feel free to skip this section. The problem with BBBs is that they don't have an internal battery. Therefore, each time they reboot, their clock resets. This causes the time in BBBs to be wrong, if they are not corrected manually. Installing the NTP server removes the problem by providing correct time to BBBs each time they boot.
+It works as following:
+1. PCs NTP server corrects its own time from a NTP server higher in hiararchy, e.g. company NTP server or some open NTP server pool.
+2. When BBB boots, it sends a request to the PCs NTP server.
+3. The server replies to NTP request.
+4. BBBs NTP client receives the reply and corrects its time.
+
+Let's install the NTP server to PC.
+
+First install the NTP Daemon and ntpdate:
+
+```
+sudo apt install ntp ntpdate
+```
+
+Now let's configure the NTP server correctly. Open `/etc/ntp.conf` and modify the file.
+
+```
+vim /etc/ntp.conf
+```
+If you want to use your company's NTP server or have another NTP server from where your PC synchronizes its time, replace the default servers <b>0.pool.ntp.org</b> with your own, e.g.
+```
+server 0.pool.ntp.org iburst
+```
+Now add the following lines to allow BBBs to poll the PCs NTP server:
+
+```
+#Allow LAN machines to synchronize with this ntp server
+restrict 192.168.30.0 mask 255.255.255.0 nomodify notrap
+
+#Broadcast the time to your local subnet, just incase
+broadcast 192.168.30.0
+```
+
+Finally restart the NTP service to apply the changes.
+
+```
+sudo systemctl restart ntp
+```
+
+
+
+### 2.4.6 Changing BBB filesystem permissions
 
 Previously on the [NFS chapter](#244-nfs-server) we chose a user that DAFT will be
 used with. We will need to change the owner of `/daft/bbb_fs` and
@@ -309,7 +354,7 @@ sudo chown -R <b>user</b>:<b>group</b> /daft/*
 sudo chown root:root /daft/bbb_fs/root/.ssh/config
 </pre>
 
-### 2.4.6 Changing NFS workspace that BBB and DUT support image will mount
+### 2.4.7 Changing NFS workspace that BBB and DUT support image will mount
 
 On the [NFS chapter](#244-nfs-server) we chose a workspace for BBB to use. We need
 to change **/home/tester** in `/daft/bbb_fs/etc/fstab` to that one:
@@ -352,7 +397,7 @@ Unmount the image and remove the temporary folder:
 sudo umount /tmp_daft; sudo rmdir /tmp_daft
 </pre>
 
-## 2.4.7 Install and configure DAFT software
+## 2.4.8 Install and configure DAFT software
 
 Clone DAFT github repository:
 ```
@@ -851,7 +896,7 @@ rm /etc/systemd/system/multi-user.target.wants/connman.service
 vim /etc/apt/apt.conf.d/03-proxy-https
     Acquire::http::Proxy "http://yourproxyaddress:proxyport"; # Add this line to the file
 apt update
-apt install nfs-common dnsmasq python3-setuptools python3-pip expect
+apt install nfs-common dnsmasq python3-setuptools python3-pip expect ntp ntpdate
 pip3 --proxy http://yourproxyaddress:proxyport install pyserial netifaces unittest-xml-reporting
 git config --global https.proxy http://yourproxyaddress:proxyport
 git config --global http.proxy http://yourproxyaddress:proxyport
@@ -894,6 +939,29 @@ vim /root/.ssh/config
     # Add these lines
     Host *
         IdentityFile ~/.ssh/id_rsa_testing_harness
+vim /etc/ntp.conf
+   #Remove these lines
+   server 0.pool.ntp.org iburst
+   server 1.pool.ntp.org iburst
+   server 2.pool.ntp.org iburst
+   server 3.pool.ntp.org iburst
+
+   #Add these lines
+   server 192.168.30.1 iburst
+   disable auth
+   broadcastclient
+vim /etc/default/ntpdate
+   #Remove this line
+   NTPSERVERS="some_address"
+
+   #Add these lines
+   NTPSERVERS="192.168.30.1"
+   UPDATE_HWCLOCK="yes"
+rm /etc/localtime
+#Remember to select the locale /Europe/Helsinki to your own
+ln -s /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
+
+
 ```
 
 Now make _id_rsa_testing_harness_ and _id_rsa_testing_harness.pub_ SSH-keys with
