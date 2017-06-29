@@ -19,6 +19,8 @@
         * 2.4.7 [Changing NFS workspace that BBB and DUT support image will mount](#247-changing-nfs-workspace-that-bbb-and-dut-support-image-will-mount)
         * 2.4.8 [Install and configure DAFT software](#248-install-and-configure-daft-software)
     * 2.5 [Setting BeagleBone Black to boot from NFS](#25-setting-beaglebone-black-to-boot-from-nfs)
+        * 2.5.1 [Getting the BeagleBone Black image](#251-getting-the-beaglebone-black-image)
+        * 2.5.2 [Changing the uEnv.txt file](#252-changing-the-uenv.txt-file)
     * 2.6 [Setting up relay](#26-setting-up-relay)
     * 2.7 [Connecting hardware](#27-connecting-hardware)
     * 2.8 [Setting up DUT](#28-setting-up-dut)
@@ -431,26 +433,14 @@ sudo chown <b>user</b>:<b>group</b> /etc/daft/lockfiles
 
 ## 2.5 Setting BeagleBone Black to boot from NFS
 
-Setting BBB to boot from NFS is done by changing `/uEnv.txt` file contents on a
-BBB image (this means the uEnv.txt file in the BBB itself and not in the NFS files). You can use the default factory image inside the BBB or flash a working BBB image
-with U-Boot to SD card. If you want to use the image inside BBB just boot it and
-use [USB-serial cable](#usb-serial), SSH or monitor and keyboard to change the
-`/uEnv.txt` file to following:
+This next step can be a little confusing, if you have not worked with BBB or similar systems before. We need to configure the BBB to automatically boot from the NFS instead of
+internal memory or SD card. To do this we modify a file called `uEnv.txt`. Each time BBB boots it goes through this file. We can set the BBB to boot from NFS by writing a boot command into the `/uEnv.txt` file.
+Note that this means the `uEnv.txt` file in the BBB itself and not in the NFS files. Sometimes there is no `uEnv.txt` in the root folder, in this case you need to create one.
+You can use the default factory image inside the BBB or flash a working BBB image with U-Boot to SD card.
 
-```
-bootcmd=setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.9-ti-r25; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
-uenvcmd=boot
-```
-For problems with USB-serial booting refer to [PC to BBB serial connection](#61-pc-to-bbb-serial-connection)
+## 2.5.1 Getting the BeagleBone Black image
 
-If you want to use SD card you have to first boot BBB with the factory image and
-use following command on it to destroy its U-Boot files so it won't boot from
-those:
-```
-dd if=/dev/zero of=/dev/mmcblk0 bs=4M count=10; sync
-```
-
-Working BBB image can be downloaded from
+A working BBB image can be downloaded from
 [here](https://beagleboard.org/latest-images). To flash the image to the SD card
 first connect the SD card to the PC and check `lsblk` and/or `dmesg` to see the
 path to the SD card. Flashing the downloaded file to SD card can be done with
@@ -461,6 +451,59 @@ cd ~/Downloads
 unxz <b>bone-debian</b>.img.xz
 sudo dd if=<b>bone-debian</b>.img of=/dev/sd<b>X</b> bs=8M status=progress
 </pre>
+
+
+If you want to use a SD card you have to first boot BBB with the factory image and
+use following command on it to destroy its U-Boot files so it won't boot from those:
+```
+dd if=/dev/zero of=/dev/mmcblk0 bs=4M count=10; sync
+```
+Refer to [PC to BBB serial connection](#61-pc-to-bbb-serial-connection) on how to use serial to communicate with the BBB (in case you don't have a monitor and a keyboard).
+
+Alternatively, you could flash the image in the SD card to the internal memory. This can be done by inserting the SD card to the BBB and booting it while holding down
+the boot from SD card button located in the BBB near SD card. However, this doesn't always do the trick, in which case you want to boot to the SD card, then go to `/boot/uEnv.txt`
+```
+vi /boot/uEnv.txt
+```
+and uncomment this line in the bottom of the file:
+```
+cmdline=init=/opt/scripts/tools/eMMC/init-eMMC-flasher-v3.sh
+```
+This is a flasher script, which will automatically flash the image in the SD card to the internal memory of the BBB. After uncommenting the line, simply save and
+reboot the device, it should start flashing. After the flashing is done, you can remove the SD card and boot the device.
+
+
+## 2.5.2 Changing the uEnv.txt file
+When you have a working BBB image in the devices internal memory (or have destroyed the internal U-Boot and have the image in SD card), boot it up. Use a serial connection or SSH to communicate with the device [PC to BBB serial connection](#61-pc-to-bbb-serial-connection).
+
+Once the BBB has been booted, edit the `uEnv.txt` file located in root.
+```
+vi /uEnv.txt
+```
+
+Include the following lines to the `uEnv.txt` file:
+
+<pre>
+bootcmd=setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/<b>vmlinuz-4.4.9-ti-r25</b>; tftp 0x80000000 bbb_fs/boot/dtbs/<b>4.4.9-ti-r25</b>/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
+uenvcmd=boot
+</pre>
+Make sure that the highlighted files match the ones you have in your NFS.
+
+
+Now to make sure that the BBB boots from the NFS and not the internal memory, go to another `uEnv.txt` file, which is in /boot folder.
+
+```
+vi /boot/uEnv.txt
+```
+
+Comment the following line in the top of the file:
+```
+uname <something here>
+```
+
+Save and reboot the BBB and it should boot from the NFS, if everything was done correctly. In case something goes wrong, you can always flash a new image to the BBB and try again.
+
+
 
 ## 2.6 Setting up relay
 
