@@ -387,16 +387,16 @@ sudo chown <b>user</b>:<b>group</b> /etc/daft/lockfiles
 ## 2.5 Setting BeagleBone Black to boot from NFS
 
 Setting BBB to boot from NFS is done by changing `/uEnv.txt` file contents on a
-BBB image (this means the uEnv.txt file in the BBB itself and not in the NFS files) to this:
+BBB image (this means the uEnv.txt file in the BBB itself and not in the NFS files). You can use the default factory image inside the BBB or flash a working BBB image
+with U-Boot to SD card. If you want to use the image inside BBB just boot it and
+use [USB-serial cable](#usb-serial), SSH or monitor and keyboard to change the
+`/uEnv.txt` file to following:
+
 ```
 bootcmd=setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.9-ti-r25; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
 uenvcmd=boot
 ```
-
-You can use the default factory image inside the BBB or flash a working BBB image
-with U-Boot to SD card. If you want to use the image inside BBB just boot it and
-use [USB-serial cable](#usb-serial), SSH or monitor and keyboard to change the
-file. For problems with USB-serial booting refer to [PC to BBB serial connection](#61-pc-to-bbb-serial-connection)
+For problems with USB-serial booting refer to [PC to BBB serial connection](#61-pc-to-bbb-serial-connection)
 
 If you want to use SD card you have to first boot BBB with the factory image and
 use following command on it to destroy its U-Boot files so it won't boot from
