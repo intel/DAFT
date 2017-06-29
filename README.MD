@@ -7,7 +7,7 @@
     * 1.2. [How it works](#12-how-it-works)
 2. [Creating DAFT setup](#2-creating-daft-setup)
     * 2.1 [Required hardware](#21-required-hardware)
-    * 2.2 [BBB booting](#22-bbb-booting)
+    * 2.2 [BBB booting overview](#22-bbb-booting-overview)
     * 2.3 [Setting up BeagleBone Black filesystem on the host PC](#23-setting-up-beaglebone-black-filesystem-on-the-host-pc)
     * 2.4 [Configuring host PC](#24-configuring-host-pc)
         * 2.4.1 [Secondary network interface](#241-secondary-network-interface)
@@ -33,10 +33,11 @@
 5. [Creating support image for DUT](#5-creating-support-image-for-dut)
     * 5.1 [Ubuntu for PC like devices](#51-ubuntu-for-pc-like-devices)
 6. [Troubleshooting](#6-troubleshooting)
-    * 6.1 [Beaglebone Black booting](#61-beaglebone-black-booting)
-    * 6.2 [DHCP problems](#62-dhcp-problems)
-    * 6.3 [TFTP problems](#63-tftp-problems)
-    * 6.4 [NFS problems](#64-nfs-problems)
+    * 6.1 [PC to BBB serial connection](#61-pc-to-bbb-serial-connection)
+    * 6.2 [Beaglebone Black booting](#62-beaglebone-black-booting)
+    * 6.3 [DHCP problems](#63-dhcp-problems)
+    * 6.4 [TFTP problems](#64-tftp-problems)
+    * 6.5 [NFS problems](#65-nfs-problems)
 
 [DAFT hardware images](#daft-hardware-images)
 
@@ -93,7 +94,7 @@ Fewest mandatory steps to create DAFT setup with one device under test (DUT) and
 BeagleBone Black (BBB):
 
 * [Get required hardware](#21-required-hardware)
-* [BBB booting](#22-bbb-booting)
+* [BBB booting overview](#22-bbb-booting-overview)
 * [Set up BeagleBone Black filesystem on the PC](#23-setting-up-beaglebone-black-filesystem-on-the-host-pc)
 * [Configure host PC](#24-configuring-host-pc)
 * [Set BeagleBone Black to boot from NFS](#25-setting-beaglebone-black-to-boot-from-nfs)
@@ -148,7 +149,7 @@ the setup was also tested to work with Gigabyte NUC, Intel Edison, BeagleBone
 Black and Intel Galileo V2 but they might require some work on the BeagleBone
 filesystem to make them work.
 
-## 2.2 BBB booting
+## 2.2 BBB booting overview
 
 This section will give you an overview of the BBB booting components, boot sequence and how it relates to the PC Host. This should give you a good understanding of why we need to setup various different services and what is their role.
 
@@ -156,11 +157,8 @@ This section will give you an overview of the BBB booting components, boot seque
 
 _BeagleBone Black booting with the PC Host._
 
-The above diagram shows the steps when setting up the BBB and booting it:
+The above diagram shows the general steps when setting up the BBB and booting it:
 1. Connect the PC Host to the BBB via serial.
-   1. Open a "Screen" from your terminal to the serial (usually its something like `ttyUSB0`). You can use the following   command: `sudo screen /dev/ttyUSB0 115200 -ixon,-ixof` but remember to replace the <b>/dev/ttyUSB0</b> with your own path.
-   2. Now boot the BBB by supplying it power with a 5V charger.
-   3. If you are having problems when booting BBB, refer to the troubleshooting section [Beaglebone Black booting](#61-beaglebone-black-booting)
 2. Get an IP adress for the BBB from the DHCP server.
 3. Get the BBB bootsystem kernel via TFTP. The BBB will fetch the bootsystem kernel from the PC Host via TFTP.
 4. BBB executes the kernel, which is the bootsystem core and is needed to be able to boot the rest of the system via NFS.
@@ -233,7 +231,7 @@ Restart and enable dnsmasq so it automatically starts after reboot:
 ```
 sudo systemctl restart dnsmasq; sudo systemctl enable dnsmasq
 ```
-Refer to [DHCP problems](#62-dhcp-problems) if you are having issues with this.
+Refer to [DHCP problems](#63-dhcp-problems) if you are having issues with this.
 
 ### 2.4.3 TFTP server
 
@@ -264,7 +262,7 @@ Restart and enable xinetd service:
 ```
 sudo systemctl restart xinetd; sudo systemctl enable xinetd
 ```
-Note here that not all distros have xinetd service. In that case you might have to install something else. Refer to [TFTP problems](#63-tftp-problems) if there are problems.
+Note here that not all distros have xinetd service. In that case you might have to install something else. Refer to [TFTP problems](#64-tftp-problems) if there are problems.
 ### 2.4.4 NFS server
 
 First install nfs-kernel-server:
@@ -297,7 +295,7 @@ Put changes in effect and restart and enable nfs-kernel-server:
 sudo exportfs -ra
 sudo systemctl restart nfs-kernel-server; sudo systemctl enable nfs-kernel-server
 ```
-Refer to [NFS problems](#64-nfs-problems) if you have issues with NFS.
+Refer to [NFS problems](#65-nfs-problems) if you have issues with NFS.
 
 ### 2.4.5 Changing BBB filesystem permissions
 
@@ -398,7 +396,7 @@ use [USB-serial cable](#usb-serial), SSH or monitor and keyboard to change the
 bootcmd=setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.9-ti-r25; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
 uenvcmd=boot
 ```
-
+For problems with USB-serial booting refer to [PC to BBB serial connection](#61-pc-to-bbb-serial-connection)
 
 If you want to use SD card you have to first boot BBB with the factory image and
 use following command on it to destroy its U-Boot files so it won't boot from
@@ -982,7 +980,6 @@ Then install bmap-tools, nfs-common and parted:
 apt update
 apt install bmap-tools nfs-common parted
 ```
-
 Configure usb0 in `/etc/network/interfaces`:
 ```
 vim /etc/network/interfaces
@@ -1075,7 +1072,27 @@ _support.img_.
 
 ## 6. Troubleshooting
 
-### 6.1 Beaglebone Black booting
+### 6.1 PC to BBB serial connection
+
+Find out the serial port connected to BBB with
+```
+dmesg | grep tty
+```
+
+Install screen  
+```
+sudo apt install screen
+```
+
+Open a "Screen" from your terminal to the serial (usually its something like `ttyUSB0`). You can use the following   command:
+ ```
+ sudo screen /dev/ttyUSB0 115200 -ixon,-ixof
+ ```
+ but remember to replace the <b>/dev/ttyUSB0</b> with your own path.
+Now boot the BBB by supplying it power with a 5V charger.
+If you are having problems when booting BBB, refer to the troubleshooting section [Beaglebone Black booting](#62-beaglebone-black-booting)
+
+### 6.2 Beaglebone Black booting
 
 Instead of allowing BBB to boot normally you can interrupt it by pressing space
 while booting. It will then enter U-Boot terminal. Use USB-serial cable or
@@ -1099,23 +1116,29 @@ have to change `/daft/bbb_fs` and `bbb_fs/boot/*` paths in the boot commands.
 U-Boot is quite clunky with the pathnames so try different paths like
 `/bbb_fs/boot/*`, `daft/bbb_fs/boot/*` or `/daft/bbb_fs/boot/*`. If it starts
 booting but gets stuck it's probably a problem with NFS or file permissions.
+For file permissions take a look at [Changing BBB filesystem permissions](#245-changing-bbb-filesystem-permissions)
+and for NFS take a look at [NFS problems](#64-nfs-problems).
 
 If you get an error when you try to tftp the files, check that the kernel files `vmlinuz` and `dtbs` e.g. `vmlinuz-4.4.9-ti-r25` match the ones you have.
 
 
-### 6.2 DHCP problems
+### 6.3 DHCP problems
 If you are having problems with the DHCP server, you can try the following steps:
 1. Check that your dnsmasq service is on. This is done by executing the following command `systemctl status dnsmasq`. If it is not, you need to start it with `systemctl start dnsmasq`. If it still isn't working, check that you have completed all the steps when configuring the [DHCP server](#242-dhcp-server).
 2. Make sure your firewall isn't blocking the connection. DHCP uses UDP and the ports 67 and 68, so make sure they are open. (e.g. if you have iptables firewall you can check the situation with `sudo iptables -L`.)
 
-### 6.3 TFTP problems
+### 6.4 TFTP problems
 If you are having problems with TFTP, you can try the following steps:
-1. Check that your TFTP server is on. Then check that you have completed all the steps in [TFTP server](#243-tftp-server). Note that if you are not using Ubuntu, you might have to install and setup something else (e.g. in Fedora you have to install a different tftp server because there is no xinetd).
+1. Check that your TFTP server is on.
+`systemctl status xinetd`
+Then check that you have completed all the steps in [TFTP server](#243-tftp-server). Note that if you are not using Ubuntu, you might have to install and setup something else (e.g. in Fedora you have to install a different tftp server because there is no xinetd).
 2. Again check that PC Hosts firewall isn't blocking the connection.
 
-### 6.4 NFS problems
+### 6.5 NFS problems
 If you are having problems with NFS, you can try the following steps:
-1. Check that your NFS server is on. Then and check that you have completed all the steps in Refer to [NFS server](#244-nfs-server). Note that if you are not using Ubuntu, you might have to configure some additional things. Search for help in the web for your distro.
+1. Check that your NFS server is on.
+`systemctl status nfs-kernel-server`
+Then check that you have completed all the steps in Refer to [NFS server](#244-nfs-server). Note that if you are not using Ubuntu, you might have to configure some additional things. Search for help in the web for your distro.
 2. Again check that PC Hosts firewall isn't blocking the connection.
 
 Note that it's not possible to export anything via NFS in an encrypted file system volume.
