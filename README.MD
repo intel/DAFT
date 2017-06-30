@@ -7,7 +7,7 @@
     * 1.2. [How it works](#12-how-it-works)
 2. [Creating DAFT setup](#2-creating-daft-setup)
     * 2.1 [Required hardware](#21-required-hardware)
-    * 2.2 [BBB booting](#22-bbb-booting)
+    * 2.2 [BBB booting overview](#22-bbb-booting-overview)
     * 2.3 [Setting up BeagleBone Black filesystem on the host PC](#23-setting-up-beaglebone-black-filesystem-on-the-host-pc)
     * 2.4 [Configuring host PC](#24-configuring-host-pc)
         * 2.4.1 [Secondary network interface](#241-secondary-network-interface)
@@ -93,7 +93,7 @@ Fewest mandatory steps to create DAFT setup with one device under test (DUT) and
 BeagleBone Black (BBB):
 
 * [Get required hardware](#21-required-hardware)
-* [BBB booting](#22-bbb-booting)
+* [BBB booting overview](#22-bbb-booting-overview)
 * [Set up BeagleBone Black filesystem on the PC](#23-setting-up-beaglebone-black-filesystem-on-the-host-pc)
 * [Configure host PC](#24-configuring-host-pc)
 * [Set BeagleBone Black to boot from NFS](#25-setting-beaglebone-black-to-boot-from-nfs)
@@ -148,7 +148,7 @@ the setup was also tested to work with Gigabyte NUC, Intel Edison, BeagleBone
 Black and Intel Galileo V2 but they might require some work on the BeagleBone
 filesystem to make them work.
 
-## 2.2 BBB booting
+## 2.2 BBB booting overview
 
 This section will give you an overview of the BBB booting components, boot sequence and how it relates to the PC Host. This should give you a good understanding of why we need to setup various different services and what is their role.
 
@@ -183,10 +183,16 @@ sudo tar -xzf bbb_nfs.tar.gz
 
 ## 2.4 Configuring host PC
 
-Service wise there is different ways to do everything but the end goal is
-to have static IP address on the secondary network interface (_192.168.30.1_)
-and to have DHCP, TFTP and NFS server running on that network. It is very important that you are careful especially with the DHCP server so that you don't accidentally configure it to the wrong interface (you should never configure the DHCP server to the interface from which your PC Host gets its internet, unless you know exactly what you are doing. This guide has
-been written using Ubuntu so on different distro you might have to do things
+In this section, we set up the necessary services to enable the devices to communicate with and
+access files on the host PC. The phases here correspond to [BBB booting overview](#22-bbb-booting-overview) steps 2-5
+but are solely to enable the required services on host PC.
+In terms of services there are different ways to do everything but the end goal is
+to have a static IP address on the secondary network interface (_192.168.30.1_)
+and to have DHCP, TFTP and NFS servers running on that network.
+
+
+It is very important that you are careful especially with the DHCP server so that you don't accidentally configure it to the wrong interface (you should never configure the DHCP server to the interface from which your PC Host gets its internet, unless you know exactly what you are doing). This guide has
+been written using Ubuntu so on a different distro you might have to do things
 differently.
 
 ### 2.4.1 Secondary network interface
@@ -216,7 +222,9 @@ sudo ifdown <b>eth1</b> && sudo ifup <b>eth1</b>
 
 ### 2.4.2 DHCP server
 
-A service called <b>dnsmasq</b> has the required dhcp server so first install dnsmasq:
+DHCP (Dynamic Host Configuration Protocol) server is used to allow devices such as BBB to obtain the required IP configuration.
+A service called <b>dnsmasq</b> has the required dhcp server. Dnsmasq can be installed with
+
 ```
 sudo apt install dnsmasq
 ```
@@ -237,7 +245,10 @@ Refer to [DHCP problems](#62-dhcp-problems) if you are having issues with this.
 
 ### 2.4.3 TFTP server
 
-First install required packages:
+TFTP (Trivial File Transfer Protocol) server is a server from which we can get the bootsystem kernel files.
+With the kernel executed it is possible to start using NFS and get rest of the system.
+
+Install the required packages for TFTP:
 ```
 sudo apt install xinetd tftpd tftp
 ```
@@ -266,6 +277,8 @@ sudo systemctl restart xinetd; sudo systemctl enable xinetd
 ```
 Note here that not all distros have xinetd service. In that case you might have to install something else. Refer to [TFTP problems](#63-tftp-problems) if there are problems.
 ### 2.4.4 NFS server
+
+NFS (Network File System) server is used to give the devices access to a specified set of files on the computer. The files will be treated in a manner similar to local storage.
 
 First install nfs-kernel-server:
 ```
