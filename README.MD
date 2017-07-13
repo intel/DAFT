@@ -7,17 +7,22 @@
     * 1.2. [How it works](#12-how-it-works)
 2. [Creating DAFT setup](#2-creating-daft-setup)
     * 2.1 [Required hardware](#21-required-hardware)
-    * 2.2 [BBB booting](#22-bbb-booting)
-    * 2.3 [Setting up BeagleBone Black filesystem on the host PC](#23-setting-up-beaglebone-black-filesystem-on-the-host-pc)
+    * 2.2 [BBB booting overview](#22-bbb-booting-overview)
+    * 2.3 [Setting up BeagleBone Black and DUT filesystems on the host PC](#23-setting-up-beaglebone-black-and-dut-filesystems-on-the-host-pc)
+        * 2.3.1 [Setting up BeagleBone Black filesystem on NFS](#231-setting-up-beaglebone-black-filesystem-on-nfs)
+        * 2.3.2 [Setting up DUT support image](#232-setting-up-dut-support-image)
     * 2.4 [Configuring host PC](#24-configuring-host-pc)
         * 2.4.1 [Secondary network interface](#241-secondary-network-interface)
         * 2.4.2 [DHCP server](#242-dhcp-server)
         * 2.4.3 [TFTP server](#243-tftp-server)
         * 2.4.4 [NFS server](#244-nfs-server)
-        * 2.4.5 [Changing BBB filesystem permissions](#245-changing-bbb-filesystem-permissions)
-        * 2.4.6 [Changing NFS workspace that BBB and DUT support image will mount](#246-changing-nfs-workspace-that-bbb-and-dut-support-image-will-mount)
-        * 2.4.7 [Install and configure DAFT software](#247-install-and-configure-daft-software)
+        * 2.4.5 [NTP server](#245-ntp-server)
+        * 2.4.6 [Changing BBB filesystem permissions](#246-changing-bbb-filesystem-permissions)
+        * 2.4.7 [Changing NFS workspace that BBB and DUT support image will mount](#247-changing-nfs-workspace-that-bbb-and-dut-support-image-will-mount)
+        * 2.4.8 [Install and configure DAFT software](#248-install-and-configure-daft-software)
     * 2.5 [Setting BeagleBone Black to boot from NFS](#25-setting-beaglebone-black-to-boot-from-nfs)
+        * 2.5.1 [Getting the BeagleBone Black image](#251-getting-the-beaglebone-black-image)
+        * 2.5.2 [Changing the uEnv.txt file](#252-changing-the-uenv.txt-file)
     * 2.6 [Setting up relay](#26-setting-up-relay)
     * 2.7 [Connecting hardware](#27-connecting-hardware)
     * 2.8 [Setting up DUT](#28-setting-up-dut)
@@ -29,14 +34,15 @@
     * 3.3 [AFT settings](#33-aft-settings)
     * 3.4 [AFT commandline interface](#34-aft-commandline-interface)
     * 3.5 [Detailed DAFT run](#35-detailed-daft-run)
-4. [Creating BeagleBone Black filesystem](#4-creating-beaglebone-black-filesystem)
+4. [Creating BeagleBone Black filesystem for NFS](#4-creating-beaglebone-black-filesystem-for-nfs)
 5. [Creating support image for DUT](#5-creating-support-image-for-dut)
     * 5.1 [Ubuntu for PC like devices](#51-ubuntu-for-pc-like-devices)
 6. [Troubleshooting](#6-troubleshooting)
-    * 6.1 [Beaglebone Black booting](#61-beaglebone-black-booting)
-    * 6.2 [DHCP problems](#62-dhcp-problems)
-    * 6.3 [TFTP problems](#63-tftp-problems)
-    * 6.4 [NFS problems](#64-nfs-problems)
+    * 6.1 [PC to BBB serial connection](#61-pc-to-bbb-serial-connection)
+    * 6.2 [Beaglebone Black booting](#62-beaglebone-black-booting)
+    * 6.3 [DHCP problems](#63-dhcp-problems)
+    * 6.4 [TFTP problems](#64-tftp-problems)
+    * 6.5 [NFS problems](#65-nfs-problems)
 
 [DAFT hardware images](#daft-hardware-images)
 
@@ -91,16 +97,17 @@ integrated.
 
 Fewest mandatory steps to create DAFT setup with one device under test (DUT) and
 BeagleBone Black (BBB):
-
 * [Get required hardware](#21-required-hardware)
-* [BBB booting](#22-bbb-booting)
-* [Set up BeagleBone Black filesystem on the PC](#23-setting-up-beaglebone-black-filesystem-on-the-host-pc)
+* [BBB booting overview](#22-bbb-booting-overview)
+* [Setting up BeagleBone Black and DUT filesystems on the host PC](#23-setting-up-beaglebone-black-and-dut-filesystems-on-the-host-pc)
 * [Configure host PC](#24-configuring-host-pc)
 * [Set BeagleBone Black to boot from NFS](#25-setting-beaglebone-black-to-boot-from-nfs)
 * [Set up relay](#26-setting-up-relay)
 * [Connect hardware together](#27-connecting-hardware)
 * [Set up DUT](#28-setting-up-dut)
 * [Use DAFT](#29-using-daft)
+
+
 
 When the setup has been completed check the section on
 [adding more devices](#210-adding-more-devices).
@@ -148,7 +155,7 @@ the setup was also tested to work with Gigabyte NUC, Intel Edison, BeagleBone
 Black and Intel Galileo V2 but they might require some work on the BeagleBone
 filesystem to make them work.
 
-## 2.2 BBB booting
+## 2.2 BBB booting overview
 
 This section will give you an overview of the BBB booting components, boot sequence and how it relates to the PC Host. This should give you a good understanding of why we need to setup various different services and what is their role.
 
@@ -156,37 +163,49 @@ This section will give you an overview of the BBB booting components, boot seque
 
 _BeagleBone Black booting with the PC Host._
 
-The above diagram shows the steps when setting up the BBB and booting it:
+The above diagram shows the general steps when setting up the BBB and booting it:
 1. Connect the PC Host to the BBB via serial.
-   1. Open a "Screen" from your terminal to the serial (usually its something like `ttyUSB0`). You can use the following   command: `sudo screen /dev/ttyUSB0 115200 -ixon,-ixof` but remember to replace the <b>/dev/ttyUSB0</b> with your own path.
-   2. Now boot the BBB by supplying it power with a 5V charger.
-   3. If you are having problems when booting BBB, refer to the troubleshooting section [Beaglebone Black booting](#61-beaglebone-black-booting)
 2. Get an IP adress for the BBB from the DHCP server.
 3. Get the BBB bootsystem kernel via TFTP. The BBB will fetch the bootsystem kernel from the PC Host via TFTP.
 4. BBB executes the kernel, which is the bootsystem core and is needed to be able to boot the rest of the system via NFS.
 5. Boot the rest of the system via NFS.
 
+## 2.3 Setting up BeagleBone Black and DUT filesystems on the host PC
 
+Here we will set up the filesystems for BBB and DUT support image. The filesystems will be made available via NFS, which we will set up in sections 2.4 to 2.5.
 
+### 2.3.1 Setting up BeagleBone Black filesystem on NFS
 
-## 2.3 Setting up BeagleBone Black filesystem on the host PC
-
-Make [BBB filesystem](#4-creating-beaglebone-black-filesystem) and
-[support image](#5-creating-support-image-for-dut) for DUT from scratch or
-download already made one. To download ready made BBB filesystem and extract it
-to root use these commands:
-```
+If you don't have a BBB filesystem for NFS you can make [a BBB filesystem for NFS](#4-creating-beaglebone-black-filesystem-for-nfs) from scratch. If you have
+a ready made one you can use it with the following commands
+<pre>
 cd /
 sudo wget address-to-bbb-fs
-sudo tar -xzf bbb_nfs.tar.gz
-```
+sudo tar -xzf <b>bbb_nfs.tar.gz</b>
+sudo mv <b>bbb_nfs</b> /daft/
+</pre>
+
+### 2.3.2 Setting up DUT support image
+
+If you don't have a DUT support image yet you can make one by navigating to [Creating support image for DUT](#5-creating-support-image-for-dut).
+If you have a DUT support image you can simply move the support_image.img to /daft/support_image/ folder on your host PC.
+
+<pre>
+sudo mv <b>address-to-image</b>/support_image.img /daft/support_image
+</pre>
 
 ## 2.4 Configuring host PC
 
-Service wise there is different ways to do everything but the end goal is
-to have static IP address on the secondary network interface (_192.168.30.1_)
-and to have DHCP, TFTP and NFS server running on that network. It is very important that you are careful especially with the DHCP server so that you don't accidentally configure it to the wrong interface (you should never configure the DHCP server to the interface from which your PC Host gets its internet, unless you know exactly what you are doing. This guide has
-been written using Ubuntu so on different distro you might have to do things
+In this section, we set up the necessary services to enable the devices to communicate with and
+access files on the host PC. The phases here correspond to [BBB booting overview](#22-bbb-booting-overview) steps 2-5
+but are solely to enable the required services on host PC.
+In terms of services there are different ways to do everything but the end goal is
+to have a static IP address on the secondary network interface (_192.168.30.1_)
+and to have DHCP, TFTP and NFS servers running on that network.
+
+
+It is very important that you are careful especially with the DHCP server so that you don't accidentally configure it to the wrong interface (you should never configure the DHCP server to the interface from which your PC Host gets its internet, unless you know exactly what you are doing). This guide has
+been written using Ubuntu so on a different distro you might have to do things
 differently.
 
 ### 2.4.1 Secondary network interface
@@ -216,7 +235,9 @@ sudo ifdown <b>eth1</b> && sudo ifup <b>eth1</b>
 
 ### 2.4.2 DHCP server
 
-A service called <b>dnsmasq</b> has the required dhcp server so first install dnsmasq:
+DHCP (Dynamic Host Configuration Protocol) server is used to allow devices such as BBB to obtain the required IP configuration.
+A service called <b>dnsmasq</b> has the required dhcp server. Dnsmasq can be installed with
+
 ```
 sudo apt install dnsmasq
 ```
@@ -233,11 +254,14 @@ Restart and enable dnsmasq so it automatically starts after reboot:
 ```
 sudo systemctl restart dnsmasq; sudo systemctl enable dnsmasq
 ```
-Refer to [DHCP problems](#62-dhcp-problems) if you are having issues with this.
+Refer to [DHCP problems](#63-dhcp-problems) if you are having issues with this.
 
 ### 2.4.3 TFTP server
 
-First install required packages:
+TFTP (Trivial File Transfer Protocol) server is a server from which we can get the bootsystem kernel files.
+With the kernel executed it is possible to start using NFS and get rest of the system.
+
+Install the required packages for TFTP:
 ```
 sudo apt install xinetd tftpd tftp
 ```
@@ -264,8 +288,10 @@ Restart and enable xinetd service:
 ```
 sudo systemctl restart xinetd; sudo systemctl enable xinetd
 ```
-Note here that not all distros have xinetd service. In that case you might have to install something else. Refer to [TFTP problems](#63-tftp-problems) if there are problems.
+Note here that not all distros have xinetd service. In that case you might have to install something else. Refer to [TFTP problems](#64-tftp-problems) if there are problems.
 ### 2.4.4 NFS server
+
+NFS (Network File System) server is used to give the devices access to a specified set of files on the computer. The files will be treated in a manner similar to local storage.
 
 First install nfs-kernel-server:
 ```
@@ -297,9 +323,53 @@ Put changes in effect and restart and enable nfs-kernel-server:
 sudo exportfs -ra
 sudo systemctl restart nfs-kernel-server; sudo systemctl enable nfs-kernel-server
 ```
-Refer to [NFS problems](#64-nfs-problems) if you have issues with NFS.
+Refer to [NFS problems](#65-nfs-problems) if you have issues with NFS.
 
-### 2.4.5 Changing BBB filesystem permissions
+### 2.4.5 NTP server
+
+This step is partially optional, if you don't care that the BBBs time is incorrect or you have another method for correcting it, feel free to skip this section. The problem with BBBs is that they don't have an internal battery. Therefore, each time they reboot, their clock resets. This causes the time in BBBs to be wrong, if they are not corrected manually. Installing the NTP server removes the problem by providing correct time to BBBs each time they boot.
+It works as following:
+1. PCs NTP server corrects its own time from a NTP server higher in hiararchy, e.g. company NTP server or some open NTP server pool.
+2. When BBB boots, it sends a request to the PCs NTP server.
+3. The server replies to NTP request.
+4. BBBs NTP client receives the reply and corrects its time.
+
+Let's install the NTP server to PC.
+
+First install the NTP Daemon and ntpdate:
+
+```
+sudo apt install ntp ntpdate
+```
+
+Now let's configure the NTP server correctly. Open `/etc/ntp.conf` and modify the file.
+
+```
+vim /etc/ntp.conf
+```
+If you want to use your company's NTP server or have another NTP server from where your PC synchronizes its time, replace the default servers <b>0.pool.ntp.org</b> with your own, e.g.
+```
+server 0.pool.ntp.org iburst
+```
+Now add the following lines to allow BBBs to poll the PCs NTP server:
+
+```
+#Allow LAN machines to synchronize with this ntp server
+restrict 192.168.30.0 mask 255.255.255.0 nomodify notrap
+
+#Broadcast the time to your local subnet, just incase
+broadcast 192.168.30.0
+```
+
+Finally restart the NTP service to apply the changes.
+
+```
+sudo systemctl restart ntp
+```
+
+
+
+### 2.4.6 Changing BBB filesystem permissions
 
 Previously on the [NFS chapter](#244-nfs-server) we chose a user that DAFT will be
 used with. We will need to change the owner of `/daft/bbb_fs` and
@@ -309,7 +379,7 @@ sudo chown -R <b>user</b>:<b>group</b> /daft/*
 sudo chown root:root /daft/bbb_fs/root/.ssh/config
 </pre>
 
-### 2.4.6 Changing NFS workspace that BBB and DUT support image will mount
+### 2.4.7 Changing NFS workspace that BBB and DUT support image will mount
 
 On the [NFS chapter](#244-nfs-server) we chose a workspace for BBB to use. We need
 to change **/home/tester** in `/daft/bbb_fs/etc/fstab` to that one:
@@ -343,6 +413,7 @@ sudo mkdir /tmp_daft
 sudo mount -o loop,offset=<b>537919488</b> /daft/support_img/support.img /tmp_daft
 sudo vim /tmp_daft/etc/fstab
 </pre>
+
 <pre>
 192.168.30.1:<b>/home/tester/</b> /mnt/img_data_nfs nfs rsize=8192,wsize=8192,timeo=14,intr,nolock,auto
 </pre>
@@ -352,7 +423,7 @@ Unmount the image and remove the temporary folder:
 sudo umount /tmp_daft; sudo rmdir /tmp_daft
 </pre>
 
-## 2.4.7 Install and configure DAFT software
+## 2.4.8 Install and configure DAFT software
 
 Clone DAFT github repository:
 ```
@@ -388,26 +459,14 @@ sudo chown <b>user</b>:<b>group</b> /etc/daft/lockfiles
 
 ## 2.5 Setting BeagleBone Black to boot from NFS
 
-Setting BBB to boot from NFS is done by changing `/uEnv.txt` file contents on a
-BBB image (this means the uEnv.txt file in the BBB itself and not in the NFS files) to this:
-```
-bootcmd=setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.9-ti-r25; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
-uenvcmd=boot
-```
+This next step can be a little confusing, if you have not worked with BBB or similar systems before. We need to configure the BBB to automatically boot from the NFS instead of
+internal memory or SD card. To do this we modify a file called `uEnv.txt`. Each time BBB boots it goes through this file. We can set the BBB to boot from NFS by writing a boot command into the `/uEnv.txt` file.
+Note that this means the `uEnv.txt` file in the BBB itself and not in the NFS files. Sometimes there is no `uEnv.txt` in the root folder, in this case you need to create one.
+You can use the default factory image inside the BBB or flash a working BBB image with U-Boot to SD card.
 
-You can use the default factory image inside the BBB or flash a working BBB image
-with U-Boot to SD card. If you want to use the image inside BBB just boot it and
-use [USB-serial cable](#usb-serial), SSH or monitor and keyboard to change the
-file.
+## 2.5.1 Getting the BeagleBone Black image
 
-If you want to use SD card you have to first boot BBB with the factory image and
-use following command on it to destroy its U-Boot files so it won't boot from
-those:
-```
-dd if=/dev/zero of=/dev/mmcblk0 bs=4M count=10; sync
-```
-
-Working BBB image can be downloaded from
+A working BBB image can be downloaded from
 [here](https://beagleboard.org/latest-images). To flash the image to the SD card
 first connect the SD card to the PC and check `lsblk` and/or `dmesg` to see the
 path to the SD card. Flashing the downloaded file to SD card can be done with
@@ -418,6 +477,59 @@ cd ~/Downloads
 unxz <b>bone-debian</b>.img.xz
 sudo dd if=<b>bone-debian</b>.img of=/dev/sd<b>X</b> bs=8M status=progress
 </pre>
+
+
+If you want to use a SD card you have to first boot BBB with the factory image and
+use following command on it to destroy its U-Boot files so it won't boot from those:
+```
+dd if=/dev/zero of=/dev/mmcblk0 bs=4M count=10; sync
+```
+Refer to [PC to BBB serial connection](#61-pc-to-bbb-serial-connection) on how to use serial to communicate with the BBB (in case you don't have a monitor and a keyboard).
+
+Alternatively, you could flash the image in the SD card to the internal memory. This can be done by inserting the SD card to the BBB and booting it while holding down
+the boot from SD card button located in the BBB near SD card. However, this doesn't always do the trick, in which case you want to boot to the SD card, then go to `/boot/uEnv.txt`
+```
+vi /boot/uEnv.txt
+```
+and uncomment this line in the bottom of the file:
+```
+cmdline=init=/opt/scripts/tools/eMMC/init-eMMC-flasher-v3.sh
+```
+This is a flasher script, which will automatically flash the image in the SD card to the internal memory of the BBB. After uncommenting the line, simply save and
+reboot the device, it should start flashing. After the flashing is done, you can remove the SD card and boot the device.
+
+
+## 2.5.2 Changing the uEnv.txt file
+When you have a working BBB image in the devices internal memory (or have destroyed the internal U-Boot and have the image in SD card), boot it up. Use a serial connection or SSH to communicate with the device [PC to BBB serial connection](#61-pc-to-bbb-serial-connection).
+
+Once the BBB has been booted, edit the `uEnv.txt` file located in root.
+```
+vi /uEnv.txt
+```
+
+Include the following lines to the `uEnv.txt` file:
+
+<pre>
+bootcmd=setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/<b>vmlinuz-4.4.9-ti-r25</b>; tftp 0x80000000 bbb_fs/boot/dtbs/<b>4.4.9-ti-r25</b>/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
+uenvcmd=boot
+</pre>
+Make sure that the highlighted files match the ones you have in your NFS.
+
+
+Now to make sure that the BBB boots from the NFS and not the internal memory, go to another `uEnv.txt` file, which is in /boot folder.
+
+```
+vi /boot/uEnv.txt
+```
+
+Comment the following line in the top of the file:
+```
+uname <something here>
+```
+
+Save and reboot the BBB and it should boot from the NFS, if everything was done correctly. In case something goes wrong, you can always flash a new image to the BBB and try again.
+
+
 
 ## 2.6 Setting up relay
 
@@ -436,7 +548,7 @@ _gpio_cutter_on_ and _gpio_cutter_off_ values:
 <pre>
 sudo vim /daft/bbb_fs/etc/aft/devices/platform.cfg
 </pre>
-<pre>
+<pre>  readme_clarity_of_text
 [PC]
 leases_file_name = /var/lib/misc/dnsmasq.leases
 keyboard_emulator = GadgetKeyboard
@@ -460,7 +572,7 @@ _How to connect the relay to the BBB._
 After everything else has been done, hardware can be connected together according
 to the pictures above and BBB can be booted from NFS. If there is a problem with
 booting it's most likely due to dnsmasq, TFTP, NFS or file permissions. Check
-[troubleshooting section](#5-troubleshooting) for more help if needed.
+[troubleshooting section](#6-troubleshooting) for more help if needed.
 
 ## 2.8 Setting up DUT
 
@@ -761,7 +873,7 @@ host PC DAFT:
 BBB testing harness AFT:
 - Parse AFT config file from `/etc/aft/aft.cfg`
 - Parse devices config files from `/etc/aft/devices/`
-- Find and use 'joule' settings
+- Find and use 'joule' settings
 - Reboot the device by turning off the relay with GPIO pin, wait a while, turn
   on the relay
 - Start sending keystrokes determined by `boot_usb_keystrokes` in device
@@ -789,7 +901,7 @@ host PC DAFT:
 BBB testing harness AFT:
 - Parse AFT config file from `/etc/aft/aft.cfg`
 - Parse devices config files from `/etc/aft/devices/`
-- Find and use 'joule' settings
+- Find and use 'joule' settings
 - Reboot the device by turning off the relay with GPIO pin, wait a while, turn on
   the relay
 - Start sending keystrokes determined by `boot_internal_keystrokes` in device settings
@@ -806,38 +918,36 @@ host PC DAFT:
 - DAFT run is done
 
 
-## 4. Creating BeagleBone Black filesystem
+## 4. Creating BeagleBone Black filesystem for NFS
 
-Download BBB image from [here](https://beagleboard.org/latest-images)
-(bone-debian-8.4-lxqt-4gb-armhf-2016-05-13-4gb.img was used when writing this
-guide). Use `dd` to copy it to USB stick. SD card could also be used but working
+Download BBB image from [Beaglebone website](https://beagleboard.org/latest-images)
+(non-GUI for BeagleBone via microSD card). Use `dd` to copy it to USB stick. SD card could also be used but working
 with USB stick is faster (change /dev/sdX to match your USB stick):
-```
-sudo dd if=bone-debian-8.4-lxqt-4gb-armhf-2016-05-13-4gb.img of=/dev/sdX bs=8M status=progress
+<pre>
+sudo dd if=bone-debian-8.4-lxqt-4gb-armhf-2016-05-13-4gb.img of=/dev/<b>sdX</b> bs=8M status=progress
 sync
-```
+</pre>
 
 After copying it reseize the partition so it has more space (change /dev/sdX to
 match yours):
-```
-sudo fdisk /dev/sdX
+<pre>
+sudo fdisk /dev/<b>sdX</b>
 d
 n
-<enter>
-<enter>
+press enter
+press enter
 8192
 a
 w
-sudo e2fsck -f /dev/sdX1
-sudo resize2fs /dev/sdX1
-```
+sudo e2fsck -f /dev/<b>sdX1</b>
+sudo resize2fs /dev/<b>sdX1</b>
+</pre>
 
 Connect the USB stick to BBB and boot it. Use USB-serial cable or monitor and
-keyboard and stop the U-Boot from doing default boot by pressing space. Use this
-command to boot from USB stick:
-```
-setenv bootargs 'console=ttyO0,115200n8, root=/dev/sda1 rootwait rootfstype=ext4 rw'; usb start; ext4load usb 0:1 0x81000000 /boot/vmlinuz-4.4.9-ti-r25; ext4load usb 0:1 0x80000000 /boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
-```
+keyboard and stop the U-Boot from doing default boot by pressing space. Use the following command to boot from USB stick and change 4.4.9-ti-r25 to match your version number:
+<pre>
+setenv bootargs 'console=ttyO0,115200n8, root=/dev/sda1 rootwait rootfstype=ext4 rw'; usb start; ext4load usb 0:1 0x81000000 /boot/vmlinuz-<b>4.4.9-ti-r25</b>; ext4load usb 0:1 0x80000000 /boot/dtbs/<b>4.4.9-ti-r25</b>/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
+</pre>
 
 When BBB has booted do all of these commands to make all the changes needed for
 DAFT (notice the lines that make proxy settings, change them or don't use them
@@ -851,7 +961,7 @@ rm /etc/systemd/system/multi-user.target.wants/connman.service
 vim /etc/apt/apt.conf.d/03-proxy-https
     Acquire::http::Proxy "http://yourproxyaddress:proxyport"; # Add this line to the file
 apt update
-apt install nfs-common dnsmasq python3-setuptools python3-pip expect
+apt install nfs-common dnsmasq python3-setuptools python3-pip expect ntp ntpdate
 pip3 --proxy http://yourproxyaddress:proxyport install pyserial netifaces unittest-xml-reporting
 git config --global https.proxy http://yourproxyaddress:proxyport
 git config --global http.proxy http://yourproxyaddress:proxyport
@@ -894,6 +1004,29 @@ vim /root/.ssh/config
     # Add these lines
     Host *
         IdentityFile ~/.ssh/id_rsa_testing_harness
+vim /etc/ntp.conf
+   #Remove these lines
+   server 0.pool.ntp.org iburst
+   server 1.pool.ntp.org iburst
+   server 2.pool.ntp.org iburst
+   server 3.pool.ntp.org iburst
+
+   #Add these lines
+   server 192.168.30.1 iburst
+   disable auth
+   broadcastclient
+vim /etc/default/ntpdate
+   #Remove this line
+   NTPSERVERS="some_address"
+
+   #Add these lines
+   NTPSERVERS="192.168.30.1"
+   UPDATE_HWCLOCK="yes"
+rm /etc/localtime
+#Remember to select the locale /Europe/Helsinki to your own
+ln -s /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
+
+
 ```
 
 Now make _id_rsa_testing_harness_ and _id_rsa_testing_harness.pub_ SSH-keys with
@@ -905,21 +1038,21 @@ _authorized_keys_ on the images that are flashed.
 After this the image should work with DAFT. Poweroff the BBB and connect the USB
 stick to PC. Mount it and copy the filesystem from it (change /dev/sdX1 to match
 your USB stick):
-```
+<pre>
 mkdir tmp_mnt bbb_fs
-sudo mount /dev/sdX1 tmp_mnt
+sudo mount /dev/<b>sdX1</b> tmp_mnt
 sudo cp -r tmp_mnt/* bbb_fs/
 sync
 sudo umount tmp_mnt
 sudo rmdir tmp_mnt
-```
+</pre>
 
 Now you should have a working BBB filesystem that BBB can use to boot from with
 NFS. You should be able to move/copy the folder to `/daft/` and boot from it
-with this U-Boot command:
-```
-setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.9-ti-r25; tftp 0x80000000 bbb_fs/boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
-```
+with this U-Boot command (change 4.4.9-ti-r25 to match your BBB filesystem version):
+<pre>
+setenv autoload no; dhcp; setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 ro ip=${ipaddr}; tftp 0x81000000 bbb_fs/boot/vmlinuz-<b>4.4.9-ti-r25</b>; tftp 0x80000000 bbb_fs/boot/dtbs/<b>4.4.9-ti-r25</b>/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
+</pre>
 
 ## 5. Creating support image for DUT
 
@@ -933,7 +1066,7 @@ guide. First download
 server is used as it's basically normal Ubuntu without graphical interface. Copy
 it to a USB-stick with `dd` (change **X** to match your USB-stick):
 <pre>
-sudo dd if=ubuntu-16.04.2-server-amd64.iso of=/dev/sd<b>X</b> bs=8M status=progress
+sudo dd if=ubuntu-16.04.2-server-amd64.iso of=/dev/<b>sdX</b> bs=8M status=progress
 sync
 </pre>
 
@@ -982,7 +1115,6 @@ Then install bmap-tools, nfs-common and parted:
 apt update
 apt install bmap-tools nfs-common parted
 ```
-
 Configure usb0 in `/etc/network/interfaces`:
 ```
 vim /etc/network/interfaces
@@ -1075,20 +1207,40 @@ _support.img_.
 
 ## 6. Troubleshooting
 
-### 6.1 Beaglebone Black booting
+### 6.1 PC to BBB serial connection
+
+Find out the serial port connected to BBB with
+```
+dmesg | grep tty
+```
+
+Install screen  
+```
+sudo apt install screen
+```
+
+Open a "Screen" from your terminal to the serial (usually its something like `ttyUSB0`). You can use the following   command:
+ ```
+ sudo screen /dev/ttyUSB0 115200 -ixon,-ixof
+ ```
+ but remember to replace the <b>/dev/ttyUSB0</b> with your own path.
+Now boot the BBB by supplying it power with a 5V charger.
+If you are having problems when booting BBB, refer to the troubleshooting section [Beaglebone Black booting](#62-beaglebone-black-booting)
+
+### 6.2 Beaglebone Black booting
 
 Instead of allowing BBB to boot normally you can interrupt it by pressing space
 while booting. It will then enter U-Boot terminal. Use USB-serial cable or
 monitor and keyboard to do it. Then you can manually try to boot from nfs with
 these U-Boot commands:
-```
+<pre>
 setenv autoload no
 dhcp
 setenv bootargs console=ttyO0,115200n8, root=/dev/nfs nfsroot=${serverip}:/daft/bbb_fs,vers=3 rw ip=${ipaddr}
-tftp 0x81000000 bbb_fs/boot/vmlinuz-4.4.9-ti-r25
-tftp 0x80000000 bbb_fs/boot/dtbs/4.4.9-ti-r25/am335x-boneblack.dtb
+tftp 0x81000000 bbb_fs/boot/vmlinuz-<b>4.4.9-ti-r25</b>
+tftp 0x80000000 bbb_fs/boot/dtbs/<b>4.4.9-ti-r25</b>/am335x-boneblack.dtb
 bootz 0x81000000 - 0x80000000
-```
+</pre>
 
 If it gets stuck on `dhcp` it's dnsmasq or network configuration problem. Check
 with `ifconfig` if the network interfaces IP is _192.168.30.1_ and with
@@ -1099,28 +1251,34 @@ have to change `/daft/bbb_fs` and `bbb_fs/boot/*` paths in the boot commands.
 U-Boot is quite clunky with the pathnames so try different paths like
 `/bbb_fs/boot/*`, `daft/bbb_fs/boot/*` or `/daft/bbb_fs/boot/*`. If it starts
 booting but gets stuck it's probably a problem with NFS or file permissions.
+For file permissions take a look at [Changing BBB filesystem permissions](#245-changing-bbb-filesystem-permissions)
+and for NFS take a look at [NFS problems](#64-nfs-problems).
 
 If you get an error when you try to tftp the files, check that the kernel files `vmlinuz` and `dtbs` e.g. `vmlinuz-4.4.9-ti-r25` match the ones you have.
 
 
-### 6.2 DHCP problems
+### 6.3 DHCP problems
 If you are having problems with the DHCP server, you can try the following steps:
 1. Check that your dnsmasq service is on. This is done by executing the following command `systemctl status dnsmasq`. If it is not, you need to start it with `systemctl start dnsmasq`. If it still isn't working, check that you have completed all the steps when configuring the [DHCP server](#242-dhcp-server).
 2. Make sure your firewall isn't blocking the connection. DHCP uses UDP and the ports 67 and 68, so make sure they are open. (e.g. if you have iptables firewall you can check the situation with `sudo iptables -L`.)
 
-### 6.3 TFTP problems
+### 6.4 TFTP problems
 If you are having problems with TFTP, you can try the following steps:
-1. Check that your TFTP server is on. Then check that you have completed all the steps in [TFTP server](#243-tftp-server). Note that if you are not using Ubuntu, you might have to install and setup something else (e.g. in Fedora you have to install a different tftp server because there is no xinetd).
+1. Check that your TFTP server is on.
+`systemctl status xinetd`
+Then check that you have completed all the steps in [TFTP server](#243-tftp-server). Note that if you are not using Ubuntu, you might have to install and setup something else (e.g. in Fedora you have to install a different tftp server because there is no xinetd).
 2. Again check that PC Hosts firewall isn't blocking the connection.
 
-### 6.4 NFS problems
+### 6.5 NFS problems
 If you are having problems with NFS, you can try the following steps:
-1. Check that your NFS server is on. Then and check that you have completed all the steps in Refer to [NFS server](#244-nfs-server). Note that if you are not using Ubuntu, you might have to configure some additional things. Search for help in the web for your distro.
+1. Check that your NFS server is on.
+`systemctl status nfs-kernel-server`
+Then check that you have completed all the steps in Refer to [NFS server](#244-nfs-server). Note that if you are not using Ubuntu, you might have to configure some additional things. Search for help in the web for your distro.
 2. Again check that PC Hosts firewall isn't blocking the connection.
 
 Note that it's not possible to export anything via NFS in an encrypted file system volume.
 
-We have noticed that in some other distros different than Ubuntu getting the BBB to boot from NFS can be very problematic. If you cannot get it to work, you can always boot the BBB from USB drive. Refer to [Creating BeagleBone Black filesystem](#4-creating-beaglebone-black-filesystem) for more info.
+We have noticed that in some other distros different than Ubuntu getting the BBB to boot from NFS can be very problematic. If you cannot get it to work, you can always boot the BBB from USB drive. Refer to [Creating BeagleBone Black filesystem for NFS](#4-creating-beaglebone-black-filesystem-for-nfs) for more info.
 ## DAFT hardware images
 
 ### USB-serial
