@@ -1155,12 +1155,7 @@ UseDNS no
 Make some directories and files:
 ```
 mkdir -p /mnt/img_data_nfs /mnt/super_target_root /mnt/target_root
-touch /root/.ssh/authorized_keys
 ```
-
-Add your SSH key to `/root/.ssh/authorized_keys` with `ssh-copy-id`, `scp`,
-`ssh` or some other way you prefer. The key should be the same that BBB uses
-so it can log in with SSH.
 
 Change `/boot/efi/EFI` directory as Minnowboard on default looks for boot files
 from `/boot/efi/EFI/BOOT`:
@@ -1180,8 +1175,20 @@ UUID=0b225574-0443-481b-ba4c-0f098441364a / ext4 <b>ro</b>,errors=remount-ro 0 1
 192.168.30.1:/home/tester /mnt/img_data_nfs nfs rsize=8192,wsize=8192,timeo=14,intr,nolock,auto
 </pre>
 
-Now the image should be ready and you can `poweroff` the device and remove the
-USB-stick. Then connect the USB-stick to your PC and use `fdisk` to check the
+Now the image should be ready and you can `poweroff` the device and remove the USB-stick. Connect the USB-stick to your PC.
+
+Add your public SSH key used by BBB to `/root/.ssh/authorized_keys` on the support image USB-stick. The BBB public key should be located in /daft/bbb_fs/root/.ssh.
+
+<pre>
+sudo cat /daft/bbb_fs/root/.ssh/<b>your_ssh_key.pub</b>
+</pre>
+Copy the SSH key and paste it to:
+<pre>
+sudo vim /media/<b>tester/your_sdX_files</b>/root/.ssh/authorized_keys
+sudo touch /media/<b>tester/your_sdX_files</b>/root/.ssh/authorized_keys
+</pre>
+
+Then connect the USB-stick to your PC and use `fdisk` to check the
 partitions (change <b>sdX</b> to match your USB-stick):
 <pre>
 sudo fdisk -l dev/<b>sdX</b>
@@ -1204,7 +1211,7 @@ the image from the USB-stick. Use the previous numbers but add 100 to end
 block number so we get some extra space for rewriting backup GPT partition
 table:
 <pre>
-sudo dd if=/dev/<b>sdX</b> of=ubuntu_support.img bs=<b>512</b> count=<b>5881955</b>
+sudo dd if=/dev/<b>sdX</b> of=/daft/support_img/support.img bs=<b>512</b> count=<b>5881955</b>
 </pre>
 
 Then fix the image by rewriting the backup GPT partition table:
@@ -1216,9 +1223,7 @@ Expert command (? for help): w
 Do you want to proceed? (Y/N): Y
 ```
 
-Now you should have a nice small working support image to use with DAFT. The
-support image should be placed to `/daft/support_img/` and named as
-_support.img_.
+Now you should have a nice small working support image to use with DAFT.
 
 ## 6. Troubleshooting
 
