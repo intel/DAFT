@@ -18,6 +18,8 @@ Class implementing a Tester interface.
 
 import os
 import time
+import subprocess
+
 try:
     import ConfigParser
 except ImportError:
@@ -60,8 +62,14 @@ class Tester(object):
 
     def execute(self):
         """
-        Execute the test plan.
+        Set values to default and execute the test plan.
         """
+
+        #Set the Beaglebones gpio20 values to default
+        logger.info("Setting Beaglebone gpio testing pin back to default")
+        subprocess.call("echo 20 > /sys/class/gpio/export",shell=True)
+        subprocess.call("echo in > /sys/class/gpio/gpio20/direction", shell=True)
+
         logger.info("Executing the test plan")
         self._start_time = time.time()
         logger.info("Test plan start time: " + str(self._start_time))
