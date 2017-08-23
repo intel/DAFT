@@ -194,10 +194,10 @@ If your bbb_fs folder has a different name than bbb_fs it is helpful to rename i
 ### 2.3.2 Setting up DUT support image
 
 If you don't have a DUT support image yet you can make one by navigating to [Creating support image for DUT](#5-creating-support-image-for-dut).
-If you have a DUT support image you can simply move the support_image.img to /daft/support_image/ folder on your host PC.
+If you have a DUT support image you can simply move the support_image.img to /daft/support_img/ folder on your host PC.
 <pre>
-mkdir /daft/support_image
-sudo mv <b>address-to-image</b>/support_image.img /daft/support_image/
+mkdir /daft/support_img
+sudo mv <b>address-to-image</b>/support_image.img /daft/support_img/
 </pre>
 
 ## 2.4 Configuring host PC
