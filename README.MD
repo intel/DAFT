@@ -949,14 +949,23 @@ sudo e2fsck -f /dev/<b>sdX1</b>
 sudo resize2fs /dev/<b>sdX1</b>
 </pre>
 
-Connect the USB stick to BBB and boot it. Use USB-serial cable or monitor and
+Connect the USB stick or SD card to BBB and boot it. Use USB-serial cable or monitor and
 keyboard and stop the U-Boot from doing default boot by pressing space. Use this
-command to boot from USB stick and change 4.4.9-ti-r25 to match your version number:
+command to boot from your storage device and change 4.4.9-ti-r25 to match your version number:
+
+<b>Boot settings for USB stick</b>
 <pre>
-setenv bootargs 'console=ttyO0,115200n8, root=/dev/sda1 rootwait rootfstype=ext4 rw'
+setenv bootargs 'console=ttyO0,115200n8, root=/dev/sda1 rootfstype=ext4 rw'
 usb start
 ext4load usb 0:1 0x81000000 /boot/vmlinuz-<b>4.4.9-ti-r25</b>
 ext4load usb 0:1 0x80000000 /boot/dtbs/<b>4.4.9-ti-r25</b>/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
+</pre>
+
+<b>Boot settings for SD card</b>
+<pre>
+setenv bootargs 'console=ttyO0,115200n8, root=/dev/mmcblk1p1 rootfstype=ext4 rw'
+ext4load mmc 0:1 0x81000000 /boot/vmlinuz-<b>4.4.9-ti-r25</b>
+ext4load mmc 0:1 0x80000000 /boot/dtbs/<b>4.4.9-ti-r25</b>/am335x-boneblack.dtb; bootz 0x81000000 - 0x80000000
 </pre>
 
 When BBB has booted do all of these commands to make all the changes needed for
