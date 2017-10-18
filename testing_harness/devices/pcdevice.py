@@ -4,6 +4,7 @@
 # Author Topi Kuutela <topi.kuutela@intel.com>
 # Author Erkka Kääriä <erkka.kaaria@intel.com>
 # Author Simo Kuusela <simo.kuusela@intel.com>
+# Author Christian da Costa <christian.da.costa@intel.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -423,27 +424,45 @@ class PCDevice(Device):
                     ".ssh")
             ])
 
-        ssh.remote_execute(
-            self.dev_ip,
-            [
-                "cat",
-                "~/.ssh/authorized_keys",
-                ">>",
-                os.path.join(
-                    self._ROOT_PARTITION_MOUNT_POINT,
-                    root_user_home,
-                    ".ssh/authorized_keys")])
+        # Try to copy SSH keys to the authorized_keys file
 
-        ssh.remote_execute(
-            self.dev_ip,
-            [
-                "chmod",
-                "600",
-                os.path.join(
-                    self._ROOT_PARTITION_MOUNT_POINT,
-                    root_user_home,
-                    ".ssh/authorized_keys")
-            ])
+        try:
+            ssh.remote_execute(
+                self.dev_ip,
+                [
+                    "cat",
+                    "~/.ssh/authorized_keys",
+                    ">>",
+                    os.path.join(
+                        self._ROOT_PARTITION_MOUNT_POINT,
+                        root_user_home,
+                        ".ssh/authorized_keys")])
+            ssh.remote_execute(
+                self.dev_ip,
+                [
+                    "chmod",
+                    "600",
+                    os.path.join(
+                        self._ROOT_PARTITION_MOUNT_POINT,
+                        root_user_home,
+                        ".ssh/authorized_keys")
+                ])
+
+        # If the preceding method fails, try to copy them directly to a dropbear authorized_keys files (as the the preceding method fails if the device is running
+        # dropbear instead of OpenSSH)
+        except:
+            logger.info("Failed, trying to write the ssh-key in dropbear file instead.")
+            ssh.remote_execute(
+                self.dev_ip,
+                [
+                    "cat",
+                    "~/.ssh/authorized_keys",
+                    ">>",
+                    os.path.join(
+                        self._ROOT_PARTITION_MOUNT_POINT,
+                        "var/lib/dropbear/authorized_keys")])
+            logger.info("Success.")
+
 
         logger.info("Flushing.")
         ssh.remote_execute(self.dev_ip, ["sync"])
