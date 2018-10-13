@@ -84,7 +84,7 @@ and the image file to be tested as its arguments:
 daft joule os-image.img
 ```
 
-DAFT will then procede to flash the image to the device. After that has been
+DAFT will then proceed to flash the image to the device. After that has been
 done successfully the new image is booted and tests are executed. Tests aren't
 strictly part of DAFT but rather DAFT includes tools and libraries to interact
 with the device so own test can be written or existing test suites can be
@@ -164,7 +164,7 @@ _BeagleBone Black booting with the PC Host._
 
 The above diagram shows the general steps when setting up the BBB and booting it:
 1. Connect the PC Host to the BBB via serial.
-2. Get an IP adress for the BBB from the DHCP server.
+2. Get an IP address for the BBB from the DHCP server.
 3. Get the BBB bootsystem kernel via TFTP. The BBB will fetch the bootsystem kernel from the PC Host via TFTP.
 4. BBB executes the kernel, which is the bootsystem core and is needed to be able to boot the rest of the system via NFS.
 5. Boot the rest of the system via NFS.
